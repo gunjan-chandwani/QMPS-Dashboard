@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Question Paper Management System (QPMS)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                            800: '#0c4a6e',
+                            900: '#0f172a'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+
+    <!-- Notification Toast Container -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 space-y-2 pointer-events-none"></div>
+
+    <!-- 1. DEDICATED LOGIN SCREEN (Shown when user is logged out) -->
+    <div id="view-login" class="min-h-screen bg-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
+        <div class="absolute -top-40 -left-40 w-96 h-96 bg-brand-600/20 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-40 -right-40 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="max-w-md w-full bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-200 p-8 z-10 space-y-6">
+            <div class="text-center space-y-2">
+                <div class="w-16 h-16 bg-brand-600 text-white rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-brand-600/30">
+                    <i class="fa-solid fa-file-signature text-3xl"></i>
+                </div>
+                <h2 class="text-2xl font-black text-slate-900 tracking-tight">QPMS Portal Login</h2>
+                <p class="text-xs text-slate-500">Manav Rachna University • Question Paper Workflow Engine</p>
+            </div>
+
+            <!-- Role Tabs on Login -->
+            <div class="flex p-1 bg-slate-100 rounded-xl text-xs font-semibold">
+                <button type="button" onclick="selectLoginRole('FACULTY')" id="login-tab-FACULTY" class="flex-1 py-2 rounded-lg bg-white shadow-sm text-brand-700 transition-all text-center">Faculty</button>
+                <button type="button" onclick="selectLoginRole('COE')" id="login-tab-COE" class="flex-1 py-2 rounded-lg text-slate-500 hover:text-slate-800 transition-all text-center">COE Admin</button>
+                <button type="button" onclick="selectLoginRole('MODERATOR')" id="login-tab-MODERATOR" class="flex-1 py-2 rounded-lg text-slate-500 hover:text-slate-800 transition-all text-center">Moderator</button>
+            </div>
+
+            <form id="form-login" onsubmit="handleLogin(event)" class="space-y-4 text-xs sm:text-sm">
+                <input type="hidden" id="login-selected-role" value="FACULTY">
+                <div>
+                    <label class="block font-medium text-slate-700 mb-1">Email / User ID</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-envelope absolute left-3 top-3 text-slate-400"></i>
+                        <input type="text" id="login-email" required placeholder="user@mru.edu.in" class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-medium text-slate-700 mb-1">Password</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-lock absolute left-3 top-3 text-slate-400"></i>
+                        <input type="password" id="login-password" required value="••••••••" class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none">
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-lg shadow-md transition-all flex items-center justify-center space-x-2">
+                    <span>Sign In to Dashboard</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </form>
+
+            <!-- Quick Demo Credentials Selector -->
+            <div class="border-t border-slate-100 pt-4 space-y-2 text-xs">
+                <p class="text-slate-400 text-center font-medium">Quick Demo Click-to-Login:</p>
+                <div class="grid grid-cols-3 gap-2">
+                    <button onclick="quickLogin('FACULTY')" class="p-2 border border-slate-200 rounded-lg bg-slate-50 hover:bg-brand-50 hover:border-brand-200 text-slate-700 hover:text-brand-700 transition text-center">
+                        <span class="block font-bold">Faculty</span>
+                        <span class="text-[10px] text-slate-400">Dr. Rajesh</span>
+                    </button>
+                    <button onclick="quickLogin('COE')" class="p-2 border border-slate-200 rounded-lg bg-slate-50 hover:bg-brand-50 hover:border-brand-200 text-slate-700 hover:text-brand-700 transition text-center">
+                        <span class="block font-bold">COE Cell</span>
+                        <span class="text-[10px] text-slate-400">Admin COE</span>
+                    </button>
+                    <button onclick="quickLogin('MODERATOR')" class="p-2 border border-slate-200 rounded-lg bg-slate-50 hover:bg-brand-50 hover:border-brand-200 text-slate-700 hover:text-brand-700 transition text-center">
+                        <span class="block font-bold">Moderator</span>
+                        <span class="text-[10px] text-slate-400">Prof. Sharma</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APPLICATION PORTAL (Shown after Login) -->
+    <div id="app-portal" class="hidden min-h-screen flex flex-col">
+        
+        <!-- Top Global Banner & Role Header -->
+        <header class="bg-brand-900 text-white shadow-md sticky top-0 z-40">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <!-- System Title -->
+                    <div class="flex items-center space-x-3">
+                        <div class="p-2 bg-brand-600 rounded-lg shadow-sm">
+                            <i class="fa-solid fa-file-signature text-xl"></i>
+                        </div>
+                        <div>
+                            <h1 class="font-bold text-lg leading-tight">Manav Rachna QPMS</h1>
+                            <p class="text-xs text-brand-100 hidden sm:block">Question Paper & Moderation Audit Portal</p>
+                        </div>
+                    </div>
+
+                    <!-- Role Simulator & Logout Switcher -->
+                    <div class="flex items-center space-x-3">
+                        <div class="flex items-center space-x-2 bg-brand-800/80 p-1 rounded-xl border border-brand-700/50 text-xs">
+                            <span class="text-brand-200 px-2 hidden md:inline">Logged in as:</span>
+                            <span id="header-user-role" class="px-2.5 py-1 bg-brand-600 text-white rounded-lg font-bold">FACULTY</span>
+                        </div>
+                        <button onclick="handleLogout()" class="px-3 py-1.5 bg-red-600/80 hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition-colors flex items-center space-x-1">
+                            <i class="fa-solid fa-right-from-bracket"></i>
+                            <span class="hidden sm:inline">Logout</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Workflow Status Pipeline Summary -->
+        <section class="bg-white border-b border-slate-200 py-3 shadow-xs">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between text-xs overflow-x-auto py-1 space-x-2 custom-scrollbar">
+                    <div class="flex items-center space-x-2 text-slate-600 whitespace-nowrap">
+                        <span class="w-6 h-6 rounded-full bg-rose-100 text-rose-700 font-bold flex items-center justify-center">0</span>
+                        <span class="font-medium text-rose-800">Datesheet Schedule Tracking</span>
+                        <i class="fa-solid fa-angle-right text-slate-300 ml-1"></i>
+                    </div>
+                    <div class="flex items-center space-x-2 text-slate-600 whitespace-nowrap">
+                        <span class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center">1</span>
+                        <span class="font-medium">Paper Submission</span>
+                        <i class="fa-solid fa-angle-right text-slate-300 ml-1"></i>
+                    </div>
+                    <div class="flex items-center space-x-2 text-slate-600 whitespace-nowrap">
+                        <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center">2</span>
+                        <span class="font-medium">COE Initial Verification</span>
+                        <i class="fa-solid fa-angle-right text-slate-300 ml-1"></i>
+                    </div>
+                    <div class="flex items-center space-x-2 text-slate-600 whitespace-nowrap">
+                        <span class="w-6 h-6 rounded-full bg-amber-100 text-amber-700 font-bold flex items-center justify-center">3</span>
+                        <span class="font-medium">MRU Audit Moderation</span>
+                        <i class="fa-solid fa-angle-right text-slate-300 ml-1"></i>
+                    </div>
+                    <div class="flex items-center space-x-2 text-slate-600 whitespace-nowrap">
+                        <span class="w-6 h-6 rounded-full bg-purple-100 text-purple-700 font-bold flex items-center justify-center">4</span>
+                        <span class="font-medium">Faculty Revision</span>
+                        <i class="fa-solid fa-angle-right text-slate-300 ml-1"></i>
+                    </div>
+                    <div class="flex items-center space-x-2 text-slate-600 whitespace-nowrap">
+                        <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 font-bold flex items-center justify-center">5</span>
+                        <span class="font-medium">Final Approval & Archive</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- App Content Body -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full">
+            
+            <!-- Active User Profile & Key Stats Bar -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <div class="flex items-center space-x-3">
+                    <div id="user-avatar" class="w-10 h-10 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center font-bold text-lg">
+                        F
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <h2 id="user-display-name" class="font-bold text-slate-800">Dr. Rajesh Kumar</h2>
+                            <span id="user-role-badge" class="px-2 py-0.5 text-xs font-medium bg-brand-50 text-brand-700 rounded-full border border-brand-200">
+                                Faculty Member
+                            </span>
+                        </div>
+                        <p id="user-dept-info" class="text-xs text-slate-500">School of Engineering • Computer Science Dept</p>
+                    </div>
+                </div>
+
+                <!-- Quick Metrics (Updated with Unuploaded Datesheet Papers Metric) -->
+                <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center text-xs">
+                    <div class="bg-rose-50 p-2.5 rounded-lg border border-rose-100">
+                        <span class="text-rose-600 font-medium block mb-0.5"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Not Uploaded</span>
+                        <span id="stat-unuploaded" class="font-bold text-rose-800 text-base">0</span>
+                    </div>
+                    <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                        <span class="text-slate-500 block mb-0.5">Total Uploaded</span>
+                        <span id="stat-total" class="font-bold text-slate-800 text-base">0</span>
+                    </div>
+                    <div class="bg-blue-50 p-2.5 rounded-lg border border-blue-100">
+                        <span class="text-blue-600 block mb-0.5">In Review</span>
+                        <span id="stat-pending" class="font-bold text-blue-800 text-base">0</span>
+                    </div>
+                    <div class="bg-amber-50 p-2.5 rounded-lg border border-amber-100">
+                        <span class="text-amber-600 block mb-0.5">Needs Revision</span>
+                        <span id="stat-action" class="font-bold text-amber-800 text-base">0</span>
+                    </div>
+                    <div class="bg-emerald-50 p-2.5 rounded-lg border border-emerald-100">
+                        <span class="text-emerald-600 block mb-0.5">Final Approved</span>
+                        <span id="stat-approved" class="font-bold text-emerald-800 text-base">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DYNAMIC ROLE VIEWS -->
+            <div id="view-container">
+
+                <!-- 1. FACULTY VIEW -->
+                <div id="view-faculty" class="space-y-6 hidden">
+                    
+                    <!-- Alert Banner for Faculty's Scheduled Pending Papers -->
+                    <div id="faculty-pending-datesheet-alert" class="hidden bg-rose-50 border-l-4 border-rose-500 p-4 rounded-xl shadow-xs space-y-2">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2 text-rose-800 font-bold text-sm">
+                                <i class="fa-solid fa-clock-rotate-left text-lg text-rose-600"></i>
+                                <span>Datesheet Deadline Alert: Papers Scheduled for Examination</span>
+                            </div>
+                            <span class="text-xs bg-rose-100 text-rose-800 font-semibold px-2.5 py-0.5 rounded-full border border-rose-200" id="faculty-pending-count">0 Papers Pending</span>
+                        </div>
+                        <p class="text-xs text-rose-700">According to the COE Examination Datesheet, the following courses assigned to you have <strong>not been uploaded yet</strong>. Please upload them promptly:</p>
+                        <div id="faculty-pending-courses-list" class="flex flex-wrap gap-2 pt-1">
+                            <!-- Dynamic badges of unuploaded courses for logged in faculty -->
+                        </div>
+                    </div>
+
+                    <!-- COE Official Notices Banner (Datesheet & Sample Format Uploaded by COE) -->
+                    <div class="bg-gradient-to-r from-brand-900 to-slate-900 text-white rounded-2xl p-5 shadow-lg space-y-3">
+                        <div class="flex items-center justify-between border-b border-brand-700/50 pb-2">
+                            <div class="flex items-center space-x-2">
+                                <i class="fa-solid fa-bullhorn text-amber-400 text-lg"></i>
+                                <h3 class="font-bold text-sm sm:text-base">COE Official Examination Guidelines & Published Datesheet</h3>
+                            </div>
+                            <span class="text-[11px] bg-brand-800 px-2.5 py-0.5 rounded-full text-brand-200 border border-brand-700">Updated by Examination Cell</span>
+                        </div>
+                        <div id="coe-notices-container" class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                            <!-- Populated dynamically with COE uploaded formats and datesheets -->
+                        </div>
+                    </div>
+
+                    <!-- Action Header -->
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-800">Faculty Paper Submissions</h3>
+                            <p class="text-xs text-slate-500">Upload new question papers with course details or revise requested changes.</p>
+                        </div>
+                        <button onclick="openUploadModal()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-medium text-sm rounded-lg shadow-sm transition-all flex items-center space-x-2">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                            <span>Upload New Question Paper</span>
+                        </button>
+                    </div>
+
+                    <!-- Faculty Papers Table -->
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                                    <tr>
+                                        <th class="px-4 py-3">Course Name & Code</th>
+                                        <th class="px-4 py-3">Dept & Sem</th>
+                                        <th class="px-4 py-3">Exam Date & Type</th>
+                                        <th class="px-4 py-3">Ver.</th>
+                                        <th class="px-4 py-3">Current Status</th>
+                                        <th class="px-4 py-3 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="faculty-papers-list" class="divide-y divide-slate-100 text-xs sm:text-sm">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. COE VIEW -->
+                <div id="view-coe" class="space-y-6 hidden">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-800">COE Administrative Control Panel</h3>
+                            <p class="text-xs text-slate-500">Track datesheet schedule compliance, verify submissions, and grant final archive approvals.</p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="openAddScheduleModal()" class="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-medium text-xs sm:text-sm rounded-lg shadow-sm transition-all flex items-center space-x-1.5">
+                                <i class="fa-solid fa-calendar-plus"></i>
+                                <span>Add Course to Datesheet</span>
+                            </button>
+                            <button onclick="openCoeNoticeModal()" class="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-medium text-xs sm:text-sm rounded-lg shadow-sm transition-all flex items-center space-x-1.5">
+                                <i class="fa-solid fa-file-circle-plus"></i>
+                                <span>Publish Datesheet / Format</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- COE Filter Tabs (Including NEW "Unuploaded / Missing Papers" Tab) -->
+                    <div class="flex border-b border-slate-200 space-x-4 text-xs font-medium overflow-x-auto custom-scrollbar">
+                        <button onclick="filterCoeTab('PENDING')" id="coe-tab-pending" class="pb-2.5 border-b-2 border-brand-600 text-brand-600 font-bold whitespace-nowrap">
+                            Pending Initial Verification
+                        </button>
+                        <button onclick="filterCoeTab('NOT_UPLOADED')" id="coe-tab-not-uploaded" class="pb-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-700 whitespace-nowrap flex items-center space-x-1.5">
+                            <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                            <span>Unuploaded Papers (Datesheet Schedule)</span>
+                            <span id="coe-badge-unuploaded" class="ml-1 px-1.5 py-0.2 bg-rose-100 text-rose-700 rounded-full text-[10px] font-bold">0</span>
+                        </button>
+                        <button onclick="filterCoeTab('RESUBMITTED')" id="coe-tab-resubmitted" class="pb-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-700 whitespace-nowrap">
+                            Revised / Moderated Papers
+                        </button>
+                        <button onclick="filterCoeTab('ARCHIVED')" id="coe-tab-archived" class="pb-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-700 whitespace-nowrap">
+                            Final Archived Papers
+                        </button>
+                    </div>
+
+                    <!-- Dynamic Table Header Search/Filter for COE -->
+                    <div class="flex justify-between items-center bg-slate-100 p-2.5 rounded-lg text-xs">
+                        <div class="flex items-center space-x-2 text-slate-600 font-medium" id="coe-table-section-title">
+                            <i class="fa-solid fa-list-check text-brand-600"></i>
+                            <span>Submitted Question Papers Pending Verification</span>
+                        </div>
+                        <div id="coe-unuploaded-action-bar" class="hidden flex items-center space-x-2">
+                            <button onclick="sendBulkReminders()" class="px-2.5 py-1 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded font-semibold text-xs transition">
+                                <i class="fa-solid fa-paper-plane mr-1"></i> Send Reminders to All Pending Faculty
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- COE Papers Table -->
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead id="coe-table-head" class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                                    <!-- Populated dynamically based on selected tab -->
+                                </thead>
+                                <tbody id="coe-papers-list" class="divide-y divide-slate-100 text-xs sm:text-sm">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. MODERATOR VIEW -->
+                <div id="view-moderator" class="space-y-6 hidden">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800">Department Moderation Review Portal</h3>
+                        <p class="text-xs text-slate-500">Fill standard MRU Question Paper Audit Form for syllabus mapping, grammar, and Bloom's taxonomy quality.</p>
+                    </div>
+
+                    <!-- Moderator Papers Table -->
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                                    <tr>
+                                        <th class="px-4 py-3">Paper Details</th>
+                                        <th class="px-4 py-3">Submitted By</th>
+                                        <th class="px-4 py-3">Exam / Code / Date</th>
+                                        <th class="px-4 py-3">Current Status</th>
+                                        <th class="px-4 py-3 text-right">Moderation Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="moderator-papers-list" class="divide-y divide-slate-100 text-xs sm:text-sm">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+
+    <!-- MODAL 1: Faculty Upload / Revision Modal -->
+    <div id="modal-upload" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 space-y-4 border border-slate-100 max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 id="upload-modal-title" class="font-bold text-slate-800 text-base">Step 1: Faculty Paper Submission</h3>
+                <button onclick="closeModal('modal-upload')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <!-- Display Moderator Comments if in Revision mode -->
+            <div id="revision-feedback-box" class="hidden bg-amber-50 border border-amber-200 p-3 rounded-lg text-xs space-y-1">
+                <div class="font-bold text-amber-800 flex items-center space-x-1">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span>Moderator Audit Feedback & Changes Required:</span>
+                </div>
+                <p id="revision-comments-text" class="text-amber-900 italic"></p>
+            </div>
+
+            <form id="form-upload" onsubmit="handlePaperSubmit(event)" class="space-y-4 text-xs sm:text-sm">
+                <input type="hidden" id="upload-paper-id" value="" />
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Course Name *</label>
+                        <input type="text" id="upload-course-name" placeholder="e.g. Data Structures & Algorithms" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none" required />
+                    </div>
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Course Code *</label>
+                        <input type="text" id="upload-course-code" placeholder="e.g. CSH201B" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none" required />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Select Department *</label>
+                        <select id="upload-dept" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none" required>
+                            <option value="Computer Science">Computer Science</option>
+                            <option value="Mechanical Eng.">Mechanical Eng.</option>
+                            <option value="Electrical Eng.">Electrical Eng.</option>
+                            <option value="Management Studies">Management Studies</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Program / Degree *</label>
+                        <select id="upload-program" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none" required>
+                            <option value="B.Tech">B.Tech</option>
+                            <option value="M.Tech">M.Tech</option>
+                            <option value="BCA">BCA</option>
+                            <option value="MBA">MBA</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Semester *</label>
+                        <select id="upload-semester" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none" required>
+                            <option value="Sem 1">Semester 1</option>
+                            <option value="Sem 3">Semester 3</option>
+                            <option value="Sem 5">Semester 5</option>
+                            <option value="Sem 7">Semester 7</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Examination *</label>
+                        <select id="upload-exam" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none" required>
+                            <option value="Mid Semester Exam">Mid Semester</option>
+                            <option value="End Semester Exam">End Semester</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Paper Date *</label>
+                        <input type="date" id="upload-paper-date" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none" required />
+                    </div>
+                </div>
+
+                <!-- Drag & Drop Upload Zone -->
+                <div>
+                    <label class="block font-medium text-slate-700 mb-1">Upload Question Paper (PDF Only) *</label>
+                    <div class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer relative" onclick="document.getElementById('upload-file-input').click()">
+                        <i class="fa-solid fa-file-pdf text-red-500 text-3xl mb-2"></i>
+                        <p class="text-xs text-slate-600 font-medium">Click to select PDF or drag and drop file here</p>
+                        <p id="file-chosen-name" class="text-xs text-brand-600 font-semibold mt-1">No file selected</p>
+                        <input type="file" id="upload-file-input" accept=".pdf" class="hidden" onchange="updateFileName(this)" />
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-2 border-t border-slate-100">
+                    <button type="button" onclick="closeModal('modal-upload')" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50">Cancel</button>
+                    <button type="submit" id="btn-submit-paper" class="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 font-medium shadow-sm">Submit Paper to COE</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: COE Publish Datesheet / Question Paper Format Modal -->
+    <div id="modal-coe-notice" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 border border-slate-100">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 class="font-bold text-slate-800 text-base">Publish Guidelines / Datesheet</h3>
+                <button onclick="closeModal('modal-coe-notice')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <form id="form-coe-notice" onsubmit="handleNoticeSubmit(event)" class="space-y-4 text-xs sm:text-sm">
+                <div>
+                    <label class="block font-medium text-slate-700 mb-1">Document Category *</label>
+                    <select id="notice-type" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none" required>
+                        <option value="Datesheet">Examination Datesheet</option>
+                        <option value="Paper Format">Standard Question Paper Template / Guidelines</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block font-medium text-slate-700 mb-1">Title / Description *</label>
+                    <input type="text" id="notice-title" placeholder="e.g. Mid Semester Exam Datesheet - Oct 2026" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none" required />
+                </div>
+
+                <div>
+                    <label class="block font-medium text-slate-700 mb-1">Upload File (PDF / Doc) *</label>
+                    <input type="file" id="notice-file-input" required class="w-full p-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg" />
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-2 border-t border-slate-100">
+                    <button type="button" onclick="closeModal('modal-coe-notice')" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-medium shadow-sm">Publish to Faculty Portal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- NEW MODAL 2B: COE Add Course Entry to Datesheet Master Schedule -->
+    <div id="modal-add-schedule" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 space-y-4 border border-slate-100">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <div>
+                    <h3 class="font-bold text-slate-800 text-base">Add Exam Course to Datesheet Schedule</h3>
+                    <p class="text-xs text-slate-500">Scheduled courses will be tracked automatically for pending uploads.</p>
+                </div>
+                <button onclick="closeModal('modal-add-schedule')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <form id="form-add-schedule" onsubmit="handleAddScheduleSubmit(event)" class="space-y-4 text-xs sm:text-sm">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Course Title *</label>
+                        <input type="text" id="sch-course-name" placeholder="e.g. Operating Systems" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-rose-500" required />
+                    </div>
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Course Code *</label>
+                        <input type="text" id="sch-course-code" placeholder="e.g. CSH202B" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-rose-500" required />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Department *</label>
+                        <select id="sch-dept" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-rose-500" required>
+                            <option value="Computer Science">Computer Science</option>
+                            <option value="Mechanical Eng.">Mechanical Eng.</option>
+                            <option value="Electrical Eng.">Electrical Eng.</option>
+                            <option value="Management Studies">Management Studies</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Assigned Faculty Name *</label>
+                        <input type="text" id="sch-faculty-name" placeholder="e.g. Dr. Rajesh Kumar" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-rose-500" required />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Scheduled Exam Date *</label>
+                        <input type="date" id="sch-exam-date" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-rose-500" required />
+                    </div>
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Exam Type *</label>
+                        <select id="sch-exam-type" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-rose-500" required>
+                            <option value="Mid Semester Exam">Mid Semester Exam</option>
+                            <option value="End Semester Exam">End Semester Exam</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-2 border-t border-slate-100">
+                    <button type="button" onclick="closeModal('modal-add-schedule')" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 font-medium shadow-sm">Save to Datesheet Schedule</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 3: MRU Question Paper Audit Form Modal (Moderator Step 3) -->
+    <div id="modal-moderation" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-xl max-w-3xl w-full p-6 space-y-4 border border-slate-100 max-h-[92vh] overflow-y-auto custom-scrollbar">
+            
+            <!-- Manav Rachna Header Banner -->
+            <div class="text-center border-b border-slate-200 pb-3 space-y-1">
+                <span class="text-xs font-bold text-slate-400 tracking-widest uppercase">Manav Rachna University • Office of Controller of Examinations</span>
+                <h3 class="font-black text-slate-900 text-lg sm:text-xl">AUDIT OF QUESTION PAPER FORM</h3>
+                <p id="audit-form-paper-meta" class="text-xs text-brand-700 font-semibold"></p>
+            </div>
+
+            <form id="form-moderation" onsubmit="handleModerationSubmit(event)" class="space-y-4 text-xs">
+                <input type="hidden" id="moderation-paper-id" />
+
+                <!-- 13 Standard Audit Questions (Matching MRU Document) -->
+                <div class="bg-slate-50 rounded-xl p-3 border border-slate-200 space-y-3">
+                    <h4 class="font-bold text-slate-800 text-xs uppercase tracking-wider border-b border-slate-200 pb-1">Question Paper Checklist Audit Criteria</h4>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div class="p-2 bg-white rounded border border-slate-200 flex justify-between items-center">
+                            <span class="pr-2">1. Paper conforms to Examination Guidelines?</span>
+                            <select id="q1" class="audit-select p-1 bg-slate-50 border rounded text-xs" required>
+                                <option value="Yes">Yes</option>
+                                <option value="No">No</option>
+                            </select>
+                        </div>
+                        <div class="p-2 bg-white rounded border border-slate-200 flex justify-between items-center">
+                            <span class="pr-2">2. Marks distributed correctly?</span>
+                            <select id="q2" class="audit-select p-1 bg-slate-50 border rounded text-xs" required>
+                                <option value="Yes">Yes</option>
+                                <option value="No">No</option>
+                            </select>
+                        </div>
+                        <div class="p-2 bg-white rounded border border-slate-200 flex justify-between items-center">
+                            <span class="pr-2">3. Student instructions clear & sufficient?</span>
+                            <select id="q3" class="audit-select p-1 bg-slate-50 border rounded text-xs" required>
+                                <option value="Yes">Yes</option>
+                                <option value="No">No</option>
+                            </select>
+                        </div>
+                        <div class="p-2 bg-white rounded border border-slate-200 flex justify-between items-center">
+                            <span class="pr-2">4. Header info (Dept/Course/Sem/Date) verified?</span>
+                            <select id="q4" class="audit-select p-1 bg-slate-50 border rounded text-xs" required>
+                                <option value="Yes">Yes</option>
+                                <option value="No">No</option>
+                            </select>
+                        </div>
+                        <div class="p-2 bg-white rounded border border-slate-200 flex justify-between items-center">
+                            <span class="pr-2">5. Grammatical errors checked?</span>
+                            <select id="q5" class="audit-select p-1 bg-slate-50 border rounded text-xs" required>
+                                <option value="Yes">Yes</option>
+                                <option value="No">No</option>
+                            </select>
+                        </div>
+                        <div class="p-2 bg-white rounded border border-slate-200 flex justify-between items-center">
+                            <span class="pr-2">6. Diagrams / required materials included?</span>
+                            <select id="q6" class="audit-select p-1 bg-slate-50 border rounded text-xs" required>
+                                <option value="Yes">Yes</option>
+                                <option value="No">No</option>
+                            </select>
+                        </div>
+                        <div class="p-2 bg-white rounded border border-slate-200 flex justify-between items-center">
+                            <span class="pr-2">7. Questions complete without missing data?</span>
+                            <select id="q7" class="audit-select p-1 bg-slate-50 border rounded text-xs" required>
+                                <option value="Yes">Yes</option>
+                                <option value="No">No</option>
+                            </select>
+                        </div>
+                        <div class="p-2 bg-white rounded border border-slate-200 flex justify-between items-center">
+                            <span class="pr-2">8. High Order Thinking (HOT) Questions included?</span>
+                            <select id="q8" class="audit-select p-1 bg-slate-50 border rounded text-xs" required>
+                                <option value="Yes">Yes</option>
+                                <option value="No">No</option>
+                            </select>
+                        </div>
+                        <div class="p-2 bg-white rounded border border-slate-200 flex justify-between items-center">
+                            <span class="pr-2">9. Covers Course Outcomes (COs)?</span>
+                            <select id="q9" class="audit-select p-1 bg-slate-50 border rounded text-xs" required>
+                                <option value="Yes">Yes</option>
+                                <option value="No">No</option>
+                            </select>
+                        </div>
+                        <div class="p-2 bg-white rounded border border-slate-200 flex justify-between items-center">
+                            <span class="pr-2">10. Any Repeated Questions in same paper?</span>
+                            <select id="q10" class="audit-select p-1 bg-slate-50 border rounded text-xs" required>
+                                <option value="No">No (Good)</option>
+                                <option value="Yes">Yes (Needs Correction)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-slate-200">
+                        <div>
+                            <label class="block font-medium text-slate-700 mb-1">11. Standard of Question Paper *</label>
+                            <select id="q11" class="w-full p-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500" required>
+                                <option value="Good">Good</option>
+                                <option value="Satisfactory">Satisfactory</option>
+                                <option value="Poor">Poor</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block font-medium text-slate-700 mb-1">12. Coverage of Syllabus *</label>
+                            <select id="q12" class="w-full p-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500" required>
+                                <option value="Good">Good</option>
+                                <option value="Satisfactory">Satisfactory</option>
+                                <option value="Poor">Poor</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Final Decision & Comments -->
+                <div class="space-y-3">
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-2">Overall Moderation Decision *</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <label class="flex items-center space-x-2 border border-emerald-200 bg-emerald-50/50 p-2.5 rounded-lg cursor-pointer hover:bg-emerald-50">
+                                <input type="radio" name="moderation_decision" value="APPROVED" class="text-emerald-600 focus:ring-emerald-500" required onchange="toggleCommentRequirement(false)">
+                                <span class="font-bold text-emerald-800">Approve Paper</span>
+                            </label>
+                            <label class="flex items-center space-x-2 border border-amber-200 bg-amber-50/50 p-2.5 rounded-lg cursor-pointer hover:bg-amber-50">
+                                <input type="radio" name="moderation_decision" value="CHANGES_REQUIRED" class="text-amber-600 focus:ring-amber-500" required onchange="toggleCommentRequirement(true)">
+                                <span class="font-bold text-amber-800">Changes Required</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label id="lbl-moderation-comments" class="block font-medium text-slate-700 mb-1">13. Auditor Comments / Specific Recommendations</label>
+                        <textarea id="moderation-comments" rows="3" placeholder="Specify if formatting, question weights, or syllabus mapping needs correction..." class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"></textarea>
+                    </div>
+
+                    <!-- Auditor Declaration -->
+                    <div class="bg-slate-100 p-2.5 rounded-lg text-[11px] text-slate-600 border border-slate-200">
+                        <span class="font-bold block mb-0.5">Auditor Confidentiality Declaration:</span>
+                        I / we will not discuss or inform anything related to this pre-audit to anyone else.
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-2 border-t border-slate-100">
+                    <button type="button" onclick="closeModal('modal-moderation')" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 font-medium shadow-sm">Submit Audit Report</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 4: Complete Audit Trail & Filled MRU Audit Form Inspector -->
+    <div id="modal-audit" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-6 space-y-4 border border-slate-100 max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <div>
+                    <h3 id="audit-paper-title" class="font-bold text-slate-800 text-base">Audit Trail & Version Details</h3>
+                    <p id="audit-paper-sub" class="text-xs text-slate-500"></p>
+                </div>
+                <button onclick="closeModal('modal-audit')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <!-- Version Files Section -->
+            <div>
+                <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Uploaded Document Versions</h4>
+                <div id="audit-versions-list" class="space-y-2">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <!-- Filled MRU Audit Form Display (If available) -->
+            <div id="audit-report-box" class="hidden bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs space-y-2">
+                <div class="font-bold text-slate-800 flex justify-between items-center">
+                    <span><i class="fa-solid fa-clipboard-check text-brand-600 mr-1"></i> Filled MRU Question Paper Audit Form:</span>
+                    <span id="audit-report-date" class="text-[10px] text-slate-400 font-normal"></span>
+                </div>
+                <div id="audit-report-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-white p-2 rounded border border-slate-200 text-[11px]">
+                    <!-- Checklist summary pills -->
+                </div>
+                <p id="audit-report-comments" class="text-slate-700 bg-amber-50/50 p-2 rounded border border-amber-200/50 italic"></p>
+            </div>
+
+            <!-- Complete Event Log Timeline -->
+            <div class="flex-grow overflow-y-auto pr-2 custom-scrollbar">
+                <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">Workflow Audit Log History</h4>
+                <ol id="audit-timeline" class="relative border-l border-slate-200 ml-3 space-y-4">
+                    <!-- Dynamic timeline elements -->
+                </ol>
+            </div>
+
+            <div class="flex justify-end border-t border-slate-100 pt-3">
+                <button onclick="closeModal('modal-audit')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium text-xs">Close Audit View</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global System State
+        let currentSession = null; // Active user object
+        let coeTabFilter = 'PENDING'; // Default active COE tab
+
+        // Pre-configured User Accounts
+        const USERS = {
+            FACULTY: { name: 'Dr. Rajesh Kumar', role: 'FACULTY', dept: 'School of Engineering • Computer Science Dept', avatar: 'F' },
+            COE: { name: 'Controller of Examinations Cell', role: 'COE', dept: 'Manav Rachna Examination Office', avatar: 'C' },
+            MODERATOR: { name: 'Prof. A. Sharma', role: 'MODERATOR', dept: 'Departmental Audit & Moderation Committee', avatar: 'M' }
+        };
+
+        // Datesheet Master Schedule (Courses for which Question Papers must be uploaded)
+        let datesheetSchedule = [
+            { id: 'SCH-101', courseName: 'Data Structures & Algorithms', courseCode: 'CSH201B', department: 'Computer Science', paperDate: '2026-10-15', facultyName: 'Dr. Rajesh Kumar', examType: 'Mid Semester Exam' },
+            { id: 'SCH-102', courseName: 'Thermodynamics & Heat Transfer', courseCode: 'MEH305', department: 'Mechanical Eng.', paperDate: '2026-10-18', facultyName: 'Dr. Rajesh Kumar', examType: 'End Semester Exam' },
+            { id: 'SCH-103', courseName: 'Operating Systems', courseCode: 'CSH202B', department: 'Computer Science', paperDate: '2026-10-20', facultyName: 'Dr. Rajesh Kumar', examType: 'Mid Semester Exam' },
+            { id: 'SCH-104', courseName: 'Digital Signal Processing', courseCode: 'ECH301', department: 'Electrical Eng.', paperDate: '2026-10-22', facultyName: 'Dr. Sunita Rao', examType: 'Mid Semester Exam' },
+            { id: 'SCH-105', courseName: 'Financial Management', courseCode: 'MBA104', department: 'Management Studies', paperDate: '2026-10-25', facultyName: 'Dr. Vikram Mehta', examType: 'Mid Semester Exam' }
+        ];
+
+        // COE Published Notices / Datesheet Storage
+        let coeNotices = [
+            {
+                id: 'NOT-1',
+                type: 'Paper Format',
+                title: 'Standard Question Paper Template (MRU Guidelines 2026)',
+                filename: 'MRU_QP_Format_Standard_2026.pdf',
+                uploadDate: '2026-09-20'
+            },
+            {
+                id: 'NOT-2',
+                type: 'Datesheet',
+                title: 'Mid Semester Examination Schedule - Oct 2026',
+                filename: 'Mid_Sem_Datesheet_CS_2026.pdf',
+                uploadDate: '2026-09-25'
+            }
+        ];
+
+        // Central Question Papers Database State (Uploaded Papers)
+        let papersDatabase = [
+            {
+                id: 'QP-1001',
+                courseName: 'Data Structures & Algorithms',
+                courseCode: 'CSH201B',
+                department: 'Computer Science',
+                program: 'B.Tech',
+                semester: 'Sem 3',
+                examType: 'Mid Semester Exam',
+                paperDate: '2026-10-15',
+                facultyName: 'Dr. Rajesh Kumar',
+                currentVersion: 2,
+                status: 'RESUBMITTED_TO_COE',
+                versions: [
+                    { version: 1, filename: 'DSA_MidTerm_v1.pdf', uploadTime: '2026-09-28 10:30 AM', uploadedBy: 'Dr. Rajesh Kumar' },
+                    { version: 2, filename: 'DSA_MidTerm_v2_Revised.pdf', uploadTime: '2026-09-30 02:15 PM', uploadedBy: 'Dr. Rajesh Kumar' }
+                ],
+                auditForm: {
+                    date: '2026-09-29 04:00 PM',
+                    q1: 'Yes', q2: 'Yes', q3: 'Yes', q4: 'Yes', q5: 'No', q6: 'Yes', q7: 'Yes', q8: 'No', q9: 'Yes', q10: 'No',
+                    q11: 'Satisfactory', q12: 'Good',
+                    comments: 'Please fix typo in Question 3 and add Bloom Taxonomy levels (HOT questions) in Section B.'
+                },
+                auditTrail: [
+                    { action: 'Uploaded Version 1', role: 'Faculty', user: 'Dr. Rajesh Kumar', timestamp: '2026-09-28 10:30 AM', details: 'Submitted to COE' },
+                    { action: 'Forwarded for Moderation', role: 'COE', user: 'COE Admin', timestamp: '2026-09-29 09:15 AM', details: 'Initial verification clear' },
+                    { action: 'MRU Audit Form Submitted: Changes Required', role: 'Moderator', user: 'Prof. A. Sharma', timestamp: '2026-09-29 04:00 PM', details: 'Requested HOT questions & grammatical corrections.' },
+                    { action: 'Uploaded Version 2 (Resubmitted)', role: 'Faculty', user: 'Dr. Rajesh Kumar', timestamp: '2026-09-30 02:15 PM', details: 'Revised question paper submitted to COE' }
+                ]
+            },
+            {
+                id: 'QP-1002',
+                courseName: 'Thermodynamics & Heat Transfer',
+                courseCode: 'MEH305',
+                department: 'Mechanical Eng.',
+                program: 'B.Tech',
+                semester: 'Sem 5',
+                examType: 'End Semester Exam',
+                paperDate: '2026-10-18',
+                facultyName: 'Dr. Rajesh Kumar',
+                currentVersion: 1,
+                status: 'SUBMITTED_TO_COE',
+                versions: [
+                    { version: 1, filename: 'Thermodynamics_EndTerm_v1.pdf', uploadTime: '2026-10-01 09:00 AM', uploadedBy: 'Dr. Rajesh Kumar' }
+                ],
+                auditForm: null,
+                auditTrail: [
+                    { action: 'Uploaded Version 1', role: 'Faculty', user: 'Dr. Rajesh Kumar', timestamp: '2026-10-01 09:00 AM', details: 'Submitted to COE' }
+                ]
+            }
+        ];
+
+        // Toast Notification System
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bgClass = type === 'success' ? 'bg-emerald-800 text-white border-emerald-700' : (type === 'warning' ? 'bg-amber-800 text-white border-amber-700' : 'bg-slate-900 text-white border-slate-700');
+            const icon = type === 'success' ? 'fa-circle-check text-emerald-400' : (type === 'warning' ? 'fa-triangle-exclamation text-amber-400' : 'fa-circle-info text-blue-400');
+
+            toast.className = `p-3 rounded-xl border shadow-xl text-xs flex items-center space-x-2.5 transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto ${bgClass}`;
+            toast.innerHTML = `<i class="fa-solid ${icon} text-base"></i><span>${message}</span>`;
+            
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', '-translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // Calculate Unuploaded Papers from Datesheet Schedule
+        function getUnuploadedPapers() {
+            const uploadedCodes = papersDatabase.map(p => p.courseCode.toUpperCase());
+            return datesheetSchedule.filter(sch => !uploadedCodes.includes(sch.courseCode.toUpperCase()));
+        }
+
+        // App Initializer
+        window.onload = function() {
+            // Default to Login View
+            document.getElementById('view-login').classList.remove('hidden');
+            document.getElementById('app-portal').classList.add('hidden');
+        };
+
+        function selectLoginRole(role) {
+            document.getElementById('login-selected-role').value = role;
+            ['FACULTY', 'COE', 'MODERATOR'].forEach(r => {
+                const btn = document.getElementById(`login-tab-${r}`);
+                if (r === role) {
+                    btn.className = 'flex-1 py-2 rounded-lg bg-white shadow-sm text-brand-700 transition-all text-center font-bold';
+                } else {
+                    btn.className = 'flex-1 py-2 rounded-lg text-slate-500 hover:text-slate-800 transition-all text-center';
+                }
+            });
+        }
+
+        function quickLogin(role) {
+            selectLoginRole(role);
+            const userObj = USERS[role];
+            document.getElementById('login-email').value = `${role.toLowerCase()}@mru.edu.in`;
+            handleLoginSuccess(userObj);
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const role = document.getElementById('login-selected-role').value;
+            handleLoginSuccess(USERS[role]);
+        }
+
+        function handleLoginSuccess(userObj) {
+            currentSession = userObj;
+            document.getElementById('view-login').classList.add('hidden');
+            document.getElementById('app-portal').classList.remove('hidden');
+
+            // Render Header User Credentials
+            document.getElementById('header-user-role').textContent = userObj.role;
+            document.getElementById('user-avatar').textContent = userObj.avatar;
+            document.getElementById('user-display-name').textContent = userObj.name;
+            document.getElementById('user-role-badge').textContent = userObj.role === 'FACULTY' ? 'Faculty Member' : (userObj.role === 'COE' ? 'Controller of Exams' : 'Moderation Head');
+            document.getElementById('user-dept-info').textContent = userObj.dept;
+
+            // Render Role Dashboard
+            document.getElementById('view-faculty').classList.toggle('hidden', userObj.role !== 'FACULTY');
+            document.getElementById('view-coe').classList.toggle('hidden', userObj.role !== 'COE');
+            document.getElementById('view-moderator').classList.toggle('hidden', userObj.role !== 'MODERATOR');
+
+            renderDashboard();
+        }
+
+        function handleLogout() {
+            currentSession = null;
+            document.getElementById('app-portal').classList.add('hidden');
+            document.getElementById('view-login').classList.remove('hidden');
+        }
+
+        function getStatusBadge(status) {
+            switch(status) {
+                case 'SUBMITTED_TO_COE':
+                    return `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-blue-50 text-blue-700 border border-blue-200"><i class="fa-solid fa-clock mr-1"></i> Submitted to COE</span>`;
+                case 'FORWARDED_FOR_MODERATION':
+                    return `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200"><i class="fa-solid fa-users-gear mr-1"></i> Under Moderation</span>`;
+                case 'APPROVED':
+                    return `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200"><i class="fa-solid fa-circle-check mr-1"></i> Approved by Moderator</span>`;
+                case 'CHANGES_REQUIRED':
+                    return `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-50 text-amber-700 border border-amber-200"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Audit: Changes Required</span>`;
+                case 'RESUBMITTED_TO_COE':
+                    return `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-purple-50 text-purple-700 border border-purple-200"><i class="fa-solid fa-rotate-right mr-1"></i> Resubmitted to COE</span>`;
+                case 'FINAL_APPROVED':
+                    return `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-teal-50 text-teal-800 border border-teal-200"><i class="fa-solid fa-box-archive mr-1"></i> Final Approved & Archived</span>`;
+                default:
+                    return `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-slate-100 text-slate-600">${status}</span>`;
+            }
+        }
+
+        function renderDashboard() {
+            updateStats();
+
+            if (currentSession.role === 'FACULTY') {
+                renderFacultyPendingAlert();
+                renderFacultyNotices();
+                renderFacultyView();
+            } else if (currentSession.role === 'COE') {
+                renderCoeView();
+            } else if (currentSession.role === 'MODERATOR') {
+                renderModeratorView();
+            }
+        }
+
+        function updateStats() {
+            const unuploaded = getUnuploadedPapers();
+            document.getElementById('stat-unuploaded').textContent = unuploaded.length;
+            document.getElementById('coe-badge-unuploaded').textContent = unuploaded.length;
+            document.getElementById('stat-total').textContent = papersDatabase.length;
+            document.getElementById('stat-pending').textContent = papersDatabase.filter(p => ['SUBMITTED_TO_COE', 'FORWARDED_FOR_MODERATION', 'RESUBMITTED_TO_COE'].includes(p.status)).length;
+            document.getElementById('stat-action').textContent = papersDatabase.filter(p => p.status === 'CHANGES_REQUIRED').length;
+            document.getElementById('stat-approved').textContent = papersDatabase.filter(p => p.status === 'FINAL_APPROVED').length;
+        }
+
+        // 1. FACULTY VIEW
+        function renderFacultyPendingAlert() {
+            const unuploaded = getUnuploadedPapers();
+            // Filter unuploaded papers for current faculty member
+            const myPending = unuploaded.filter(item => item.facultyName.toLowerCase() === currentSession.name.toLowerCase());
+            const alertBox = document.getElementById('faculty-pending-datesheet-alert');
+            const listContainer = document.getElementById('faculty-pending-courses-list');
+            const countBadge = document.getElementById('faculty-pending-count');
+
+            if (myPending.length > 0) {
+                alertBox.classList.remove('hidden');
+                countBadge.textContent = `${myPending.length} Course Paper(s) Outstanding`;
+                listContainer.innerHTML = myPending.map(p => `
+                    <div class="bg-white border border-rose-200 px-3 py-1.5 rounded-lg flex items-center space-x-2 text-xs shadow-xs">
+                        <span class="font-bold text-slate-800">${p.courseName}</span>
+                        <span class="px-1.5 py-0.5 bg-rose-100 text-rose-800 rounded font-mono font-bold text-[10px]">${p.courseCode}</span>
+                        <span class="text-slate-500">• Exam Date: ${p.paperDate}</span>
+                        <button onclick="openUploadModalForCourse('${p.courseName}', '${p.courseCode}', '${p.department}', '${p.paperDate}')" class="ml-2 px-2 py-0.5 bg-rose-600 hover:bg-rose-700 text-white rounded font-bold text-[10px]">
+                            Upload Now <i class="fa-solid fa-arrow-up text-[9px] ml-0.5"></i>
+                        </button>
+                    </div>
+                `).join('');
+            } else {
+                alertBox.classList.add('hidden');
+            }
+        }
+
+        function renderFacultyNotices() {
+            const container = document.getElementById('coe-notices-container');
+            if (coeNotices.length === 0) {
+                container.innerHTML = `<p class="text-slate-400">No official notices published yet.</p>`;
+                return;
+            }
+            container.innerHTML = coeNotices.map(n => `
+                <div class="bg-brand-800/80 p-3 rounded-xl border border-brand-700 flex items-center justify-between">
+                    <div class="space-y-0.5">
+                        <span class="px-1.5 py-0.5 bg-amber-400 text-slate-900 rounded font-bold text-[10px] uppercase">${n.type}</span>
+                        <div class="font-semibold text-white leading-tight">${n.title}</div>
+                        <div class="text-[10px] text-brand-300">File: ${n.filename} • Uploaded: ${n.uploadDate}</div>
+                    </div>
+                    <button onclick="showToast('Simulating download of ${n.filename}', 'info')" class="px-2.5 py-1 bg-white/10 hover:bg-white/20 text-white rounded-lg transition flex items-center space-x-1 text-xs font-medium">
+                        <i class="fa-solid fa-download"></i>
+                        <span>View</span>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function renderFacultyView() {
+            const container = document.getElementById('faculty-papers-list');
+            if (papersDatabase.length === 0) {
+                container.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400">No question papers uploaded yet. Click upload button above.</td></tr>`;
+                return;
+            }
+
+            container.innerHTML = papersDatabase.map(paper => `
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-4 py-3.5 font-medium text-slate-800">
+                        <div>${paper.courseName}</div>
+                        <div class="text-xs text-brand-600 font-bold">${paper.courseCode} <span class="text-slate-400 font-normal">(${paper.id})</span></div>
+                    </td>
+                    <td class="px-4 py-3.5 text-slate-600">${paper.department}<br/><span class="text-xs text-slate-400">${paper.program} • ${paper.semester}</span></td>
+                    <td class="px-4 py-3.5 text-slate-600 font-medium">${paper.examType}<br/><span class="text-xs text-amber-700"><i class="fa-regular fa-calendar mr-1"></i>${paper.paperDate}</span></td>
+                    <td class="px-4 py-3.5"><span class="px-2 py-0.5 bg-slate-100 rounded text-xs font-bold text-slate-700">v${paper.currentVersion}</span></td>
+                    <td class="px-4 py-3.5">${getStatusBadge(paper.status)}</td>
+                    <td class="px-4 py-3.5 text-right space-x-2">
+                        ${paper.status === 'CHANGES_REQUIRED' ? `
+                            <button onclick="openRevisionModal('${paper.id}')" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs font-semibold shadow-xs">
+                                <i class="fa-solid fa-pen-to-square mr-1"></i> Revise Paper
+                            </button>
+                        ` : ''}
+                        <button onclick="openAuditModal('${paper.id}')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-medium">
+                            <i class="fa-solid fa-timeline mr-1"></i> Audit Trail
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // 2. COE VIEW & FILTER LOGIC
+        function filterCoeTab(tab) {
+            coeTabFilter = tab;
+            const tabs = ['pending', 'not-uploaded', 'resubmitted', 'archived'];
+            tabs.forEach(t => {
+                const key = t.replace('-', '_').toUpperCase();
+                const element = document.getElementById(`coe-tab-${t}`);
+                if (key === tab) {
+                    element.className = 'pb-2.5 border-b-2 border-brand-600 text-brand-600 font-bold whitespace-nowrap flex items-center space-x-1.5';
+                } else {
+                    element.className = 'pb-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-700 whitespace-nowrap flex items-center space-x-1.5';
+                }
+            });
+
+            // Toggle title and action bar
+            const titleElement = document.getElementById('coe-table-section-title');
+            const actionBar = document.getElementById('coe-unuploaded-action-bar');
+
+            if (tab === 'NOT_UPLOADED') {
+                titleElement.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-rose-600"></i><span class="text-rose-900 font-bold">Unuploaded Question Papers Scheduled in Examination Datesheet</span>`;
+                actionBar.classList.remove('hidden');
+            } else if (tab === 'PENDING') {
+                titleElement.innerHTML = `<i class="fa-solid fa-list-check text-brand-600"></i><span>Submitted Question Papers Pending Verification</span>`;
+                actionBar.classList.add('hidden');
+            } else if (tab === 'RESUBMITTED') {
+                titleElement.innerHTML = `<i class="fa-solid fa-rotate-right text-purple-600"></i><span>Revised Papers & Moderated Papers</span>`;
+                actionBar.classList.add('hidden');
+            } else {
+                titleElement.innerHTML = `<i class="fa-solid fa-box-archive text-teal-600"></i><span>Final Approved & Archived Question Papers</span>`;
+                actionBar.classList.add('hidden');
+            }
+
+            renderCoeView();
+        }
+
+        function renderCoeView() {
+            const tableHead = document.getElementById('coe-table-head');
+            const container = document.getElementById('coe-papers-list');
+
+            if (coeTabFilter === 'NOT_UPLOADED') {
+                // Table header specifically for unuploaded datesheet tracking
+                tableHead.innerHTML = `
+                    <tr>
+                        <th class="px-4 py-3">Scheduled Course & Code</th>
+                        <th class="px-4 py-3">Assigned Faculty</th>
+                        <th class="px-4 py-3">Department & Exam Date</th>
+                        <th class="px-4 py-3">Exam Type</th>
+                        <th class="px-4 py-3">Datesheet Status</th>
+                        <th class="px-4 py-3 text-right">COE Action</th>
+                    </tr>
+                `;
+
+                const unuploaded = getUnuploadedPapers();
+                if (unuploaded.length === 0) {
+                    container.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-emerald-600 font-semibold bg-emerald-50/50"><i class="fa-solid fa-circle-check text-lg mr-2"></i> All question papers scheduled in the datesheet have been submitted!</td></tr>`;
+                    return;
+                }
+
+                container.innerHTML = unuploaded.map(sch => `
+                    <tr class="hover:bg-rose-50/40 transition-colors border-l-4 border-l-rose-500">
+                        <td class="px-4 py-3.5 font-medium text-slate-800">
+                            <div>${sch.courseName}</div>
+                            <div class="text-xs text-rose-700 font-bold">${sch.courseCode}</div>
+                        </td>
+                        <td class="px-4 py-3.5 text-slate-700 font-medium">
+                            <div class="flex items-center space-x-1.5">
+                                <i class="fa-solid fa-user-circle text-slate-400 text-sm"></i>
+                                <span>${sch.facultyName}</span>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3.5 text-slate-600">
+                            <div>${sch.department}</div>
+                            <div class="text-xs font-semibold text-rose-800"><i class="fa-regular fa-calendar mr-1"></i>Exam Date: ${sch.paperDate}</div>
+                        </td>
+                        <td class="px-4 py-3.5 text-slate-600 text-xs font-medium">${sch.examType}</td>
+                        <td class="px-4 py-3.5">
+                            <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-rose-100 text-rose-800 border border-rose-200 inline-flex items-center space-x-1">
+                                <span class="w-2 h-2 rounded-full bg-rose-600 animate-ping"></span>
+                                <span>Not Uploaded Yet</span>
+                            </span>
+                        </td>
+                        <td class="px-4 py-3.5 text-right space-x-2">
+                            <button onclick="sendSingleReminder('${sch.facultyName}', '${sch.courseName}')" class="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded text-xs font-semibold shadow-xs transition">
+                                <i class="fa-solid fa-bell mr-1"></i> Remind Faculty
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+                return;
+            }
+
+            // Normal Table Header for Submitted Papers
+            tableHead.innerHTML = `
+                <tr>
+                    <th class="px-4 py-3">Course Title & Code</th>
+                    <th class="px-4 py-3">Faculty</th>
+                    <th class="px-4 py-3">Dept & Exam Date</th>
+                    <th class="px-4 py-3">Version</th>
+                    <th class="px-4 py-3">Status</th>
+                    <th class="px-4 py-3 text-right">Verification Action</th>
+                </tr>
+            `;
+
+            let filtered = [];
+            if (coeTabFilter === 'PENDING') {
+                filtered = papersDatabase.filter(p => ['SUBMITTED_TO_COE', 'FORWARDED_FOR_MODERATION'].includes(p.status));
+            } else if (coeTabFilter === 'RESUBMITTED') {
+                filtered = papersDatabase.filter(p => ['RESUBMITTED_TO_COE', 'APPROVED'].includes(p.status));
+            } else {
+                filtered = papersDatabase.filter(p => p.status === 'FINAL_APPROVED');
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400">No papers found in this category.</td></tr>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map(paper => `
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-4 py-3.5 font-medium text-slate-800">
+                        <div>${paper.courseName}</div>
+                        <div class="text-xs text-brand-600 font-bold">${paper.courseCode} <span class="text-slate-400 font-normal">(${paper.id})</span></div>
+                    </td>
+                    <td class="px-4 py-3.5 text-slate-600">${paper.facultyName}</td>
+                    <td class="px-4 py-3.5 text-slate-600">${paper.department}<br/><span class="text-xs font-semibold text-slate-500"><i class="fa-regular fa-calendar mr-1"></i>${paper.paperDate}</span></td>
+                    <td class="px-4 py-3.5"><span class="px-2 py-0.5 bg-slate-100 rounded text-xs font-bold text-slate-700">v${paper.currentVersion}</span></td>
+                    <td class="px-4 py-3.5">${getStatusBadge(paper.status)}</td>
+                    <td class="px-4 py-3.5 text-right space-x-2">
+                        ${paper.status === 'SUBMITTED_TO_COE' ? `
+                            <button onclick="coeForwardToModeration('${paper.id}')" class="px-3 py-1 bg-brand-600 hover:bg-brand-700 text-white rounded text-xs font-semibold shadow-xs">
+                                Forward to Moderation <i class="fa-solid fa-arrow-right ml-1"></i>
+                            </button>
+                        ` : ''}
+
+                        ${['APPROVED', 'RESUBMITTED_TO_COE'].includes(paper.status) ? `
+                            <button onclick="coeFinalApprove('${paper.id}')" class="px-3 py-1 bg-teal-700 hover:bg-teal-800 text-white rounded text-xs font-semibold shadow-xs">
+                                <i class="fa-solid fa-check-double mr-1"></i> Final Approve & Archive
+                            </button>
+                        ` : ''}
+
+                        <button onclick="openAuditModal('${paper.id}')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-medium">
+                            <i class="fa-solid fa-eye mr-1"></i> Audit
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Action Handlers for Reminders & Datesheet
+        function sendSingleReminder(facultyName, courseName) {
+            showToast(`Reminder notification sent to ${facultyName} for "${courseName}"`, 'warning');
+        }
+
+        function sendBulkReminders() {
+            const unuploaded = getUnuploadedPapers();
+            if (unuploaded.length === 0) return;
+            showToast(`Bulk email reminders dispatched to all ${unuploaded.length} pending faculty members!`, 'success');
+        }
+
+        // Open Schedule Addition Modal
+        function openAddScheduleModal() {
+            document.getElementById('form-add-schedule').reset();
+            openModal('modal-add-schedule');
+        }
+
+        function handleAddScheduleSubmit(e) {
+            e.preventDefault();
+            const newEntry = {
+                id: `SCH-${Math.floor(100 + Math.random() * 900)}`,
+                courseName: document.getElementById('sch-course-name').value,
+                courseCode: document.getElementById('sch-course-code').value.toUpperCase(),
+                department: document.getElementById('sch-dept').value,
+                facultyName: document.getElementById('sch-faculty-name').value,
+                paperDate: document.getElementById('sch-exam-date').value,
+                examType: document.getElementById('sch-exam-type').value
+            };
+
+            datesheetSchedule.push(newEntry);
+            closeModal('modal-add-schedule');
+            showToast(`Course "${newEntry.courseCode}" added to Examination Datesheet schedule.`, 'success');
+            renderDashboard();
+        }
+
+        // 3. MODERATOR VIEW
+        function renderModeratorView() {
+            const container = document.getElementById('moderator-papers-list');
+            const eligible = papersDatabase.filter(p => ['FORWARDED_FOR_MODERATION', 'APPROVED', 'CHANGES_REQUIRED'].includes(p.status));
+
+            if (eligible.length === 0) {
+                container.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-slate-400">No question papers currently forwarded for moderation review.</td></tr>`;
+                return;
+            }
+
+            container.innerHTML = eligible.map(paper => `
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-4 py-3.5 font-medium text-slate-800">
+                        <div>${paper.courseName}</div>
+                        <div class="text-xs text-brand-600 font-bold">${paper.courseCode} • ${paper.department} (v${paper.currentVersion})</div>
+                    </td>
+                    <td class="px-4 py-3.5 text-slate-600">${paper.facultyName}</td>
+                    <td class="px-4 py-3.5 text-slate-600">${paper.examType}<br/><span class="text-xs text-amber-700 font-medium"><i class="fa-regular fa-calendar mr-1"></i>${paper.paperDate}</span></td>
+                    <td class="px-4 py-3.5">${getStatusBadge(paper.status)}</td>
+                    <td class="px-4 py-3.5 text-right space-x-2">
+                        ${paper.status === 'FORWARDED_FOR_MODERATION' ? `
+                            <button onclick="openModerationModal('${paper.id}')" class="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs font-semibold shadow-xs">
+                                <i class="fa-solid fa-clipboard-check mr-1"></i> Fill Audit Checklist
+                            </button>
+                        ` : ''}
+                        <button onclick="openAuditModal('${paper.id}')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-medium">
+                            Audit Details
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Modal Utilities
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        function updateFileName(input) {
+            const label = document.getElementById('file-chosen-name');
+            if (input.files && input.files[0]) {
+                label.textContent = `Selected: ${input.files[0].name}`;
+            } else {
+                label.textContent = 'No file selected';
+            }
+        }
+
+        // Open Modal for New Upload
+        function openUploadModal() {
+            document.getElementById('upload-modal-title').textContent = 'Step 1: Faculty Paper Submission';
+            document.getElementById('upload-paper-id').value = '';
+            document.getElementById('revision-feedback-box').classList.add('hidden');
+            document.getElementById('form-upload').reset();
+            document.getElementById('file-chosen-name').textContent = 'No file selected';
+            document.getElementById('btn-submit-paper').textContent = 'Submit Paper to COE';
+            openModal('modal-upload');
+        }
+
+        // Pre-fill Upload Modal from Faculty Pending Alert
+        function openUploadModalForCourse(courseName, courseCode, department, paperDate) {
+            openUploadModal();
+            document.getElementById('upload-course-name').value = courseName;
+            document.getElementById('upload-course-code').value = courseCode;
+            document.getElementById('upload-dept').value = department;
+            document.getElementById('upload-paper-date').value = paperDate;
+        }
+
+        // Open Modal for Revision
+        function openRevisionModal(paperId) {
+            const paper = papersDatabase.find(p => p.id === paperId);
+            if (!paper) return;
+
+            document.getElementById('upload-modal-title').textContent = `Step 4: Upload Revised Paper (Version ${paper.currentVersion + 1})`;
+            document.getElementById('upload-paper-id').value = paper.id;
+            document.getElementById('upload-course-name').value = paper.courseName;
+            document.getElementById('upload-course-code').value = paper.courseCode;
+            document.getElementById('upload-dept').value = paper.department;
+            document.getElementById('upload-program').value = paper.program;
+            document.getElementById('upload-semester').value = paper.semester;
+            document.getElementById('upload-exam').value = paper.examType;
+            document.getElementById('upload-paper-date').value = paper.paperDate;
+
+            if (paper.auditForm && paper.auditForm.comments) {
+                document.getElementById('revision-feedback-box').classList.remove('hidden');
+                document.getElementById('revision-comments-text').textContent = `"${paper.auditForm.comments}"`;
+            } else {
+                document.getElementById('revision-feedback-box').classList.add('hidden');
+            }
+
+            document.getElementById('file-chosen-name').textContent = 'Select updated PDF file';
+            document.getElementById('btn-submit-paper').textContent = `Resubmit Version ${paper.currentVersion + 1} to COE`;
+            openModal('modal-upload');
+        }
+
+        // Handle Paper Form Submit (Create or Revise)
+        function handlePaperSubmit(e) {
+            e.preventDefault();
+            const paperId = document.getElementById('upload-paper-id').value;
+            const fileInput = document.getElementById('upload-file-input');
+            const filename = fileInput.files[0] ? fileInput.files[0].name : 'Question_Paper_Document.pdf';
+            const timestamp = new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+
+            if (!paperId) {
+                // New Submission
+                const newId = `QP-${Math.floor(1000 + Math.random() * 9000)}`;
+                const newPaper = {
+                    id: newId,
+                    courseName: document.getElementById('upload-course-name').value,
+                    courseCode: document.getElementById('upload-course-code').value.toUpperCase(),
+                    department: document.getElementById('upload-dept').value,
+                    program: document.getElementById('upload-program').value,
+                    semester: document.getElementById('upload-semester').value,
+                    examType: document.getElementById('upload-exam').value,
+                    paperDate: document.getElementById('upload-paper-date').value,
+                    facultyName: currentSession.name,
+                    currentVersion: 1,
+                    status: 'SUBMITTED_TO_COE',
+                    versions: [
+                        { version: 1, filename: filename, uploadTime: timestamp, uploadedBy: currentSession.name }
+                    ],
+                    auditForm: null,
+                    auditTrail: [
+                        { action: 'Uploaded Version 1', role: 'Faculty', user: currentSession.name, timestamp: timestamp, details: 'Submitted question paper to COE' }
+                    ]
+                };
+                papersDatabase.unshift(newPaper);
+                showToast(`Paper for "${newPaper.courseCode}" submitted successfully to COE!`, 'success');
+            } else {
+                // Revision Submission
+                const paper = papersDatabase.find(p => p.id === paperId);
+                paper.currentVersion += 1;
+                paper.status = 'RESUBMITTED_TO_COE';
+                paper.versions.push({
+                    version: paper.currentVersion,
+                    filename: filename,
+                    uploadTime: timestamp,
+                    uploadedBy: currentSession.name
+                });
+                paper.auditTrail.push({
+                    action: `Uploaded Version ${paper.currentVersion} (Resubmitted)`,
+                    role: 'Faculty',
+                    user: currentSession.name,
+                    timestamp: timestamp,
+                    details: 'Revised paper submitted in response to MRU Audit Form comments'
+                });
+                showToast(`Revised Version ${paper.currentVersion} uploaded successfully!`, 'success');
+            }
+
+            closeModal('modal-upload');
+            renderDashboard();
+        }
+
+        // COE Publish Notice Modal
+        function openCoeNoticeModal() {
+            document.getElementById('form-coe-notice').reset();
+            openModal('modal-coe-notice');
+        }
+
+        function handleNoticeSubmit(e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('notice-file-input');
+            const filename = fileInput.files[0] ? fileInput.files[0].name : 'Document.pdf';
+            const today = new Date().toISOString().split('T')[0];
+
+            coeNotices.unshift({
+                id: `NOT-${coeNotices.length + 1}`,
+                type: document.getElementById('notice-type').value,
+                title: document.getElementById('notice-title').value,
+                filename: filename,
+                uploadDate: today
+            });
+
+            closeModal('modal-coe-notice');
+            showToast('New examination guidelines published to Faculty portal.', 'success');
+            renderDashboard();
+        }
+
+        // Step 2: COE Forward Action
+        function coeForwardToModeration(paperId) {
+            const paper = papersDatabase.find(p => p.id === paperId);
+            if (!paper) return;
+
+            const timestamp = new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+            paper.status = 'FORWARDED_FOR_MODERATION';
+            paper.auditTrail.push({
+                action: 'Forwarded for Department Moderation',
+                role: 'COE',
+                user: currentSession.name,
+                timestamp: timestamp,
+                details: 'Verified completeness; routed to Moderation Committee for MRU Audit Checklist'
+            });
+
+            showToast(`Paper ${paper.courseCode} forwarded to Moderation Committee.`, 'info');
+            renderDashboard();
+        }
+
+        // Step 3: Moderator Actions
+        function openModerationModal(paperId) {
+            const paper = papersDatabase.find(p => p.id === paperId);
+            if (!paper) return;
+
+            document.getElementById('moderation-paper-id').value = paper.id;
+            document.getElementById('audit-form-paper-meta').textContent = `Paper: ${paper.courseName} (${paper.courseCode}) • ${paper.department} • Exam Date: ${paper.paperDate}`;
+            document.getElementById('form-moderation').reset();
+            openModal('modal-moderation');
+        }
+
+        function toggleCommentRequirement(isRequired) {
+            const commentBox = document.getElementById('moderation-comments');
+            const label = document.getElementById('lbl-moderation-comments');
+            if (isRequired) {
+                commentBox.setAttribute('required', 'true');
+                label.innerHTML = '13. Auditor Comments / Specific Recommendations <span class="text-red-500">* (Mandatory for Changes Required)</span>';
+            } else {
+                commentBox.removeAttribute('required');
+                label.innerHTML = '13. Auditor Comments / Specific Recommendations (Optional)';
+            }
+        }
+
+        function handleModerationSubmit(e) {
+            e.preventDefault();
+            const paperId = document.getElementById('moderation-paper-id').value;
+            const paper = papersDatabase.find(p => p.id === paperId);
+            const decision = document.querySelector('input[name="moderation_decision"]:checked').value;
+            const comments = document.getElementById('moderation-comments').value;
+            const timestamp = new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+
+            // Store full MRU Audit Checklist answers
+            paper.auditForm = {
+                date: timestamp,
+                q1: document.getElementById('q1').value,
+                q2: document.getElementById('q2').value,
+                q3: document.getElementById('q3').value,
+                q4: document.getElementById('q4').value,
+                q5: document.getElementById('q5').value,
+                q6: document.getElementById('q6').value,
+                q7: document.getElementById('q7').value,
+                q8: document.getElementById('q8').value,
+                q9: document.getElementById('q9').value,
+                q10: document.getElementById('q10').value,
+                q11: document.getElementById('q11').value,
+                q12: document.getElementById('q12').value,
+                comments: comments
+            };
+
+            paper.status = decision; // 'APPROVED' or 'CHANGES_REQUIRED'
+
+            paper.auditTrail.push({
+                action: `MRU Audit Review: ${decision === 'APPROVED' ? 'Approved' : 'Changes Required'}`,
+                role: 'Moderator',
+                user: currentSession.name,
+                timestamp: timestamp,
+                details: `Standard: ${paper.auditForm.q11} | Coverage: ${paper.auditForm.q12} | Feedback: "${comments || 'None'}"`
+            });
+
+            closeModal('modal-moderation');
+            showToast(`Audit report submitted. Status: ${decision.replace('_', ' ')}`, decision === 'APPROVED' ? 'success' : 'warning');
+            renderDashboard();
+        }
+
+        // Step 5: COE Final Approval
+        function coeFinalApprove(paperId) {
+            const paper = papersDatabase.find(p => p.id === paperId);
+            if (!paper) return;
+
+            const timestamp = new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+            paper.status = 'FINAL_APPROVED';
+            paper.auditTrail.push({
+                action: 'Final Approval & Secure Archive',
+                role: 'COE',
+                user: currentSession.name,
+                timestamp: timestamp,
+                details: 'Compliance verified against moderation audit form. Archived in encrypted repository.'
+            });
+
+            showToast(`Paper ${paper.courseCode} final approved and archived securely!`, 'success');
+            renderDashboard();
+        }
+
+        // Audit Trail Modal Display
+        function openAuditModal(paperId) {
+            const paper = papersDatabase.find(p => p.id === paperId);
+            if (!paper) return;
+
+            document.getElementById('audit-paper-title').textContent = `${paper.courseName} (${paper.courseCode})`;
+            document.getElementById('audit-paper-sub').textContent = `${paper.department} • ${paper.program} • ${paper.examType} (Exam Date: ${paper.paperDate})`;
+
+            // Render Document Versions
+            const versionsContainer = document.getElementById('audit-versions-list');
+            versionsContainer.innerHTML = paper.versions.map(v => `
+                <div class="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-file-pdf text-red-500 text-lg"></i>
+                        <div>
+                            <span class="font-bold text-slate-800">Version ${v.version}</span>
+                            <span class="text-slate-500 block text-[11px]">${v.filename}</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-slate-400 block text-[10px]">${v.uploadTime}</span>
+                        <span class="text-brand-600 font-medium cursor-pointer hover:underline" onclick="showToast('Simulating download of ${v.filename}', 'info')"><i class="fa-solid fa-download mr-1"></i> Download</span>
+                    </div>
+                </div>
+            `).join('');
+
+            // Render Filled MRU Audit Form if exists
+            const auditReportBox = document.getElementById('audit-report-box');
+            if (paper.auditForm) {
+                auditReportBox.classList.remove('hidden');
+                document.getElementById('audit-report-date').textContent = paper.auditForm.date;
+                document.getElementById('audit-report-grid').innerHTML = `
+                    <div><span class="text-slate-400">Guidelines:</span> <b>${paper.auditForm.q1}</b></div>
+                    <div><span class="text-slate-400">Marks Dist.:</span> <b>${paper.auditForm.q2}</b></div>
+                    <div><span class="text-slate-400">Grammar:</span> <b>${paper.auditForm.q5}</b></div>
+                    <div><span class="text-slate-400">HOT Questions:</span> <b>${paper.auditForm.q8}</b></div>
+                    <div><span class="text-slate-400">Standard:</span> <b class="text-brand-700">${paper.auditForm.q11}</b></div>
+                    <div><span class="text-slate-400">Syllabus:</span> <b class="text-brand-700">${paper.auditForm.q12}</b></div>
+                `;
+                document.getElementById('audit-report-comments').textContent = paper.auditForm.comments ? `Auditor Feedback: "${paper.auditForm.comments}"` : 'No specific comments recorded.';
+            } else {
+                auditReportBox.classList.add('hidden');
+            }
+
+            // Render Audit Timeline
+            const timelineContainer = document.getElementById('audit-timeline');
+            timelineContainer.innerHTML = paper.auditTrail.map((log) => `
+                <li class="mb-4 ml-4">
+                    <div class="absolute w-3 h-3 bg-brand-500 rounded-full mt-1.5 -left-1.5 border border-white"></div>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xs font-bold text-slate-800">${log.action}</span>
+                        <span class="px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-semibold">${log.role}</span>
+                    </div>
+                    <time class="block mb-1 text-[11px] font-normal leading-none text-slate-400">${log.timestamp} • By ${log.user}</time>
+                    <p class="text-xs font-normal text-slate-600 bg-slate-50 p-2 rounded border border-slate-100 mt-1">${log.details}</p>
+                </li>
+            `).join('');
+
+            openModal('modal-audit');
+        }
+    </script>
+</body>
+</html>
