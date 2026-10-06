@@ -1062,6 +1062,10 @@
                     <td class="px-4 py-3.5"><span class="px-2 py-0.5 bg-slate-100 rounded text-xs font-bold text-slate-700">v${paper.currentVersion}</span></td>
                     <td class="px-4 py-3.5">${getStatusBadge(paper.status)}</td>
                     <td class="px-4 py-3.5 text-right space-x-2">
+                        ${paper.hasFile !== false ? `
+                            <a href="/api/papers/${encodeURIComponent(paper.id)}/view" target="_blank" rel="noopener" class="inline-flex items-center px-2.5 py-1 bg-brand-600 hover:bg-brand-700 text-white rounded text-xs font-semibold shadow-xs"><i class="fa-solid fa-eye mr-1"></i> View</a>
+                            <a href="/api/papers/${encodeURIComponent(paper.id)}/file" class="inline-flex items-center px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold shadow-xs"><i class="fa-solid fa-download mr-1"></i> Download</a>
+                        ` : ''}
                         ${paper.status === 'CHANGES_REQUIRED' ? `
                             <button onclick="openRevisionModal('${paper.id}')" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs font-semibold shadow-xs">
                                 <i class="fa-solid fa-pen-to-square mr-1"></i> Revise Paper
@@ -1215,6 +1219,10 @@
                             </button>
                         ` : ''}
 
+                        ${paper.hasFile !== false ? `
+                            <a href="/api/papers/${encodeURIComponent(paper.id)}/view" target="_blank" rel="noopener" class="inline-flex items-center px-2.5 py-1 bg-brand-600 hover:bg-brand-700 text-white rounded text-xs font-semibold shadow-xs"><i class="fa-solid fa-eye mr-1"></i> View</a>
+                            <a href="/api/papers/${encodeURIComponent(paper.id)}/file" class="inline-flex items-center px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold shadow-xs"><i class="fa-solid fa-download mr-1"></i> Download</a>
+                        ` : ''}
                         <button onclick="openAuditModal('${paper.id}')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-medium">
                             <i class="fa-solid fa-eye mr-1"></i> Audit
                         </button>
@@ -1608,7 +1616,7 @@ window.QPMS = {
       id, courseName: p.title || p.subject || 'Question Paper', courseCode: (p.course || '').toUpperCase(),
       department: p.department || '', program: p.program || '', semester: p.semester || '',
       examType: p.exam || '', paperDate: p.submission_date ? new Date(p.submission_date).toISOString().slice(0,10) : '',
-      facultyName: p.faculty || '', currentVersion: 1, status: p.status || 'SUBMITTED_TO_COE',
+      facultyName: p.faculty || '', currentVersion: 1, status: p.status || 'SUBMITTED_TO_COE', hasFile: p.has_file !== false,
       versions: [{version: 1, filename, uploadTime: p.created_at ? new Date(p.created_at).toLocaleString() : '', uploadedBy: p.faculty || ''}],
       auditForm: null, auditTrail: [{action: 'Uploaded Version 1', role: 'Faculty', user: p.faculty || '', timestamp: p.created_at ? new Date(p.created_at).toLocaleString() : '', details: 'Submitted question paper to COE'}]
     };
