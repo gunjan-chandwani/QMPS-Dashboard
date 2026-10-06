@@ -411,7 +411,7 @@
                 <p id="revision-comments-text" class="text-amber-900 italic"></p>
             </div>
 
-            <form id="form-upload" onsubmit="handlePaperSubmit(event)" class="space-y-4 text-xs sm:text-sm">
+            <form id="form-upload" onsubmit="handlePaperSubmit(event); return false;" novalidate class="space-y-4 text-xs sm:text-sm">
                 <input type="hidden" id="upload-paper-id" value="" />
                 
                 <div class="grid grid-cols-2 gap-3">
@@ -1353,26 +1353,36 @@
 
         // Handle Paper Form Submit (Create or Revise)
         async function handlePaperSubmit(e) {
-            e.preventDefault();
+            if (e && e.preventDefault) e.preventDefault();
             const paperId = document.getElementById('upload-paper-id').value;
             const fileInput = document.getElementById('upload-file-input');
-            const file = fileInput.files[0];
-            if (!file) { showToast('Please select the question paper file.', 'warning'); return; }
+            const file = fileInput && fileInput.files ? fileInput.files[0] : null;
+            const courseName = document.getElementById('upload-course-name').value.trim();
+            const courseCode = document.getElementById('upload-course-code').value.trim();
+            const paperDate = document.getElementById('upload-paper-date').value;
+            if (!courseName || !courseCode || !paperDate) {
+                showToast('Please fill Course Name, Course Code and Paper Date.', 'warning');
+                return false;
+            }
+            if (!file) { showToast('Please select the question paper PDF.', 'warning'); return false; }
+            if (file.type && file.type !== 'application/pdf') { showToast('Only PDF files are allowed.', 'warning'); return false; }
+            if (!window.QPMS) { showToast('Upload service is still loading. Please refresh once and try again.', 'warning'); return false; }
 
             const data = {
                 paper_no: paperId || undefined,
-                title: document.getElementById('upload-course-name').value,
+                title: courseName,
                 school: '',
                 program: document.getElementById('upload-program').value,
                 department: document.getElementById('upload-dept').value,
                 semester: document.getElementById('upload-semester').value,
                 course: document.getElementById('upload-course-code').value.toUpperCase(),
-                subject: document.getElementById('upload-course-name').value,
-                faculty: currentSession.name,
+                subject: courseName,
+                faculty: currentSession?.name || 'Unknown Faculty',
                 exam: document.getElementById('upload-exam').value,
                 status: paperId ? 'RESUBMITTED_TO_COE' : 'SUBMITTED_TO_COE',
                 expected: true,
-                comments: ''
+                comments: '',
+                submission_date: paperDate
             };
 
             try {

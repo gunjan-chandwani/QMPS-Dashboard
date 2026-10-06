@@ -144,10 +144,10 @@ app.post("/api/papers", upload.single("file"), async (req, res) => {
     const { rows } = await pool.query(`
       INSERT INTO papers (
         paper_no, title, school, program, department, semester, course,
-        subject, faculty, exam, status, expected, original_filename,
+        subject, faculty, exam, submission_date, status, expected, original_filename,
         stored_filename, file_path, file_mimetype, file_size, comments, file_data
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,COALESCE(NULLIF($12,''),NOW()),$13,$14,$15,$16,$17,$18,$19,$20)
       RETURNING *
     `, [
       b.paper_no || null,
@@ -160,6 +160,7 @@ app.post("/api/papers", upload.single("file"), async (req, res) => {
       b.subject || null,
       b.faculty || null,
       b.exam || null,
+      b.submission_date || null,
       b.status || "Submitted to COE",
       b.expected === undefined ? true : String(b.expected) !== "false",
       f?.originalname || null,
@@ -188,7 +189,7 @@ app.post("/api/papers/:id/replace-file", upload.single("file"), async (req, res)
       UPDATE papers SET
         title=COALESCE($2,title), program=COALESCE($3,program), department=COALESCE($4,department),
         semester=COALESCE($5,semester), course=COALESCE($6,course), subject=COALESCE($7,subject),
-        faculty=COALESCE($8,faculty), exam=COALESCE($9,exam), status='RESUBMITTED_TO_COE',
+        faculty=COALESCE($8,faculty), exam=COALESCE($9,exam), submission_date=COALESCE(NULLIF($10,''),submission_date), status='RESUBMITTED_TO_COE',
         original_filename=$10, stored_filename=$11, file_path=$12, file_mimetype=$13, file_size=$14,
         file_data=$15, updated_at=NOW()
       WHERE id::text=$1 RETURNING *
