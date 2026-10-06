@@ -190,14 +190,14 @@ app.post("/api/papers/:id/replace-file", upload.single("file"), async (req, res)
         title=COALESCE($2,title), program=COALESCE($3,program), department=COALESCE($4,department),
         semester=COALESCE($5,semester), course=COALESCE($6,course), subject=COALESCE($7,subject),
         faculty=COALESCE($8,faculty), exam=COALESCE($9,exam), submission_date=COALESCE(NULLIF($10,''),submission_date), status='RESUBMITTED_TO_COE',
-        original_filename=$10, stored_filename=$11, file_path=$12, file_mimetype=$13, file_size=$14,
-        file_data=$15, updated_at=NOW()
+        original_filename=$11, stored_filename=$12, file_path=$13, file_mimetype=$14, file_size=$15,
+        file_data=$16, updated_at=NOW()
       WHERE id::text=$1 RETURNING *
     `, [
       String(req.params.id), b.title || null, b.program || null, b.department || null,
       b.semester || null, b.course || null, b.subject || null, b.faculty || null, b.exam || null,
-      req.file.originalname, req.file.filename, req.file.path, req.file.mimetype, req.file.size,
-      fs.readFileSync(req.file.path)
+      b.submission_date || null, req.file.originalname, req.file.filename, req.file.path, req.file.mimetype,
+      req.file.size, fs.readFileSync(req.file.path)
     ]);
     if (!rows.length) return res.status(404).json({ok:false,error:"Paper not found"});
     res.json({ok:true,paper:rows[0]});
