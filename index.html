@@ -783,7 +783,7 @@
 
         // Pre-configured User Accounts
         const USERS = {
-            FACULTY: { name: 'Dr. Chandni Magoo', role: 'FACULTY', dept: 'School of Engineering • Computer Science Dept', avatar: 'F' },
+            FACULTY: { name: 'Dr. Rajesh Kumar', role: 'FACULTY', dept: 'School of Engineering • Computer Science Dept', avatar: 'F' },
             COE: { name: 'Controller of Examinations Cell', role: 'COE', dept: 'Manav Rachna Examination Office', avatar: 'C' },
             MODERATOR: { name: 'Prof. A. Sharma', role: 'MODERATOR', dept: 'Departmental Audit & Moderation Committee', avatar: 'M' }
         };
@@ -826,7 +826,7 @@
                 semester: 'Sem 3',
                 examType: 'Mid Semester Exam',
                 paperDate: '2026-10-15',
-                facultyName: 'Dr. Chandni Magoo',
+                facultyName: 'Dr. Rajesh Kumar',
                 currentVersion: 2,
                 status: 'RESUBMITTED_TO_COE',
                 versions: [
@@ -855,7 +855,7 @@
                 semester: 'Sem 5',
                 examType: 'End Semester Exam',
                 paperDate: '2026-10-18',
-                facultyName: 'Dr.Chandni Magoo',
+                facultyName: 'Dr. Rajesh Kumar',
                 currentVersion: 1,
                 status: 'SUBMITTED_TO_COE',
                 versions: [
@@ -1597,5 +1597,66 @@
             openModal('modal-audit');
         }
     </script>
+
+<script>
+/*
+  QPMS persistent API helper.
+  The page can use:
+    await QPMS.loadPapers()
+    await QPMS.createPaper(data, file)
+    await QPMS.updatePaper(id, patch)
+    await QPMS.deletePaper(id)
+*/
+window.QPMS = {
+  async loadPapers() {
+    const r = await fetch("/api/papers");
+    if (!r.ok) throw new Error("Could not load papers");
+    const j = await r.json();
+    return j.papers || [];
+  },
+  async createPaper(data, file) {
+    const fd = new FormData();
+    Object.entries(data || {}).forEach(([k,v]) => {
+      if (v !== undefined && v !== null) fd.append(k, v);
+    });
+    if (file) fd.append("file", file);
+    const r = await fetch("/api/papers", { method:"POST", body:fd });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || "Upload failed");
+    return j.paper;
+  },
+  async updatePaper(id, patch) {
+    const r = await fetch(`/api/papers/${id}`, {
+      method:"PATCH",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(patch)
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || "Update failed");
+    return j.paper;
+  },
+  async deletePaper(id) {
+    const r = await fetch(`/api/papers/${id}`, {method:"DELETE"});
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || "Delete failed");
+    return true;
+  }
+};
+</script>
+
+
+<script>
+(async function loadPersistentQPMSData() {
+  try {
+    const papers = await window.QPMS.loadPapers();
+    window.papersDatabase = papers;
+    window.dispatchEvent(new CustomEvent("qpms:persistent-data-loaded", {detail: papers}));
+    console.log("QPMS: loaded", papers.length, "persistent records from PostgreSQL");
+  } catch (e) {
+    console.warn("QPMS: persistent data could not be loaded:", e.message);
+  }
+})();
+</script>
+
 </body>
 </html>

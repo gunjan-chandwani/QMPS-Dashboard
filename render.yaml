@@ -1,10 +1,20 @@
 services:
   - type: web
-    name: qpms-mru
+    name: qpms-dashboard
     runtime: node
     plan: free
     buildCommand: npm install
     startCommand: npm start
     envVars:
-      - key: NODE_ENV
-        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: qpms-db
+          property: connectionString
+    disk:
+      name: qpms-uploads
+      mountPath: /opt/render/project/src/uploads
+      sizeGB: 1
+
+databases:
+  - name: qpms-db
+    plan: free
