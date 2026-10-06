@@ -1062,6 +1062,14 @@
                     <td class="px-4 py-3.5"><span class="px-2 py-0.5 bg-slate-100 rounded text-xs font-bold text-slate-700">v${paper.currentVersion}</span></td>
                     <td class="px-4 py-3.5">${getStatusBadge(paper.status)}</td>
                     <td class="px-4 py-3.5 text-right space-x-2">
+                        ${paper.originalFilename ? `
+                            <button onclick="window.open(QPMS.fileUrl('${paper.dbId || paper.id}'), '_blank')" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold">
+                                <i class="fa-solid fa-eye mr-1"></i> View
+                            </button>
+                            <a href="${QPMS.downloadUrl(paper.dbId || paper.id)}" class="inline-block px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold">
+                                <i class="fa-solid fa-download mr-1"></i> Download
+                            </a>
+                        ` : ''}
                         ${paper.status === 'CHANGES_REQUIRED' ? `
                             <button onclick="openRevisionModal('${paper.id}')" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs font-semibold shadow-xs">
                                 <i class="fa-solid fa-pen-to-square mr-1"></i> Revise Paper
@@ -1352,61 +1360,58 @@
         }
 
         // Handle Paper Form Submit (Create or Revise)
-        function handlePaperSubmit(e) {
+        async function handlePaperSubmit(e) {
             e.preventDefault();
+
             const paperId = document.getElementById('upload-paper-id').value;
             const fileInput = document.getElementById('upload-file-input');
-            const filename = fileInput.files[0] ? fileInput.files[0].name : 'Question_Paper_Document.pdf';
-            const timestamp = new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+            const file = fileInput.files[0];
 
-            if (!paperId) {
-                // New Submission
-                const newId = `QP-${Math.floor(1000 + Math.random() * 9000)}`;
-                const newPaper = {
-                    id: newId,
-                    courseName: document.getElementById('upload-course-name').value,
-                    courseCode: document.getElementById('upload-course-code').value.toUpperCase(),
-                    department: document.getElementById('upload-dept').value,
-                    program: document.getElementById('upload-program').value,
-                    semester: document.getElementById('upload-semester').value,
-                    examType: document.getElementById('upload-exam').value,
-                    paperDate: document.getElementById('upload-paper-date').value,
-                    facultyName: currentSession.name,
-                    currentVersion: 1,
-                    status: 'SUBMITTED_TO_COE',
-                    versions: [
-                        { version: 1, filename: filename, uploadTime: timestamp, uploadedBy: currentSession.name }
-                    ],
-                    auditForm: null,
-                    auditTrail: [
-                        { action: 'Uploaded Version 1', role: 'Faculty', user: currentSession.name, timestamp: timestamp, details: 'Submitted question paper to COE' }
-                    ]
-                };
-                papersDatabase.unshift(newPaper);
-                showToast(`Paper for "${newPaper.courseCode}" submitted successfully to COE!`, 'success');
-            } else {
-                // Revision Submission
-                const paper = papersDatabase.find(p => p.id === paperId);
-                paper.currentVersion += 1;
-                paper.status = 'RESUBMITTED_TO_COE';
-                paper.versions.push({
-                    version: paper.currentVersion,
-                    filename: filename,
-                    uploadTime: timestamp,
-                    uploadedBy: currentSession.name
-                });
-                paper.auditTrail.push({
-                    action: `Uploaded Version ${paper.currentVersion} (Resubmitted)`,
-                    role: 'Faculty',
-                    user: currentSession.name,
-                    timestamp: timestamp,
-                    details: 'Revised paper submitted in response to MRU Audit Form comments'
-                });
-                showToast(`Revised Version ${paper.currentVersion} uploaded successfully!`, 'success');
+            if (!file) {
+                showToast('Please select a question paper file.', 'error');
+                return;
             }
 
-            closeModal('modal-upload');
-            renderDashboard();
+            const timestamp = new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+
+            try {
+                if (!paperId) {
+                    // New submission: send the actual file to the persistent API.
+                    const paperNo = `QP-${Math.floor(1000 + Math.random() * 9000)}`;
+                    const paper = await window.QPMS.createPaper({
+                        paper_no: paperNo,
+                        title: document.getElementById('upload-course-name').value,
+                        course: document.getElementById('upload-course-code').value.toUpperCase(),
+                        department: document.getElementById('upload-dept').value,
+                        program: document.getElementById('upload-program').value,
+                        semester: document.getElementById('upload-semester').value,
+                        exam: document.getElementById('upload-exam').value,
+                        faculty: currentSession.name,
+                        status: 'SUBMITTED_TO_COE',
+                        expected: true
+                    }, file);
+
+                    papersDatabase.unshift(paper);
+                    showToast(`Paper for "${paper.courseCode}" uploaded and saved successfully!`, 'success');
+                } else {
+                    // Revision: upload the new file and preserve version history server-side.
+                    const paper = await window.QPMS.revisePaper(paperId, {
+                        faculty: currentSession.name
+                    }, file);
+
+                    const pos = papersDatabase.findIndex(p => String(p.id) === String(paperId));
+                    if (pos >= 0) papersDatabase[pos] = paper;
+                    else papersDatabase.unshift(paper);
+
+                    showToast(`Revised Version ${paper.currentVersion} uploaded successfully!`, 'success');
+                }
+
+                closeModal('modal-upload');
+                renderDashboard();
+            } catch (err) {
+                console.error(err);
+                showToast(err.message || 'File upload failed. Please try again.', 'error');
+            }
         }
 
         // COE Publish Notice Modal
@@ -1557,7 +1562,10 @@
                     </div>
                     <div class="text-right">
                         <span class="text-slate-400 block text-[10px]">${v.uploadTime}</span>
-                        <span class="text-brand-600 font-medium cursor-pointer hover:underline" onclick="showToast('Simulating download of ${v.filename}', 'info')"><i class="fa-solid fa-download mr-1"></i> Download</span>
+                        <div class="space-x-2">
+                            <a href="${QPMS.fileUrl(paper.dbId || paper.id)}" target="_blank" class="text-blue-600 font-medium hover:underline"><i class="fa-solid fa-eye mr-1"></i> View</a>
+                            <a href="${QPMS.downloadUrl(paper.dbId || paper.id)}" class="text-brand-600 font-medium hover:underline"><i class="fa-solid fa-download mr-1"></i> Download</a>
+                        </div>
                     </div>
                 </div>
             `).join('');
@@ -1625,8 +1633,21 @@ window.QPMS = {
     if (!r.ok) throw new Error(j.error || "Upload failed");
     return j.paper;
   },
+  async revisePaper(id, data, file) {
+    const fd = new FormData();
+    Object.entries(data || {}).forEach(([k,v]) => {
+      if (v !== undefined && v !== null) fd.append(k, v);
+    });
+    if (file) fd.append("file", file);
+    const r = await fetch(`/api/papers/${encodeURIComponent(id)}/revision`, {
+      method:"POST", body:fd
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || "Revision upload failed");
+    return j.paper;
+  },
   async updatePaper(id, patch) {
-    const r = await fetch(`/api/papers/${id}`, {
+    const r = await fetch(`/api/papers/${encodeURIComponent(id)}`, {
       method:"PATCH",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify(patch)
@@ -1636,10 +1657,16 @@ window.QPMS = {
     return j.paper;
   },
   async deletePaper(id) {
-    const r = await fetch(`/api/papers/${id}`, {method:"DELETE"});
+    const r = await fetch(`/api/papers/${encodeURIComponent(id)}`, {method:"DELETE"});
     const j = await r.json();
     if (!r.ok) throw new Error(j.error || "Delete failed");
     return true;
+  },
+  fileUrl(id) {
+    return `/api/papers/${encodeURIComponent(id)}/file`;
+  },
+  downloadUrl(id) {
+    return `/api/papers/${encodeURIComponent(id)}/download`;
   }
 };
 </script>
@@ -1651,6 +1678,7 @@ window.QPMS = {
     const papers = await window.QPMS.loadPapers();
     window.papersDatabase = papers;
     window.dispatchEvent(new CustomEvent("qpms:persistent-data-loaded", {detail: papers}));
+    if (typeof renderDashboard === "function") renderDashboard();
     console.log("QPMS: loaded", papers.length, "persistent records from PostgreSQL");
   } catch (e) {
     console.warn("QPMS: persistent data could not be loaded:", e.message);
