@@ -75,6 +75,37 @@ async function initDb() {
     uploaded_by TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
   )`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS datesheet_schedule (
+    id BIGSERIAL PRIMARY KEY, course_name TEXT NOT NULL, course_code TEXT NOT NULL, school TEXT,
+    department TEXT NOT NULL, program TEXT, semester TEXT NOT NULL, exam_type TEXT NOT NULL,
+    paper_date DATE NOT NULL, faculty_name TEXT, updated_by TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()
+  )`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_datesheet_schedule_lookup ON datesheet_schedule (UPPER(course_code), LOWER(department), LOWER(semester), LOWER(exam_type))`);
+}
+
+async function validatePaperDateAgainstSchedule(data) {
+  const { rows } = await pool.query(`SELECT TO_CHAR(paper_date, 'YYYY-MM-DD') AS paper_date
+    FROM datesheet_schedule
+    WHERE UPPER(TRIM(course_code))=UPPER(TRIM($1))
+      AND LOWER(TRIM(department))=LOWER(TRIM($2))
+      AND LOWER(TRIM(semester))=LOWER(TRIM($3))
+      AND LOWER(TRIM(exam_type))=LOWER(TRIM($4))
+      AND (COALESCE(TRIM(program),'')='' OR LOWER(TRIM(program))=LOWER(TRIM($5)))
+    ORDER BY updated_at DESC`, [data.course || '', data.department || '', data.semester || '', data.exam || '', data.program || '']);
+  if (!rows.length) {
+    const error = new Error('No matching COE master schedule entry was found for this course, department, program, semester and exam. Ask COE to add or update the schedule before uploading.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const dates = [...new Set(rows.map(r => r.paper_date).filter(Boolean))];
+  const submittedDate = String(data.submission_date || '').slice(0,10);
+  if (dates.length && !dates.includes(submittedDate)) {
+    const error = new Error(`Paper date does not match the COE datesheet. Scheduled date: ${dates.join(', ')}.`);
+    error.statusCode = 400;
+    throw error;
+  }
+  return {matched:true, dates};
 }
 
 app.get("/health", async (_req, res) => {
@@ -107,6 +138,47 @@ app.get("/api/papers", async (_req, res) => {
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
+});
+
+// Structured COE schedule is separate from the uploaded datesheet file.
+// Adding the same course/program/semester/exam again updates the existing schedule row.
+app.get('/api/datesheet-schedule', async (_req, res) => {
+  try {
+    const { rows } = await pool.query(`SELECT id::text AS id, course_name AS "courseName", course_code AS "courseCode",
+      school, department, program, semester, exam_type AS "examType", TO_CHAR(paper_date,'YYYY-MM-DD') AS "paperDate",
+      faculty_name AS "facultyName", updated_at FROM datesheet_schedule ORDER BY paper_date, course_code`);
+    res.json({ok:true,schedules:rows});
+  } catch (e) { res.status(500).json({ok:false,error:e.message}); }
+});
+
+app.post('/api/datesheet-schedule', async (req, res) => {
+  try {
+    const b = req.body || {};
+    const required = ['courseName','courseCode','department','program','semester','examType','paperDate','facultyName'];
+    const missing = required.filter(k => !String(b[k] || '').trim());
+    if (missing.length) return res.status(400).json({ok:false,error:`Required schedule fields missing: ${missing.join(', ')}`});
+    const found = await pool.query(`SELECT id FROM datesheet_schedule
+      WHERE UPPER(TRIM(course_code))=UPPER(TRIM($1)) AND LOWER(TRIM(department))=LOWER(TRIM($2))
+      AND LOWER(TRIM(program))=LOWER(TRIM($3)) AND LOWER(TRIM(semester))=LOWER(TRIM($4))
+      AND LOWER(TRIM(exam_type))=LOWER(TRIM($5)) ORDER BY updated_at DESC LIMIT 1`,
+      [b.courseCode,b.department,b.program,b.semester,b.examType]);
+    let rows, updated = found.rows.length > 0;
+    if (updated) {
+      ({rows} = await pool.query(`UPDATE datesheet_schedule SET course_name=$2, school=$3, paper_date=$4::date,
+        faculty_name=$5, updated_by=$6, updated_at=NOW() WHERE id=$1
+        RETURNING id::text AS id, course_name AS "courseName", course_code AS "courseCode", school, department, program,
+        semester, exam_type AS "examType", TO_CHAR(paper_date,'YYYY-MM-DD') AS "paperDate", faculty_name AS "facultyName", updated_at`,
+        [found.rows[0].id,b.courseName,b.school || null,b.paperDate,b.facultyName,b.updated_by || 'COE']));
+    } else {
+      ({rows} = await pool.query(`INSERT INTO datesheet_schedule
+        (course_name,course_code,school,department,program,semester,exam_type,paper_date,faculty_name,updated_by)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8::date,$9,$10)
+        RETURNING id::text AS id, course_name AS "courseName", course_code AS "courseCode", school, department, program,
+        semester, exam_type AS "examType", TO_CHAR(paper_date,'YYYY-MM-DD') AS "paperDate", faculty_name AS "facultyName", updated_at`,
+        [b.courseName,b.courseCode.toUpperCase(),b.school || null,b.department,b.program,b.semester,b.examType,b.paperDate,b.facultyName,b.updated_by || 'COE']));
+    }
+    res.status(updated ? 200 : 201).json({ok:true,updated,schedule:rows[0]});
+  } catch (e) { res.status(e.statusCode || 500).json({ok:false,error:e.message}); }
 });
 
 // COE-published datesheets and question-paper formats are stored in PostgreSQL,
@@ -207,6 +279,7 @@ app.post("/api/papers", upload.single("file"), async (req, res) => {
   try {
     const b = req.body || {};
     const f = req.file;
+    await validatePaperDateAgainstSchedule(b);
 
     const { rows } = await pool.query(`
       INSERT INTO papers (
@@ -244,7 +317,7 @@ app.post("/api/papers", upload.single("file"), async (req, res) => {
     if (req.file?.path) {
       try { fs.unlinkSync(req.file.path); } catch {}
     }
-    res.status(500).json({ ok: false, error: e.message });
+    res.status(e.statusCode || 500).json({ ok: false, error: e.message });
   }
 });
 
@@ -252,6 +325,7 @@ app.post("/api/papers/:id/replace-file", upload.single("file"), async (req, res)
   try {
     if (!req.file) return res.status(400).json({ok:false, error:"No file uploaded"});
     const b = req.body || {};
+    await validatePaperDateAgainstSchedule(b);
     const { rows } = await pool.query(`
       UPDATE papers SET
         title=COALESCE($2,title), program=COALESCE($3,program), department=COALESCE($4,department),
@@ -270,7 +344,7 @@ app.post("/api/papers/:id/replace-file", upload.single("file"), async (req, res)
     res.json({ok:true,paper:rows[0]});
   } catch (e) {
     if (req.file?.path) { try { fs.unlinkSync(req.file.path); } catch {} }
-    res.status(500).json({ok:false,error:e.message});
+    res.status(e.statusCode || 500).json({ok:false,error:e.message});
   }
 });
 

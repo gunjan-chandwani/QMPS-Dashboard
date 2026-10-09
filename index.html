@@ -601,6 +601,7 @@
                     <div>
                         <label class="block font-medium text-slate-700 mb-1">Paper Date *</label>
                         <input type="date" id="upload-paper-date" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none" required />
+                        <p class="mt-1 text-[10px] text-slate-500">Must match the COE master schedule for the selected course, program, semester and exam.</p>
                     </div>
                 </div>
 
@@ -680,7 +681,7 @@
             <div class="flex justify-between items-center border-b border-slate-100 pb-3">
                 <div>
                     <h3 class="font-bold text-slate-800 text-base">Add Exam Course to Datesheet Schedule</h3>
-                    <p class="text-xs text-slate-500">Scheduled courses will be tracked automatically for pending uploads.</p>
+                    <p class="text-xs text-slate-500">This updates the structured schedule used for date validation. To change the published PDF/Excel datesheet itself, upload and publish the revised file separately.</p>
                 </div>
                 <button onclick="closeModal('modal-add-schedule')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
@@ -715,6 +716,20 @@
                     </div>
                 </div>
 
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Program / Degree *</label>
+                        <select id="sch-program" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-rose-500" required>
+                            <option value="">Select program</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Semester *</label>
+                        <select id="sch-semester" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-rose-500" required>
+                            <option value="Sem 1">Semester 1</option><option value="Sem 2">Semester 2</option><option value="Sem 3">Semester 3</option><option value="Sem 4">Semester 4</option><option value="Sem 5">Semester 5</option><option value="Sem 6">Semester 6</option><option value="Sem 7">Semester 7</option><option value="Sem 8">Semester 8</option><option value="Sem 9">Semester 9</option><option value="Sem 10">Semester 10</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block font-medium text-slate-700 mb-1">Scheduled Exam Date *</label>
@@ -973,8 +988,12 @@
 
         // Calculate Unuploaded Papers from Datesheet Schedule
         function getUnuploadedPapers() {
-            const uploadedCodes = papersDatabase.map(p => String(p.courseCode || '').toUpperCase());
-            return datesheetSchedule.filter(sch => !uploadedCodes.includes(String(sch.courseCode || '').toUpperCase()));
+            const norm = v => String(v || '').trim().toLowerCase().replace(/\s+/g, ' ');
+            return datesheetSchedule.filter(sch => !papersDatabase.some(p =>
+                norm(p.courseCode) === norm(sch.courseCode) && norm(p.department) === norm(sch.department) &&
+                norm(p.semester) === norm(sch.semester) && norm(p.examType) === norm(sch.examType) &&
+                (!sch.program || norm(p.program) === norm(sch.program)) && p.status !== 'CHANGES_REQUIRED'
+            ));
         }
 
         // App Initializer
@@ -1490,25 +1509,71 @@
             openModal('modal-add-schedule');
         }
 
-        function handleAddScheduleSubmit(e) {
+        async function handleAddScheduleSubmit(e) {
             e.preventDefault();
             const newEntry = {
-                id: `SCH-${Math.floor(100 + Math.random() * 900)}`,
-                courseName: document.getElementById('sch-course-name').value,
-                courseCode: document.getElementById('sch-course-code').value.toUpperCase(),
+                courseName: document.getElementById('sch-course-name').value.trim(),
+                courseCode: document.getElementById('sch-course-code').value.trim().toUpperCase(),
                 department: document.getElementById('sch-dept').value,
                 school: qpmsSchoolFor({department: document.getElementById('sch-dept').value}),
-                facultyName: document.getElementById('sch-faculty-name').value,
+                program: document.getElementById('sch-program').value,
+                facultyName: document.getElementById('sch-faculty-name').value.trim(),
                 paperDate: document.getElementById('sch-exam-date').value,
                 examType: document.getElementById('sch-exam-type').value,
                 semester: document.getElementById('sch-semester').value
             };
-
-            datesheetSchedule.push(newEntry);
-            closeModal('modal-add-schedule');
-            showToast(`Course "${newEntry.courseCode}" added to Examination Datesheet schedule.`, 'success');
-            renderDashboard();
+            try {
+                const response = await fetch('/api/datesheet-schedule', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(newEntry)});
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'Could not save datesheet schedule');
+                await loadDatesheetSchedule();
+                closeModal('modal-add-schedule');
+                showToast(result.updated ? `Existing schedule updated for ${newEntry.courseCode}.` : `Schedule saved for ${newEntry.courseCode}.`, 'success');
+                renderDashboard();
+            } catch (err) {
+                console.error(err);
+                showToast(err.message || 'Could not save schedule. Check the database connection.', 'warning');
+            }
         }
+
+        function datesheetMatchForUpload(data) {
+            const norm = v => String(v || '').trim().toLowerCase().replace(/\s+/g, ' ');
+            const matches = (datesheetSchedule || []).filter(s =>
+                norm(s.courseCode) === norm(data.course) &&
+                norm(s.department) === norm(data.department) &&
+                norm(s.semester) === norm(data.semester) &&
+                norm(s.examType) === norm(data.exam) &&
+                (!s.program || norm(s.program) === norm(data.program))
+            );
+            return {matches, expectedDates:[...new Set(matches.map(s => String(s.paperDate || '').slice(0,10)).filter(Boolean))]};
+        }
+
+        async function loadDatesheetSchedule() {
+            try {
+                const response = await fetch('/api/datesheet-schedule', {cache:'no-store'});
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'Could not load datesheet schedule');
+                datesheetSchedule = result.schedules || [];
+                if (currentSession) renderDashboard();
+            } catch (err) {
+                console.error('Datesheet schedule failed to load:', err);
+                datesheetSchedule = [];
+            }
+        }
+
+        function populateScheduleProgramOptions() {
+            const source = document.getElementById('upload-program');
+            const target = document.getElementById('sch-program');
+            if (!source || !target) return;
+            const seen = new Set();
+            [...source.options].forEach(option => {
+                const value = (option.value || option.textContent || '').trim();
+                if (!value || /select batch-specific program/i.test(value) || seen.has(value.toLowerCase())) return;
+                seen.add(value.toLowerCase());
+                const clone = document.createElement('option'); clone.value = value; clone.textContent = value; target.appendChild(clone);
+            });
+        }
+        populateScheduleProgramOptions();
 
         // 3. MODERATOR VIEW
         function renderModeratorView() {
@@ -1637,6 +1702,16 @@
                 comments: '',
                 submission_date: paperDate
             };
+
+            const scheduleCheck = datesheetMatchForUpload(data);
+            if (!scheduleCheck.matches.length) {
+                showToast('No matching COE schedule entry found for this course, department, program, semester and exam. Please contact COE to add/update the schedule before uploading.', 'warning');
+                return false;
+            }
+            if (!scheduleCheck.expectedDates.includes(paperDate)) {
+                showToast(`Date mismatch: COE master schedule shows ${scheduleCheck.expectedDates.join(', ')}. Select the scheduled date or ask COE to update the schedule.`, 'warning');
+                return false;
+            }
 
             try {
                 document.getElementById('btn-submit-paper').disabled = true;
@@ -1932,6 +2007,7 @@ window.QPMS = {
 <script>
 (async function loadPersistentQPMSData() {
   loadCoeNotices();
+  loadDatesheetSchedule();
   try {
     const apiPapers = await window.QPMS.loadPapers();
     papersDatabase = apiPapers.map(window.QPMS.toUiPaper);
