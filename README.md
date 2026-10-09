@@ -81,3 +81,10 @@ This supplied app's login is still a **demo client-side role selector**, not pas
 The app does not delete database paper records during startup. If earlier uploads are missing, check that the deployment is connected to the same `DATABASE_URL`/PostgreSQL database that received the uploads. The earlier version also held sample papers and the datesheet in browser JavaScript, not PostgreSQL; those demo-only records cannot be recovered from the database. This package cannot restore records that were never persisted or that were deleted from the database. Files saved only on an ephemeral host filesystem may also be lost after redeploy; uploaded file bytes are stored in PostgreSQL by this version when uploads go through `/api/papers`.
 
 The current database schema stores paper school/program/department as entered during upload. It does not magically discover MRU's authoritative programme catalogue or mid-term datesheet. For a complete dynamic pending-upload report, import the official mid-term datesheet into a database-backed schedule table/API; this ZIP removes fake schedule values rather than presenting them as real.
+
+
+### COE Datesheet / Format visibility and file preview
+- COE-published datesheets and paper formats are stored in PostgreSQL (`coe_notices`) with the original file bytes, rather than only in browser memory.
+- The same live documents list is shown on Faculty, COE, and Moderator dashboards.
+- View opens the stored original file in a new tab (`/api/notices/:id/view`); Download retrieves the original file.
+- Existing paper records and the `papers` table are not reset or modified by this feature. The new table is created automatically when `DATABASE_URL` is configured.

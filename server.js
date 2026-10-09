@@ -64,6 +64,17 @@ async function initDb() {
     )
   `);
   await pool.query(`ALTER TABLE papers ADD COLUMN IF NOT EXISTS file_data BYTEA`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS coe_notices (
+    id BIGSERIAL PRIMARY KEY,
+    type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    original_filename TEXT NOT NULL,
+    file_mimetype TEXT,
+    file_size BIGINT,
+    file_data BYTEA NOT NULL,
+    uploaded_by TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  )`);
 }
 
 app.get("/health", async (_req, res) => {
@@ -96,6 +107,62 @@ app.get("/api/papers", async (_req, res) => {
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
+});
+
+// COE-published datesheets and question-paper formats are stored in PostgreSQL,
+// so Faculty, COE and Moderators all see the same durable documents.
+app.get("/api/notices", async (_req, res) => {
+  try {
+    const { rows } = await pool.query(`SELECT id::text AS id, type, title, original_filename AS filename,
+      file_mimetype, file_size, uploaded_by, created_at FROM coe_notices ORDER BY created_at DESC`);
+    res.json({ ok: true, notices: rows });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.post("/api/notices", upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ ok: false, error: "Please select a datesheet or format file." });
+    const type = String(req.body.type || '').trim();
+    const title = String(req.body.title || '').trim();
+    if (!type || !title) {
+      try { fs.unlinkSync(req.file.path); } catch {}
+      return res.status(400).json({ ok: false, error: "Document category and title are required." });
+    }
+    const fileData = fs.readFileSync(req.file.path);
+    const { rows } = await pool.query(`INSERT INTO coe_notices
+      (type, title, original_filename, file_mimetype, file_size, file_data, uploaded_by)
+      VALUES ($1,$2,$3,$4,$5,$6,$7)
+      RETURNING id::text AS id, type, title, original_filename AS filename, file_mimetype, file_size, uploaded_by, created_at`,
+      [type, title, req.file.originalname, req.file.mimetype, req.file.size, fileData, req.body.uploaded_by || 'COE']);
+    try { fs.unlinkSync(req.file.path); } catch {}
+    res.status(201).json({ ok: true, notice: rows[0] });
+  } catch (e) {
+    if (req.file?.path) { try { fs.unlinkSync(req.file.path); } catch {} }
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get("/api/notices/:id/view", async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT original_filename, file_mimetype, file_data FROM coe_notices WHERE id::text=$1', [String(req.params.id)]);
+    if (!rows.length) return res.status(404).send('Published document not found');
+    const n = rows[0];
+    res.setHeader('Content-Type', n.file_mimetype || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(n.original_filename || 'COE-document')}`);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    return res.end(n.file_data);
+  } catch (e) { res.status(500).send(e.message); }
+});
+
+app.get("/api/notices/:id/download", async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT original_filename, file_mimetype, file_data FROM coe_notices WHERE id::text=$1', [String(req.params.id)]);
+    if (!rows.length) return res.status(404).send('Published document not found');
+    const n = rows[0];
+    res.setHeader('Content-Type', n.file_mimetype || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(n.original_filename || 'COE-document')}`);
+    return res.end(n.file_data);
+  } catch (e) { res.status(500).send(e.message); }
 });
 
 app.get("/api/papers/:id/file", async (req, res) => {

@@ -315,6 +315,11 @@
                         </div>
                     </div>
 
+                    <section class="bg-white border border-amber-200 rounded-2xl p-4 shadow-sm space-y-3">
+                        <div><h3 class="font-extrabold text-slate-900">Published Datesheets & Question Paper Formats</h3><p class="text-xs text-slate-500">COE documents saved in the database. View or download the original file.</p></div>
+                        <div id="coe-notices-admin-container" class="grid grid-cols-1 md:grid-cols-2 gap-3"><p class="text-xs text-slate-400">Loading published documents…</p></div>
+                    </section>
+
                     <!-- SCHOOL / DEPARTMENT REPORTING + COE QUICK ACCESS -->
                     <section class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4">
                         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
@@ -385,6 +390,10 @@
                         <h3 class="text-lg font-bold text-slate-800">Department Moderation Review Portal</h3>
                         <p class="text-xs text-slate-500">Fill standard MRU Question Paper Audit Form for syllabus mapping, grammar, and Bloom's taxonomy quality.</p>
                     </div>
+                    <section class="bg-white border border-amber-200 rounded-2xl p-4 shadow-sm space-y-3">
+                        <div><h3 class="font-extrabold text-slate-900">COE Published Datesheets & Paper Formats</h3><p class="text-xs text-slate-500">Official documents are available here for moderator reference.</p></div>
+                        <div id="moderator-notices-container" class="grid grid-cols-1 md:grid-cols-2 gap-3"><p class="text-xs text-slate-400">Loading published documents…</p></div>
+                    </section>
 
                     <!-- MODERATOR WORKFLOW REPORT: live counts from persisted paper records -->
                     <section class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4">
@@ -1066,10 +1075,10 @@
 
         function renderDashboard() {
             updateStats();
+            renderNoticesForRole();
 
             if (currentSession.role === 'FACULTY') {
                 renderFacultyPendingAlert();
-                renderFacultyNotices();
                 renderFacultyView();
             } else if (currentSession.role === 'COE') {
                 renderCoeView();
@@ -1115,25 +1124,35 @@
             }
         }
 
-        function renderFacultyNotices() {
-            const container = document.getElementById('coe-notices-container');
-            if (coeNotices.length === 0) {
-                container.innerHTML = `<p class="text-slate-400">No official notices published yet.</p>`;
-                return;
+        function renderNoticesForRole() {
+            const containers = [
+                document.getElementById('coe-notices-container'),
+                document.getElementById('coe-notices-admin-container'),
+                document.getElementById('moderator-notices-container')
+            ].filter(Boolean);
+            const escapeText = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+            const html = coeNotices.length ? coeNotices.map(n => {
+                const id = encodeURIComponent(n.id);
+                const title = escapeText(n.title || 'COE document');
+                const type = escapeText(n.type || 'Document');
+                const filename = escapeText(n.filename || 'Uploaded file');
+                const date = n.created_at ? new Date(n.created_at).toLocaleDateString() : (n.uploadDate || '');
+                return `<div class="bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-center justify-between gap-3"><div class="min-w-0 space-y-1"><span class="px-1.5 py-0.5 bg-amber-100 text-amber-900 rounded font-bold text-[10px] uppercase">${type}</span><div class="font-semibold text-slate-800">${title}</div><div class="text-[10px] text-slate-500 break-all">${filename} · ${escapeText(date)}</div></div><div class="flex shrink-0 gap-2"><a target="_blank" rel="noopener" href="/api/notices/${id}/view" class="px-2.5 py-1.5 bg-brand-700 hover:bg-brand-800 text-white rounded-lg text-xs font-semibold">View</a><a href="/api/notices/${id}/download" class="px-2.5 py-1.5 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold">Download</a></div></div>`;
+            }).join('') : '<p class="text-xs text-slate-400">No official datesheets or formats have been published yet.</p>';
+            containers.forEach(c => { c.innerHTML = html; });
+        }
+
+        async function loadCoeNotices() {
+            try {
+                const response = await fetch('/api/notices', { cache: 'no-store' });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Could not load COE documents');
+                coeNotices = data.notices || [];
+            } catch (err) {
+                console.error('COE document list failed to load:', err);
+                coeNotices = [];
             }
-            container.innerHTML = coeNotices.map(n => `
-                <div class="bg-brand-800/80 p-3 rounded-xl border border-brand-700 flex items-center justify-between">
-                    <div class="space-y-0.5">
-                        <span class="px-1.5 py-0.5 bg-amber-400 text-slate-900 rounded font-bold text-[10px] uppercase">${n.type}</span>
-                        <div class="font-semibold text-white leading-tight">${n.title}</div>
-                        <div class="text-[10px] text-brand-300">File: ${n.filename} • Uploaded: ${n.uploadDate}</div>
-                    </div>
-                    <button onclick="showToast('Simulating download of ${n.filename}', 'info')" class="px-2.5 py-1 bg-white/10 hover:bg-white/20 text-white rounded-lg transition flex items-center space-x-1 text-xs font-medium">
-                        <i class="fa-solid fa-download"></i>
-                        <span>View</span>
-                    </button>
-                </div>
-            `).join('');
+            renderNoticesForRole();
         }
 
         function renderFacultyView() {
@@ -1647,23 +1666,30 @@
             openModal('modal-coe-notice');
         }
 
-        function handleNoticeSubmit(e) {
+        async function handleNoticeSubmit(e) {
             e.preventDefault();
             const fileInput = document.getElementById('notice-file-input');
-            const filename = fileInput.files[0] ? fileInput.files[0].name : 'Document.pdf';
-            const today = new Date().toISOString().split('T')[0];
-
-            coeNotices.unshift({
-                id: `NOT-${coeNotices.length + 1}`,
-                type: document.getElementById('notice-type').value,
-                title: document.getElementById('notice-title').value,
-                filename: filename,
-                uploadDate: today
-            });
-
-            closeModal('modal-coe-notice');
-            showToast('New examination guidelines published to Faculty portal.', 'success');
-            renderDashboard();
+            const file = fileInput.files && fileInput.files[0];
+            if (!file) { showToast('Please select a datesheet or format file.', 'warning'); return; }
+            const button = document.querySelector('#form-coe-notice button[type="submit"]');
+            button.disabled = true;
+            try {
+                const form = new FormData();
+                form.append('type', document.getElementById('notice-type').value);
+                form.append('title', document.getElementById('notice-title').value.trim());
+                form.append('uploaded_by', currentSession?.email || 'COE');
+                form.append('file', file);
+                const response = await fetch('/api/notices', { method: 'POST', body: form });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'Document upload failed');
+                closeModal('modal-coe-notice');
+                document.getElementById('form-coe-notice').reset();
+                await loadCoeNotices();
+                renderDashboard();
+                showToast('Datesheet / format uploaded and saved. It is now available to Faculty, COE and Moderators.', 'success');
+            } catch (err) {
+                showToast(err.message || 'Document upload failed. Please try again.', 'warning');
+            } finally { button.disabled = false; }
         }
 
         // Step 2: COE Forward Action
@@ -1905,6 +1931,7 @@ window.QPMS = {
 
 <script>
 (async function loadPersistentQPMSData() {
+  loadCoeNotices();
   try {
     const apiPapers = await window.QPMS.loadPapers();
     papersDatabase = apiPapers.map(window.QPMS.toUiPaper);
