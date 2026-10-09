@@ -315,6 +315,21 @@
                         </div>
                     </div>
 
+                    <!-- SCHOOL / DEPARTMENT REPORTING + COE QUICK ACCESS -->
+                    <section class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4">
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                            <div><h3 class="text-base font-extrabold text-slate-900">School-wise & Department-wise Examination Report</h3><p class="text-xs text-slate-500">Live counts from uploaded papers and COE datesheet schedule.</p></div>
+                            <button onclick="downloadQpmsReport()" class="px-3 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold"><i class="fa-solid fa-file-csv mr-1"></i> Export Report CSV</button>
+                        </div>
+                        <div id="coe-report-summary" class="grid grid-cols-2 lg:grid-cols-4 gap-3"></div>
+                        <div class="overflow-x-auto border border-slate-100 rounded-xl"><table class="w-full text-xs text-left"><thead class="bg-slate-50 uppercase text-slate-500"><tr><th class="p-3">School</th><th class="p-3">Department / Programme</th><th class="p-3">Scheduled</th><th class="p-3">Uploaded</th><th class="p-3">Pending Upload</th><th class="p-3">Moderated</th><th class="p-3">Final Approved</th></tr></thead><tbody id="coe-school-report" class="divide-y divide-slate-100"></tbody></table></div>
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                            <div class="rounded-xl border border-violet-200 bg-violet-50/60 p-3"><div class="flex justify-between items-center gap-2"><div><h4 class="font-bold text-violet-900 text-sm">Moderated Papers</h4><p class="text-[11px] text-violet-700">Moderation committee approved; awaiting COE final archive if applicable.</p></div><span id="quick-moderated-count" class="text-xl font-black text-violet-800">0</span></div><div id="quick-moderated-list" class="mt-3 space-y-2 max-h-56 overflow-auto"></div></div>
+                            <div class="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3"><div class="flex justify-between items-center gap-2"><div><h4 class="font-bold text-emerald-900 text-sm">Final Approved Papers</h4><p class="text-[11px] text-emerald-700">COE-approved papers, ready for direct access.</p></div><span id="quick-approved-count" class="text-xl font-black text-emerald-800">0</span></div><div id="quick-approved-list" class="mt-3 space-y-2 max-h-56 overflow-auto"></div></div>
+                            <div class="rounded-xl border border-rose-200 bg-rose-50/60 p-3"><div class="flex justify-between items-center gap-2"><div><h4 class="font-bold text-rose-900 text-sm">Datesheet Papers Not Uploaded</h4><p class="text-[11px] text-rose-700">Scheduled courses with no matching uploaded course code.</p></div><span id="quick-pending-count" class="text-xl font-black text-rose-800">0</span></div><div id="quick-pending-list" class="mt-3 space-y-2 max-h-56 overflow-auto"></div></div>
+                        </div>
+                    </section>
+
                     <!-- COE Filter Tabs (Including NEW "Unuploaded / Missing Papers" Tab) -->
                     <div class="flex border-b border-slate-200 space-x-4 text-xs font-medium overflow-x-auto custom-scrollbar">
                         <button onclick="filterCoeTab('PENDING')" id="coe-tab-pending" class="pb-2.5 border-b-2 border-brand-600 text-brand-600 font-bold whitespace-nowrap">
@@ -433,6 +448,8 @@
                             <option value="Mechanical Eng.">Mechanical Eng.</option>
                             <option value="Electrical Eng.">Electrical Eng.</option>
                             <option value="Management Studies">Management Studies</option>
+                            <option value="CST">CST</option><option value="ME">ME</option><option value="ECE">ECE</option><option value="Robotics & AI">Robotics & AI</option>
+                            <option value="Law">Law</option><option value="Physics">Physics</option><option value="Chemistry">Chemistry</option><option value="Mathematics">Mathematics</option><option value="Education">Education</option><option value="Business">Business</option>
                         </select>
                     </div>
                     <div>
@@ -785,88 +802,17 @@
         const USERS = {
             FACULTY: { name: 'Dr. Gunjan Chandwani', role: 'FACULTY', dept: 'School of Engineering • Computer Science Dept', avatar: 'F' },
             COE: { name: 'Controller of Examinations Cell', role: 'COE', dept: 'Manav Rachna Examination Office', avatar: 'C' },
-            MODERATOR: { name: 'Dr.Chandni Magoo', role: 'MODERATOR', dept: 'Departmental Audit & Moderation Committee', avatar: 'M' }
+            MODERATOR: { name: 'School Moderator', role: 'MODERATOR', dept: 'School-wise Moderation', avatar: 'M' }
         };
 
         // Datesheet Master Schedule (Courses for which Question Papers must be uploaded)
-        let datesheetSchedule = [
-            { id: 'SCH-101', courseName: 'Data Structures & Algorithms', courseCode: 'CSH201B', department: 'Computer Science', paperDate: '2026-10-15', facultyName: 'Dr. Rajesh Kumar', examType: 'Mid Semester Exam' },
-            { id: 'SCH-102', courseName: 'Thermodynamics & Heat Transfer', courseCode: 'MEH305', department: 'Mechanical Eng.', paperDate: '2026-10-18', facultyName: 'Dr. Rajesh Kumar', examType: 'End Semester Exam' },
-            { id: 'SCH-103', courseName: 'Operating Systems', courseCode: 'CSH202B', department: 'Computer Science', paperDate: '2026-10-20', facultyName: 'Dr. Rajesh Kumar', examType: 'Mid Semester Exam' },
-            { id: 'SCH-104', courseName: 'Digital Signal Processing', courseCode: 'ECH301', department: 'Electrical Eng.', paperDate: '2026-10-22', facultyName: 'Dr. Sunita Rao', examType: 'Mid Semester Exam' },
-            { id: 'SCH-105', courseName: 'Financial Management', courseCode: 'MBA104', department: 'Management Studies', paperDate: '2026-10-25', facultyName: 'Dr. Vikram Mehta', examType: 'Mid Semester Exam' }
-        ];
+        let datesheetSchedule = []; // Loaded from persistent API; no hard-coded exam schedule
 
         // COE Published Notices / Datesheet Storage
-        let coeNotices = [
-            {
-                id: 'NOT-1',
-                type: 'Paper Format',
-                title: 'Standard Question Paper Template (MRU Guidelines 2026)',
-                filename: 'MRU_QP_Format_Standard_2026.pdf',
-                uploadDate: '2026-09-20'
-            },
-            {
-                id: 'NOT-2',
-                type: 'Datesheet',
-                title: 'Mid Semester Examination Schedule - Oct 2026',
-                filename: 'Mid_Sem_Datesheet_CS_2026.pdf',
-                uploadDate: '2026-09-25'
-            }
-        ];
+        let coeNotices = []; // Notices must be supplied by the live system, not demo records
 
         // Central Question Papers Database State (Uploaded Papers)
-        let papersDatabase = [
-            {
-                id: 'QP-1001',
-                courseName: 'Data Structures & Algorithms',
-                courseCode: 'CSH201B',
-                department: 'Computer Science',
-                program: 'B.Tech',
-                semester: 'Sem 3',
-                examType: 'Mid Semester Exam',
-                paperDate: '2026-10-15',
-                facultyName: 'Dr. Rajesh Kumar',
-                currentVersion: 2,
-                status: 'RESUBMITTED_TO_COE',
-                versions: [
-                    { version: 1, filename: 'DSA_MidTerm_v1.pdf', uploadTime: '2026-09-28 10:30 AM', uploadedBy: 'Dr. Rajesh Kumar' },
-                    { version: 2, filename: 'DSA_MidTerm_v2_Revised.pdf', uploadTime: '2026-09-30 02:15 PM', uploadedBy: 'Dr. Rajesh Kumar' }
-                ],
-                auditForm: {
-                    date: '2026-09-29 04:00 PM',
-                    q1: 'Yes', q2: 'Yes', q3: 'Yes', q4: 'Yes', q5: 'No', q6: 'Yes', q7: 'Yes', q8: 'No', q9: 'Yes', q10: 'No',
-                    q11: 'Satisfactory', q12: 'Good',
-                    comments: 'Please fix typo in Question 3 and add Bloom Taxonomy levels (HOT questions) in Section B.'
-                },
-                auditTrail: [
-                    { action: 'Uploaded Version 1', role: 'Faculty', user: 'Dr. Rajesh Kumar', timestamp: '2026-09-28 10:30 AM', details: 'Submitted to COE' },
-                    { action: 'Forwarded for Moderation', role: 'COE', user: 'COE Admin', timestamp: '2026-09-29 09:15 AM', details: 'Initial verification clear' },
-                    { action: 'MRU Audit Form Submitted: Changes Required', role: 'Moderator', user: 'Prof. A. Sharma', timestamp: '2026-09-29 04:00 PM', details: 'Requested HOT questions & grammatical corrections.' },
-                    { action: 'Uploaded Version 2 (Resubmitted)', role: 'Faculty', user: 'Dr. Rajesh Kumar', timestamp: '2026-09-30 02:15 PM', details: 'Revised question paper submitted to COE' }
-                ]
-            },
-            {
-                id: 'QP-1002',
-                courseName: 'Thermodynamics & Heat Transfer',
-                courseCode: 'MEH305',
-                department: 'Mechanical Eng.',
-                program: 'B.Tech',
-                semester: 'Sem 5',
-                examType: 'End Semester Exam',
-                paperDate: '2026-10-18',
-                facultyName: 'Dr. Rajesh Kumar',
-                currentVersion: 1,
-                status: 'SUBMITTED_TO_COE',
-                versions: [
-                    { version: 1, filename: 'Thermodynamics_EndTerm_v1.pdf', uploadTime: '2026-10-01 09:00 AM', uploadedBy: 'Dr. Rajesh Kumar' }
-                ],
-                auditForm: null,
-                auditTrail: [
-                    { action: 'Uploaded Version 1', role: 'Faculty', user: 'Dr. Rajesh Kumar', timestamp: '2026-10-01 09:00 AM', details: 'Submitted to COE' }
-                ]
-            }
-        ];
+        let papersDatabase = []; // Always populated from PostgreSQL API
 
         // Toast Notification System
         function showToast(message, type = 'info') {
@@ -891,8 +837,8 @@
 
         // Calculate Unuploaded Papers from Datesheet Schedule
         function getUnuploadedPapers() {
-            const uploadedCodes = papersDatabase.map(p => p.courseCode.toUpperCase());
-            return datesheetSchedule.filter(sch => !uploadedCodes.includes(sch.courseCode.toUpperCase()));
+            const uploadedCodes = papersDatabase.map(p => String(p.courseCode || '').toUpperCase());
+            return datesheetSchedule.filter(sch => !uploadedCodes.includes(String(sch.courseCode || '').toUpperCase()));
         }
 
         // App Initializer
@@ -917,14 +863,31 @@
         function quickLogin(role) {
             selectLoginRole(role);
             const userObj = USERS[role];
-            document.getElementById('login-email').value = `${role.toLowerCase()}@mru.edu.in`;
-            handleLoginSuccess(userObj);
+            document.getElementById('login-email').value = role === 'MODERATOR' ? 'moderator_cst@mru.edu.in' : `${role.toLowerCase()}@mru.edu.in`;
+            handleLoginSuccess({...userObj, email: document.getElementById('login-email').value});
         }
 
         function handleLogin(e) {
             e.preventDefault();
             const role = document.getElementById('login-selected-role').value;
-            handleLoginSuccess(USERS[role]);
+            const email = (document.getElementById('login-email').value || '').trim().toLowerCase();
+            if (role === 'MODERATOR') {
+                const schoolMap = {
+                  'moderator_cst@mru.edu.in': ['School of Engineering','CST'],
+                  'moderator_ece@mru.edu.in': ['School of Engineering','ECE'],
+                  'moderator_me@mru.edu.in': ['School of Engineering','ME'],
+                  'moderator_ide@mru.edu.in': ['School of Engineering','IDE'],
+                  'moderator_sciences@mru.edu.in': ['School of Sciences',null],
+                  'moderator_sob@mru.edu.in': ['School of Business',null],
+                  'moderator_law@mru.edu.in': ['School of Law',null],
+                  'moderator_soeh@mru.edu.in': ['School of Education',null]
+                };
+                if (!schoolMap[email]) { showToast('Use your assigned school moderator email.', 'error'); return; }
+                const [school, department] = schoolMap[email];
+                handleLoginSuccess({...USERS.MODERATOR, email, name: email.split('@')[0].replace('moderator_','').toUpperCase() + ' Moderator', schoolScope: school, departmentScope: department});
+                return;
+            }
+            handleLoginSuccess({...USERS[role], email});
         }
 
         function handleLoginSuccess(userObj) {
@@ -936,8 +899,10 @@
             document.getElementById('header-user-role').textContent = userObj.role;
             document.getElementById('user-avatar').textContent = userObj.avatar;
             document.getElementById('user-display-name').textContent = userObj.name;
+            const scopeEl = document.getElementById('user-dept-info');
+            if (scopeEl) scopeEl.textContent = userObj.schoolScope ? `${userObj.schoolScope}${userObj.departmentScope ? ' • ' + userObj.departmentScope : ''} • ${userObj.email}` : (userObj.email || userObj.dept);
             document.getElementById('user-role-badge').textContent = userObj.role === 'FACULTY' ? 'Faculty Member' : (userObj.role === 'COE' ? 'Controller of Exams' : 'Moderation Head');
-            document.getElementById('user-dept-info').textContent = userObj.dept;
+            if (!userObj.schoolScope) document.getElementById('user-dept-info').textContent = userObj.dept;
 
             // Render Role Dashboard
             document.getElementById('view-faculty').classList.toggle('hidden', userObj.role !== 'FACULTY');
@@ -1114,7 +1079,69 @@
             renderCoeView();
         }
 
+        const QPMS_SCHOOL_DEPARTMENTS = {}; // Report groups are derived from live records
+        function qpmsSchoolFor(item) {
+            const raw = `${item.school || ''} ${item.department || ''} ${item.program || ''}`.toLowerCase();
+            if (raw.includes('law')) return 'School of Law';
+            if (raw.includes('physics') || raw.includes('chemistry') || raw.includes('chem') || raw.includes('mathematics') || raw.includes('math')) return 'School of Sciences';
+            if (raw.includes('education')) return 'School of Education';
+            if (raw.includes('business') || raw.includes('management') || raw.includes('mba') || raw.includes('bba')) return 'School of Business';
+            if (raw.includes('engineering') || raw.includes('computer science') || raw.includes('cst') || raw.includes('mechanical') || raw.includes('robotics') || raw.includes('artificial intelligence') || raw.includes('ece') || raw.includes('electronics')) return 'School of Engineering';
+            return item.school || 'Unmapped / Other';
+        }
+        function qpmsDepartmentFor(item) {
+            const raw = `${item.department || ''} ${item.program || ''}`.toLowerCase();
+            if (raw.includes('robot') || raw.includes('artificial intelligence') || raw.includes('robotics & ai')) return 'Robotics & AI';
+            if (raw.includes('computer') || raw.includes('cst') || raw.includes('computing')) return 'CST';
+            if (raw.includes('mechanical') || raw === ' me') return 'ME';
+            if (raw.includes('ece') || raw.includes('electronics') || raw.includes('electrical')) return 'ECE';
+            if (raw.includes('physics')) return 'Physics';
+            if (raw.includes('chem')) return 'Chemistry';
+            if (raw.includes('math')) return 'Mathematics';
+            if (raw.includes('law')) return item.program || 'Law';
+            if (raw.includes('education')) return 'Education';
+            if (raw.includes('business') || raw.includes('management') || raw.includes('mba') || raw.includes('bba')) return item.department || 'Business';
+            return item.department || item.program || 'Not specified';
+        }
+        function qpmsPaperLink(p) {
+            const id = encodeURIComponent(p.id);
+            return `<div class="bg-white/80 border border-white rounded-lg p-2"><div class="font-semibold text-slate-800 truncate" title="${escapeHtml(p.courseName || '')}">${escapeHtml(p.courseName || 'Question Paper')}</div><div class="text-[10px] text-slate-500">${escapeHtml(p.courseCode || '')} · ${escapeHtml(p.department || '')}</div><div class="flex gap-2 mt-1"><a class="text-[11px] font-bold text-brand-700 hover:underline" target="_blank" href="/api/papers/${id}/view">View</a><a class="text-[11px] font-bold text-emerald-700 hover:underline" href="/api/papers/${id}/file">Download</a></div></div>`;
+        }
+        function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+        function renderCoeReports() {
+            const inScope = item => !currentSession?.schoolScope || (qpmsSchoolFor(item) === currentSession.schoolScope && (!currentSession.departmentScope || qpmsDepartmentFor(item).toUpperCase() === currentSession.departmentScope.toUpperCase()));
+            const papers = (papersDatabase || []).filter(inScope);
+            const schedules = (datesheetSchedule || []).filter(inScope);
+            const uploadedCodes = new Set(papers.map(p => String(p.courseCode || '').trim().toUpperCase()).filter(Boolean));
+            const pending = schedules.filter(s => !uploadedCodes.has(String(s.courseCode || '').trim().toUpperCase()));
+            const moderated = papers.filter(p => ['APPROVED','FINAL_APPROVED'].includes(p.status));
+            const finalApproved = papers.filter(p => p.status === 'FINAL_APPROVED');
+            const totalCard = (label, value, cls) => `<div class="rounded-xl border p-3 ${cls}"><div class="text-xs opacity-80">${label}</div><div class="text-2xl font-black mt-1">${value}</div></div>`;
+            document.getElementById('coe-report-summary').innerHTML = [totalCard('Papers Uploaded',papers.length,'border-slate-200 bg-slate-50 text-slate-900'),totalCard('Pending Datesheet Uploads',pending.length,'border-rose-200 bg-rose-50 text-rose-900'),totalCard('Moderated / Approved by Moderator',moderated.length,'border-violet-200 bg-violet-50 text-violet-900'),totalCard('Final Approved by COE',finalApproved.length,'border-emerald-200 bg-emerald-50 text-emerald-900')].join('');
+            const keys = new Map();
+            function row(school, dept) { const key=school+'|||'+dept; if(!keys.has(key)) keys.set(key,{school,dept,scheduled:0,uploaded:0,pending:0,moderated:0,approved:0}); return keys.get(key); }
+            schedules.forEach(s=>{const school=qpmsSchoolFor(s),dept=qpmsDepartmentFor(s),r=row(school,dept);r.scheduled++;if(!uploadedCodes.has(String(s.courseCode||'').trim().toUpperCase()))r.pending++;});
+            papers.forEach(p=>{const school=qpmsSchoolFor(p),dept=qpmsDepartmentFor(p),r=row(school,dept);r.uploaded++;if(['APPROVED','FINAL_APPROVED'].includes(p.status))r.moderated++;if(p.status==='FINAL_APPROVED')r.approved++;});
+            document.getElementById('coe-school-report').innerHTML = [...keys.values()].map(r=>`<tr><td class="p-3 font-semibold text-slate-800">${escapeHtml(r.school)}</td><td class="p-3">${escapeHtml(r.dept)}</td><td class="p-3">${r.scheduled}</td><td class="p-3 font-bold">${r.uploaded}</td><td class="p-3 ${r.pending?'text-rose-700 font-bold':''}">${r.pending}</td><td class="p-3 text-violet-700 font-bold">${r.moderated}</td><td class="p-3 text-emerald-700 font-bold">${r.approved}</td></tr>`).join('');
+            document.getElementById('quick-moderated-count').textContent=moderated.length;
+            document.getElementById('quick-approved-count').textContent=finalApproved.length;
+            document.getElementById('quick-pending-count').textContent=pending.length;
+            document.getElementById('quick-moderated-list').innerHTML=moderated.length?moderated.map(qpmsPaperLink).join(''):'<p class="text-xs text-slate-500">No moderated papers available yet.</p>';
+            document.getElementById('quick-approved-list').innerHTML=finalApproved.length?finalApproved.map(qpmsPaperLink).join(''):'<p class="text-xs text-slate-500">No final-approved papers available yet.</p>';
+            document.getElementById('quick-pending-list').innerHTML=pending.length?pending.map(s=>`<div class="bg-white/80 border border-white rounded-lg p-2"><div class="font-semibold text-slate-800">${escapeHtml(s.courseName)}</div><div class="text-[10px] text-slate-500">${escapeHtml(s.courseCode)} · ${escapeHtml(qpmsSchoolFor(s))} · ${escapeHtml(qpmsDepartmentFor(s))}</div><div class="text-[10px] text-rose-700 mt-1">Exam: ${escapeHtml(s.paperDate||'Date not set')} · ${escapeHtml(s.facultyName||'Faculty not assigned')}</div></div>`).join(''):'<p class="text-xs text-slate-500">All scheduled papers have been uploaded.</p>';
+        }
+        function downloadQpmsReport() {
+            const inScope = item => !currentSession?.schoolScope || (qpmsSchoolFor(item) === currentSession.schoolScope && (!currentSession.departmentScope || qpmsDepartmentFor(item).toUpperCase() === currentSession.departmentScope.toUpperCase()));
+            const rows=[['School','Department / Programme','Course Code','Course Name','Faculty','Exam Date','Status','Datesheet Upload Pending']];
+            (papersDatabase||[]).filter(inScope).forEach(p=>rows.push([qpmsSchoolFor(p),qpmsDepartmentFor(p),p.courseCode||'',p.courseName||'',p.facultyName||'',p.paperDate||'',p.status||'', 'No']));
+            const codes=new Set((papersDatabase||[]).map(p=>String(p.courseCode||'').toUpperCase()));
+            (datesheetSchedule||[]).filter(inScope).filter(s=>!codes.has(String(s.courseCode||'').toUpperCase())).forEach(s=>rows.push([qpmsSchoolFor(s),qpmsDepartmentFor(s),s.courseCode||'',s.courseName||'',s.facultyName||'',s.paperDate||'','NOT_UPLOADED','Yes']));
+            const csv=rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');
+            const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'}));a.download='QPMS_School_Department_Report.csv';a.click();URL.revokeObjectURL(a.href);
+        }
+
         function renderCoeView() {
+            renderCoeReports();
             const tableHead = document.getElementById('coe-table-head');
             const container = document.getElementById('coe-papers-list');
 
@@ -1255,6 +1282,7 @@
                 courseName: document.getElementById('sch-course-name').value,
                 courseCode: document.getElementById('sch-course-code').value.toUpperCase(),
                 department: document.getElementById('sch-dept').value,
+                school: qpmsSchoolFor({department: document.getElementById('sch-dept').value}),
                 facultyName: document.getElementById('sch-faculty-name').value,
                 paperDate: document.getElementById('sch-exam-date').value,
                 examType: document.getElementById('sch-exam-type').value
@@ -1269,7 +1297,7 @@
         // 3. MODERATOR VIEW
         function renderModeratorView() {
             const container = document.getElementById('moderator-papers-list');
-            const eligible = papersDatabase.filter(p => ['FORWARDED_FOR_MODERATION', 'APPROVED', 'CHANGES_REQUIRED'].includes(p.status));
+            const eligible = papersDatabase.filter(p => ['FORWARDED_FOR_MODERATION', 'APPROVED', 'CHANGES_REQUIRED'].includes(p.status) && (!currentSession?.schoolScope || (qpmsSchoolFor(p) === currentSession.schoolScope && (!currentSession.departmentScope || qpmsDepartmentFor(p).toUpperCase() === currentSession.departmentScope.toUpperCase()))));
 
             if (eligible.length === 0) {
                 container.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-slate-400">No question papers currently forwarded for moderation review.</td></tr>`;
@@ -1379,7 +1407,7 @@
             const data = {
                 paper_no: paperId || undefined,
                 title: courseName,
-                school: '',
+                school: qpmsSchoolFor({department: document.getElementById('upload-dept').value, program: document.getElementById('upload-program').value}),
                 program: document.getElementById('upload-program').value,
                 department: document.getElementById('upload-dept').value,
                 semester: document.getElementById('upload-semester').value,
@@ -1613,7 +1641,7 @@ window.QPMS = {
     const id = String(p.id);
     const filename = p.original_filename || 'Question_Paper_Document.pdf';
     return {
-      id, courseName: p.title || p.subject || 'Question Paper', courseCode: (p.course || '').toUpperCase(),
+      id, courseName: p.title || p.subject || 'Question Paper', courseCode: (p.course || '').toUpperCase(), school: p.school || '',
       department: p.department || '', program: p.program || '', semester: p.semester || '',
       examType: p.exam || '', paperDate: p.submission_date ? new Date(p.submission_date).toISOString().slice(0,10) : '',
       facultyName: p.faculty || '', currentVersion: 1, status: p.status || 'SUBMITTED_TO_COE', hasFile: p.has_file !== false,
