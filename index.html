@@ -318,11 +318,11 @@
                     <!-- SCHOOL / DEPARTMENT REPORTING + COE QUICK ACCESS -->
                     <section class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4">
                         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                            <div><h3 class="text-base font-extrabold text-slate-900">School-wise & Department-wise Examination Report</h3><p class="text-xs text-slate-500">Live counts from uploaded papers and COE datesheet schedule.</p></div>
+                            <div><h3 class="text-base font-extrabold text-slate-900">School-wise & Department-wise Examination Report</h3><p class="text-xs text-slate-500">Live database counts, school/program mapping, semester-wise breakdown and datesheet compliance.</p></div>
                             <button onclick="downloadQpmsReport()" class="px-3 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold"><i class="fa-solid fa-file-csv mr-1"></i> Export Report CSV</button>
                         </div>
                         <div id="coe-report-summary" class="grid grid-cols-2 lg:grid-cols-4 gap-3"></div>
-                        <div class="overflow-x-auto border border-slate-100 rounded-xl"><table class="w-full text-xs text-left"><thead class="bg-slate-50 uppercase text-slate-500"><tr><th class="p-3">School</th><th class="p-3">Department / Programme</th><th class="p-3">Scheduled</th><th class="p-3">Uploaded</th><th class="p-3">Pending Upload</th><th class="p-3">Moderated</th><th class="p-3">Final Approved</th></tr></thead><tbody id="coe-school-report" class="divide-y divide-slate-100"></tbody></table></div>
+                        <div class="overflow-x-auto border border-slate-100 rounded-xl"><table class="w-full text-xs text-left"><thead class="bg-slate-50 uppercase text-slate-500"><tr><th class="p-3">School</th><th class="p-3">Department / Programme</th><th class="p-3">Semester</th><th class="p-3">Scheduled</th><th class="p-3">Uploaded</th><th class="p-3">Pending Upload</th><th class="p-3">Moderated</th><th class="p-3">Final Approved</th></tr></thead><tbody id="coe-school-report" class="divide-y divide-slate-100"></tbody></table></div>
                         <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
                             <div class="rounded-xl border border-violet-200 bg-violet-50/60 p-3"><div class="flex justify-between items-center gap-2"><div><h4 class="font-bold text-violet-900 text-sm">Moderated Papers</h4><p class="text-[11px] text-violet-700">Moderation committee approved; awaiting COE final archive if applicable.</p></div><span id="quick-moderated-count" class="text-xl font-black text-violet-800">0</span></div><div id="quick-moderated-list" class="mt-3 space-y-2 max-h-56 overflow-auto"></div></div>
                             <div class="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3"><div class="flex justify-between items-center gap-2"><div><h4 class="font-bold text-emerald-900 text-sm">Final Approved Papers</h4><p class="text-[11px] text-emerald-700">COE-approved papers, ready for direct access.</p></div><span id="quick-approved-count" class="text-xl font-black text-emerald-800">0</span></div><div id="quick-approved-list" class="mt-3 space-y-2 max-h-56 overflow-auto"></div></div>
@@ -340,8 +340,11 @@
                             <span>Unuploaded Papers (Datesheet Schedule)</span>
                             <span id="coe-badge-unuploaded" class="ml-1 px-1.5 py-0.2 bg-rose-100 text-rose-700 rounded-full text-[10px] font-bold">0</span>
                         </button>
+                        <button onclick="filterCoeTab('MODERATION_APPROVED')" id="coe-tab-moderation_approved" class="pb-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-700 whitespace-nowrap">
+                            Approved by Moderation
+                        </button>
                         <button onclick="filterCoeTab('RESUBMITTED')" id="coe-tab-resubmitted" class="pb-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-700 whitespace-nowrap">
-                            Revised / Moderated Papers
+                            Revised Papers
                         </button>
                         <button onclick="filterCoeTab('ARCHIVED')" id="coe-tab-archived" class="pb-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-700 whitespace-nowrap">
                             Final Archived Papers
@@ -454,11 +457,102 @@
                     </div>
                     <div>
                         <label class="block font-medium text-slate-700 mb-1">Program / Degree *</label>
-                        <select id="upload-program" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none" required>
-                            <option value="B.Tech">B.Tech</option>
-                            <option value="M.Tech">M.Tech</option>
-                            <option value="BCA">BCA</option>
-                            <option value="MBA">MBA</option>
+<select id="upload-program" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none" required>
+                            <option value="">Select batch-specific program</option>
+                            <optgroup label="2022 BATCH">
+                                <option value="B.A.LL.B.(H)">B.A.LL.B.(H)</option>
+                                <option value="BBA.LL.B(H)">BBA.LL.B(H)</option>
+                            </optgroup>
+                            <optgroup label="2023 BATCH">
+                                <option value="B.tech Computer Science Engineering">B.tech Computer Science Engineering</option>
+                                <option value="B.tech Computer Science Engineering with specialization in AIML">B.tech Computer Science Engineering with specialization in AIML</option>
+                                <option value="B.tech Computer Science Engineering with specialization in CSTI">B.tech Computer Science Engineering with specialization in CSTI</option>
+                                <option value="B.tech Computer Science Engineering with specialization in FSD">B.tech Computer Science Engineering with specialization in FSD</option>
+                                <option value="B.tech Robotics &amp; Artificial Intelligence">B.tech Robotics &amp; Artificial Intelligence</option>
+                                <option value="B.tech Electronics &amp; Communication">B.tech Electronics &amp; Communication</option>
+                                <option value="B.tech Electronics &amp; Communication with specialization in VLSI">B.tech Electronics &amp; Communication with specialization in VLSI</option>
+                                <option value="B.Tech Mechanical Engineering with specialization in SMA">B.Tech Mechanical Engineering with specialization in SMA</option>
+                                <option value="B.A.B.Ed.">B.A.B.Ed.</option>
+                                <option value="B.Sc.B.Ed.">B.Sc.B.Ed.</option>
+                                <option value="B.A.LL.B.(H)">B.A.LL.B.(H)</option>
+                                <option value="BBA.LL.B(H)">BBA.LL.B(H)</option>
+                            </optgroup>
+                            <optgroup label="2024 BATCH">
+                                <option value="B.tech Computer Science Engineering">B.tech Computer Science Engineering</option>
+                                <option value="B.tech Computer Science Engineering with specialization in AIML">B.tech Computer Science Engineering with specialization in AIML</option>
+                                <option value="B.tech Computer Science Engineering with specialization in CSTI">B.tech Computer Science Engineering with specialization in CSTI</option>
+                                <option value="B.tech Computer Science Engineering with specialization in FSD">B.tech Computer Science Engineering with specialization in FSD</option>
+                                <option value="B.tech Robotics &amp; Artificial Intelligence">B.tech Robotics &amp; Artificial Intelligence</option>
+                                <option value="B.tech Electronics &amp; Communication">B.tech Electronics &amp; Communication</option>
+                                <option value="B.tech Electronics &amp; Communication with specialization in VLSI">B.tech Electronics &amp; Communication with specialization in VLSI</option>
+                                <option value="B.Tech Mechanical Engineering with specialization in SMA">B.Tech Mechanical Engineering with specialization in SMA</option>
+                                <option value="B.A.B.Ed.">B.A.B.Ed.</option>
+                                <option value="B.Sc.B.Ed.">B.Sc.B.Ed.</option>
+                                <option value="B.A.LL.B.(H)">B.A.LL.B.(H)</option>
+                                <option value="BBA.LL.B(H)">BBA.LL.B(H)</option>
+                                <option value="LL.B(3 YEAR)">LL.B(3 YEAR)</option>
+                                <option value="Bachelor of Business Administration with specialization in Finance &amp; Accounts">Bachelor of Business Administration with specialization in Finance &amp; Accounts</option>
+                                <option value="Bachelor of Business Administration with specialization in Entrepreneurship &amp; Family Business">Bachelor of Business Administration with specialization in Entrepreneurship &amp; Family Business</option>
+                                <option value="Bachelor of Business Administration with specialization in Global Operation Management">Bachelor of Business Administration with specialization in Global Operation Management</option>
+                                <option value="Bachelor of Business Administration with specialization in Business Analytics">Bachelor of Business Administration with specialization in Business Analytics</option>
+                                <option value="Bachelor of Business Administration with specialization in Global Health Care Management">Bachelor of Business Administration with specialization in Global Health Care Management</option>
+                            </optgroup>
+                            <optgroup label="2025 BATCH">
+                                <option value="B.tech Computer Science Engineering">B.tech Computer Science Engineering</option>
+                                <option value="B.tech Computer Science Engineering with specialization in AIML">B.tech Computer Science Engineering with specialization in AIML</option>
+                                <option value="B.tech Computer Science Engineering with specialization in CSTI">B.tech Computer Science Engineering with specialization in CSTI</option>
+                                <option value="B.tech Computer Science Engineering with specialization in FSD">B.tech Computer Science Engineering with specialization in FSD</option>
+                                <option value="B.tech Computer Science Engineering with specialization in Gen AI">B.tech Computer Science Engineering with specialization in Gen AI</option>
+                                <option value="B.tech Robotics &amp; Artificial Intelligence">B.tech Robotics &amp; Artificial Intelligence</option>
+                                <option value="B.tech Electronics &amp; Communication with specialization in VLSI">B.tech Electronics &amp; Communication with specialization in VLSI</option>
+                                <option value="B.Tech Mechanical Engineering with specialization in SMA">B.Tech Mechanical Engineering with specialization in SMA</option>
+                                <option value="B.Tech Mechanical Engineering with specialization in EV">B.Tech Mechanical Engineering with specialization in EV</option>
+                                <option value="M.Tech. Mechanical Engineering">M.Tech. Mechanical Engineering</option>
+                                <option value="M.Tech. Electronics and Communication Engineering">M.Tech. Electronics and Communication Engineering</option>
+                                <option value="M.Tech. Computer Engineering">M.Tech. Computer Engineering</option>
+                                <option value="B.A.B.Ed.">B.A.B.Ed.</option>
+                                <option value="B.Sc.B.Ed.">B.Sc.B.Ed.</option>
+                                <option value="B.Ed.">B.Ed.</option>
+                                <option value="B.A.LL.B.(H)">B.A.LL.B.(H)</option>
+                                <option value="BBA.LL.B(H)">BBA.LL.B(H)</option>
+                                <option value="LL.B(3 YEAR)">LL.B(3 YEAR)</option>
+                                <option value="Bachelor of Business Administration with specialization in Finance &amp; Accounts">Bachelor of Business Administration with specialization in Finance &amp; Accounts</option>
+                                <option value="Bachelor of Business Administration with specialization in Entrepreneurship &amp; Family Business">Bachelor of Business Administration with specialization in Entrepreneurship &amp; Family Business</option>
+                                <option value="Bachelor of Business Administration with specialization in Global Operation Management">Bachelor of Business Administration with specialization in Global Operation Management</option>
+                                <option value="Bachelor of Business Administration with specialization in Business Analytics">Bachelor of Business Administration with specialization in Business Analytics</option>
+                                <option value="MBA (Business Analytics)">MBA (Business Analytics)</option>
+                                <option value="M.Sc. Chemistry">M.Sc. Chemistry</option>
+                                <option value="Bachelor of Computer Applications">Bachelor of Computer Applications</option>
+                            </optgroup>
+                            <optgroup label="2026 BATCH">
+                                <option value="B.tech Computer Science Engineering">B.tech Computer Science Engineering</option>
+                                <option value="B.tech Computer Science Engineering with specialization in AIML">B.tech Computer Science Engineering with specialization in AIML</option>
+                                <option value="B.tech Computer Science Engineering with specialization in CSTI">B.tech Computer Science Engineering with specialization in CSTI</option>
+                                <option value="B.tech Computer Science Engineering with specialization in Gen AI">B.tech Computer Science Engineering with specialization in Gen AI</option>
+                                <option value="B.tech Robotics &amp; Artificial Intelligence">B.tech Robotics &amp; Artificial Intelligence</option>
+                                <option value="B.tech Electronics &amp; Communication with specialization in VLSI">B.tech Electronics &amp; Communication with specialization in VLSI</option>
+                                <option value="B.Tech Mechanical Engineering with specialization in SMA">B.Tech Mechanical Engineering with specialization in SMA</option>
+                                <option value="B.Tech Mechanical Engineering with specialization in EV">B.Tech Mechanical Engineering with specialization in EV</option>
+                                <option value="M.Tech. Mechanical Engineering">M.Tech. Mechanical Engineering</option>
+                                <option value="B.A.B.Ed.">B.A.B.Ed.</option>
+                                <option value="B.Sc.B.Ed.">B.Sc.B.Ed.</option>
+                                <option value="B.Ed.">B.Ed.</option>
+                                <option value="B.A.LL.B.(H)">B.A.LL.B.(H)</option>
+                                <option value="BBA.LL.B(H)">BBA.LL.B(H)</option>
+                                <option value="LL.B(3 YEAR)">LL.B(3 YEAR)</option>
+                                <option value="Bachelor of Business Administration with specialization in Finance &amp; Accounts">Bachelor of Business Administration with specialization in Finance &amp; Accounts</option>
+                                <option value="Bachelor of Business Administration with specialization in Entrepreneurship &amp; Family Business">Bachelor of Business Administration with specialization in Entrepreneurship &amp; Family Business</option>
+                                <option value="Bachelor of Business Administration with specialization in Global Operation Management">Bachelor of Business Administration with specialization in Global Operation Management</option>
+                                <option value="Bachelor of Business Administration with specialization in Business Analytics">Bachelor of Business Administration with specialization in Business Analytics</option>
+                                <option value="Bachelor of Business Administration with specialization in Artificial Intelligence">Bachelor of Business Administration with specialization in Artificial Intelligence</option>
+                                <option value="MBA (Business Analytics)">MBA (Business Analytics)</option>
+                                <option value="Bachelor of Computer Applications">Bachelor of Computer Applications</option>
+                                <option value="ITEP BA B.ED">ITEP BA B.ED</option>
+                                <option value="ITEP BSc B.Ed">ITEP BSc B.Ed</option>
+                                <option value="M.A. in Education (International Education)">M.A. in Education (International Education)</option>
+                                <option value="M.A. in Education with Specialization in IEELD">M.A. in Education with Specialization in IEELD</option>
+                                <option value="LLM(1 Year)">LLM(1 Year)</option>
+                            </optgroup>
                         </select>
                     </div>
                 </div>
@@ -468,9 +562,15 @@
                         <label class="block font-medium text-slate-700 mb-1">Semester *</label>
                         <select id="upload-semester" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none" required>
                             <option value="Sem 1">Semester 1</option>
+                            <option value="Sem 2">Semester 2</option>
                             <option value="Sem 3">Semester 3</option>
+                            <option value="Sem 4">Semester 4</option>
                             <option value="Sem 5">Semester 5</option>
+                            <option value="Sem 6">Semester 6</option>
                             <option value="Sem 7">Semester 7</option>
+                            <option value="Sem 8">Semester 8</option>
+                            <option value="Sem 9">Semester 9</option>
+                            <option value="Sem 10">Semester 10</option>
                         </select>
                     </div>
                     <div>
@@ -495,6 +595,22 @@
                         <p id="file-chosen-name" class="text-xs text-brand-600 font-semibold mt-1">No file selected</p>
                         <input type="file" id="upload-file-input" accept=".pdf" class="hidden" onchange="updateFileName(this)" />
                     </div>
+                </div>
+
+                <div>
+                    <label class="block font-medium text-slate-700 mb-1">Semester *</label>
+                    <select id="sch-semester" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-rose-500" required>
+                        <option value="Sem 1">Semester 1</option>
+                        <option value="Sem 2">Semester 2</option>
+                        <option value="Sem 3">Semester 3</option>
+                        <option value="Sem 4">Semester 4</option>
+                        <option value="Sem 5">Semester 5</option>
+                        <option value="Sem 6">Semester 6</option>
+                        <option value="Sem 7">Semester 7</option>
+                        <option value="Sem 8">Semester 8</option>
+                        <option value="Sem 9">Semester 9</option>
+                        <option value="Sem 10">Semester 10</option>
+                    </select>
                 </div>
 
                 <div class="flex justify-end space-x-2 pt-2 border-t border-slate-100">
@@ -571,6 +687,8 @@
                             <option value="Mechanical Eng.">Mechanical Eng.</option>
                             <option value="Electrical Eng.">Electrical Eng.</option>
                             <option value="Management Studies">Management Studies</option>
+                            <option value="CST">CST</option><option value="ME">ME</option><option value="ECE">ECE</option><option value="Robotics & AI">Robotics & AI</option>
+                            <option value="Law">Law</option><option value="Physics">Physics</option><option value="Chemistry">Chemistry</option><option value="Mathematics">Mathematics</option><option value="Education">Education</option><option value="Business">Business</option>
                         </select>
                     </div>
                     <div>
@@ -1047,7 +1165,7 @@
         // 2. COE VIEW & FILTER LOGIC
         function filterCoeTab(tab) {
             coeTabFilter = tab;
-            const tabs = ['pending', 'not-uploaded', 'resubmitted', 'archived'];
+            const tabs = ['pending', 'not-uploaded', 'moderation_approved', 'resubmitted', 'archived'];
             tabs.forEach(t => {
                 const key = t.replace('-', '_').toUpperCase();
                 const element = document.getElementById(`coe-tab-${t}`);
@@ -1068,8 +1186,11 @@
             } else if (tab === 'PENDING') {
                 titleElement.innerHTML = `<i class="fa-solid fa-list-check text-brand-600"></i><span>Submitted Question Papers Pending Verification</span>`;
                 actionBar.classList.add('hidden');
+            } else if (tab === 'MODERATION_APPROVED') {
+                titleElement.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-600"></i><span>Approved by Moderation — Awaiting COE Final Approval</span>`;
+                actionBar.classList.add('hidden');
             } else if (tab === 'RESUBMITTED') {
-                titleElement.innerHTML = `<i class="fa-solid fa-rotate-right text-purple-600"></i><span>Revised Papers & Moderated Papers</span>`;
+                titleElement.innerHTML = `<i class="fa-solid fa-rotate-right text-purple-600"></i><span>Revised Papers / Changes Required</span>`;
                 actionBar.classList.add('hidden');
             } else {
                 titleElement.innerHTML = `<i class="fa-solid fa-box-archive text-teal-600"></i><span>Final Approved & Archived Question Papers</span>`;
@@ -1084,7 +1205,7 @@
             const raw = `${item.school || ''} ${item.department || ''} ${item.program || ''}`.toLowerCase();
             if (raw.includes('law')) return 'School of Law';
             if (raw.includes('physics') || raw.includes('chemistry') || raw.includes('chem') || raw.includes('mathematics') || raw.includes('math')) return 'School of Sciences';
-            if (raw.includes('education')) return 'School of Education';
+            if (raw.includes('education') || raw.includes('b.ed') || raw.includes('b.ed.') || raw.includes('itep')) return 'School of Education';
             if (raw.includes('business') || raw.includes('management') || raw.includes('mba') || raw.includes('bba')) return 'School of Business';
             if (raw.includes('engineering') || raw.includes('computer science') || raw.includes('cst') || raw.includes('mechanical') || raw.includes('robotics') || raw.includes('artificial intelligence') || raw.includes('ece') || raw.includes('electronics')) return 'School of Engineering';
             return item.school || 'Unmapped / Other';
@@ -1112,30 +1233,30 @@
             const inScope = item => !currentSession?.schoolScope || (qpmsSchoolFor(item) === currentSession.schoolScope && (!currentSession.departmentScope || qpmsDepartmentFor(item).toUpperCase() === currentSession.departmentScope.toUpperCase()));
             const papers = (papersDatabase || []).filter(inScope);
             const schedules = (datesheetSchedule || []).filter(inScope);
-            const uploadedCodes = new Set(papers.map(p => String(p.courseCode || '').trim().toUpperCase()).filter(Boolean));
+            const uploadedCodes = new Set(papers.map(p => String(p.courseCode || '').trim().toUpperCase()));
             const pending = schedules.filter(s => !uploadedCodes.has(String(s.courseCode || '').trim().toUpperCase()));
-            const moderated = papers.filter(p => ['APPROVED','FINAL_APPROVED'].includes(p.status));
+            const moderated = papers.filter(p => p.status === 'APPROVED');
             const finalApproved = papers.filter(p => p.status === 'FINAL_APPROVED');
-            const totalCard = (label, value, cls) => `<div class="rounded-xl border p-3 ${cls}"><div class="text-xs opacity-80">${label}</div><div class="text-2xl font-black mt-1">${value}</div></div>`;
-            document.getElementById('coe-report-summary').innerHTML = [totalCard('Papers Uploaded',papers.length,'border-slate-200 bg-slate-50 text-slate-900'),totalCard('Pending Datesheet Uploads',pending.length,'border-rose-200 bg-rose-50 text-rose-900'),totalCard('Moderated / Approved by Moderator',moderated.length,'border-violet-200 bg-violet-50 text-violet-900'),totalCard('Final Approved by COE',finalApproved.length,'border-emerald-200 bg-emerald-50 text-emerald-900')].join('');
+            const totalCard = (label, value, cls) => `<div class="rounded-xl border p-3 ${cls}"><div class="text-xs font-semibold opacity-80">${label}</div><div class="text-2xl font-black mt-1">${value}</div></div>`;
+            document.getElementById('coe-report-summary').innerHTML = [totalCard('Papers Uploaded',papers.length,'border-slate-200 bg-slate-50 text-slate-900'),totalCard('Pending Datesheet Uploads',pending.length,'border-rose-200 bg-rose-50 text-rose-900'),totalCard('Approved by Moderation',moderated.length,'border-violet-200 bg-violet-50 text-violet-900'),totalCard('Final Approved by COE',finalApproved.length,'border-emerald-200 bg-emerald-50 text-emerald-900')].join('');
             const keys = new Map();
-            function row(school, dept) { const key=school+'|||'+dept; if(!keys.has(key)) keys.set(key,{school,dept,scheduled:0,uploaded:0,pending:0,moderated:0,approved:0}); return keys.get(key); }
-            schedules.forEach(s=>{const school=qpmsSchoolFor(s),dept=qpmsDepartmentFor(s),r=row(school,dept);r.scheduled++;if(!uploadedCodes.has(String(s.courseCode||'').trim().toUpperCase()))r.pending++;});
-            papers.forEach(p=>{const school=qpmsSchoolFor(p),dept=qpmsDepartmentFor(p),r=row(school,dept);r.uploaded++;if(['APPROVED','FINAL_APPROVED'].includes(p.status))r.moderated++;if(p.status==='FINAL_APPROVED')r.approved++;});
-            document.getElementById('coe-school-report').innerHTML = [...keys.values()].map(r=>`<tr><td class="p-3 font-semibold text-slate-800">${escapeHtml(r.school)}</td><td class="p-3">${escapeHtml(r.dept)}</td><td class="p-3">${r.scheduled}</td><td class="p-3 font-bold">${r.uploaded}</td><td class="p-3 ${r.pending?'text-rose-700 font-bold':''}">${r.pending}</td><td class="p-3 text-violet-700 font-bold">${r.moderated}</td><td class="p-3 text-emerald-700 font-bold">${r.approved}</td></tr>`).join('');
-            document.getElementById('quick-moderated-count').textContent=moderated.length;
-            document.getElementById('quick-approved-count').textContent=finalApproved.length;
-            document.getElementById('quick-pending-count').textContent=pending.length;
-            document.getElementById('quick-moderated-list').innerHTML=moderated.length?moderated.map(qpmsPaperLink).join(''):'<p class="text-xs text-slate-500">No moderated papers available yet.</p>';
+            function row(school, dept, semester) { const key=[school,dept,semester].join('|||'); if(!keys.has(key)) keys.set(key,{school,dept,semester,scheduled:0,uploaded:0,pending:0,moderated:0,approved:0}); return keys.get(key); }
+            schedules.forEach(s=>{const r=row(qpmsSchoolFor(s),qpmsDepartmentFor(s),s.semester||'Not specified');r.scheduled++;if(!uploadedCodes.has(String(s.courseCode||'').trim().toUpperCase()))r.pending++;});
+            papers.forEach(p=>{const r=row(qpmsSchoolFor(p),qpmsDepartmentFor(p),p.semester||'Not specified');r.uploaded++;if(p.status==='APPROVED')r.moderated++;if(p.status==='FINAL_APPROVED')r.approved++;});
+            document.getElementById('coe-school-report').innerHTML = [...keys.values()].sort((a,b)=>a.school.localeCompare(b.school)||a.dept.localeCompare(b.dept)||a.semester.localeCompare(b.semester)).map(r=>`<tr><td class="p-3 font-semibold text-slate-800">${escapeHtml(r.school)}</td><td class="p-3">${escapeHtml(r.dept)}</td><td class="p-3">${escapeHtml(r.semester)}</td><td class="p-3">${r.scheduled}</td><td class="p-3 font-bold">${r.uploaded}</td><td class="p-3 ${r.pending?'text-rose-700 font-bold':''}">${r.pending}</td><td class="p-3 text-violet-700 font-bold">${r.moderated}</td><td class="p-3 text-emerald-700 font-bold">${r.approved}</td></tr>`).join('');
+            document.getElementById('quick-moderated-count').textContent = moderated.length;
+            document.getElementById('quick-moderated-list').innerHTML=moderated.length?moderated.map(qpmsPaperLink).join(''):'<p class="text-xs text-slate-500">No papers approved by moderation and awaiting COE approval.</p>';
+            document.getElementById('quick-approved-count').textContent = finalApproved.length;
             document.getElementById('quick-approved-list').innerHTML=finalApproved.length?finalApproved.map(qpmsPaperLink).join(''):'<p class="text-xs text-slate-500">No final-approved papers available yet.</p>';
-            document.getElementById('quick-pending-list').innerHTML=pending.length?pending.map(s=>`<div class="bg-white/80 border border-white rounded-lg p-2"><div class="font-semibold text-slate-800">${escapeHtml(s.courseName)}</div><div class="text-[10px] text-slate-500">${escapeHtml(s.courseCode)} · ${escapeHtml(qpmsSchoolFor(s))} · ${escapeHtml(qpmsDepartmentFor(s))}</div><div class="text-[10px] text-rose-700 mt-1">Exam: ${escapeHtml(s.paperDate||'Date not set')} · ${escapeHtml(s.facultyName||'Faculty not assigned')}</div></div>`).join(''):'<p class="text-xs text-slate-500">All scheduled papers have been uploaded.</p>';
+            document.getElementById('quick-pending-count').textContent = pending.length;
+            document.getElementById('quick-pending-list').innerHTML=pending.length?pending.map(s=>`<div class="bg-white/80 border border-white rounded-lg p-2"><div class="font-semibold text-slate-800">${escapeHtml(s.courseName)}</div><div class="text-[10px] text-slate-500">${escapeHtml(s.courseCode)} · ${escapeHtml(qpmsSchoolFor(s))} · ${escapeHtml(qpmsDepartmentFor(s))} · ${escapeHtml(s.semester||'Semester not set')}</div><div class="text-[10px] text-rose-700 mt-1">Exam: ${escapeHtml(s.paperDate||'Date not set')} · ${escapeHtml(s.facultyName||'Faculty not assigned')}</div></div>`).join(''):'<p class="text-xs text-slate-500">All scheduled papers have been uploaded.</p>';
         }
         function downloadQpmsReport() {
             const inScope = item => !currentSession?.schoolScope || (qpmsSchoolFor(item) === currentSession.schoolScope && (!currentSession.departmentScope || qpmsDepartmentFor(item).toUpperCase() === currentSession.departmentScope.toUpperCase()));
-            const rows=[['School','Department / Programme','Course Code','Course Name','Faculty','Exam Date','Status','Datesheet Upload Pending']];
-            (papersDatabase||[]).filter(inScope).forEach(p=>rows.push([qpmsSchoolFor(p),qpmsDepartmentFor(p),p.courseCode||'',p.courseName||'',p.facultyName||'',p.paperDate||'',p.status||'', 'No']));
+            const rows=[['School','Department','Program','Semester','Course Code','Course Name','Faculty','Exam Date','Status','Datesheet Upload Pending']];
+            (papersDatabase||[]).filter(inScope).forEach(p=>rows.push([qpmsSchoolFor(p),qpmsDepartmentFor(p),p.program||'',p.semester||'',p.courseCode||'',p.courseName||'',p.facultyName||'',p.paperDate||'',p.status||'', 'No']));
             const codes=new Set((papersDatabase||[]).map(p=>String(p.courseCode||'').toUpperCase()));
-            (datesheetSchedule||[]).filter(inScope).filter(s=>!codes.has(String(s.courseCode||'').toUpperCase())).forEach(s=>rows.push([qpmsSchoolFor(s),qpmsDepartmentFor(s),s.courseCode||'',s.courseName||'',s.facultyName||'',s.paperDate||'','NOT_UPLOADED','Yes']));
+            (datesheetSchedule||[]).filter(inScope).filter(s=>!codes.has(String(s.courseCode||'').toUpperCase())).forEach(s=>rows.push([qpmsSchoolFor(s),qpmsDepartmentFor(s),s.program||'',s.semester||'',s.courseCode||'',s.courseName||'',s.facultyName||'',s.paperDate||'','NOT_UPLOADED','Yes']));
             const csv=rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');
             const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'}));a.download='QPMS_School_Department_Report.csv';a.click();URL.revokeObjectURL(a.href);
         }
@@ -1212,8 +1333,10 @@
             let filtered = [];
             if (coeTabFilter === 'PENDING') {
                 filtered = papersDatabase.filter(p => ['SUBMITTED_TO_COE', 'FORWARDED_FOR_MODERATION'].includes(p.status));
+            } else if (coeTabFilter === 'MODERATION_APPROVED') {
+                filtered = papersDatabase.filter(p => p.status === 'APPROVED');
             } else if (coeTabFilter === 'RESUBMITTED') {
-                filtered = papersDatabase.filter(p => ['RESUBMITTED_TO_COE', 'APPROVED'].includes(p.status));
+                filtered = papersDatabase.filter(p => ['RESUBMITTED_TO_COE', 'CHANGES_REQUIRED'].includes(p.status));
             } else {
                 filtered = papersDatabase.filter(p => p.status === 'FINAL_APPROVED');
             }
@@ -1285,7 +1408,8 @@
                 school: qpmsSchoolFor({department: document.getElementById('sch-dept').value}),
                 facultyName: document.getElementById('sch-faculty-name').value,
                 paperDate: document.getElementById('sch-exam-date').value,
-                examType: document.getElementById('sch-exam-type').value
+                examType: document.getElementById('sch-exam-type').value,
+                semester: document.getElementById('sch-semester').value
             };
 
             datesheetSchedule.push(newEntry);
@@ -1475,6 +1599,7 @@
 
             const timestamp = new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
             paper.status = 'FORWARDED_FOR_MODERATION';
+            window.QPMS?.updatePaper(paper.id, {status: paper.status}).catch(e => showToast('Status could not be saved to database: ' + e.message, 'error'));
             paper.auditTrail.push({
                 action: 'Forwarded for Department Moderation',
                 role: 'COE',
@@ -1537,6 +1662,7 @@
             };
 
             paper.status = decision; // 'APPROVED' or 'CHANGES_REQUIRED'
+            window.QPMS?.updatePaper(paper.id, {status: paper.status, comments}).catch(e => showToast('Moderation decision could not be saved: ' + e.message, 'error'));
 
             paper.auditTrail.push({
                 action: `MRU Audit Review: ${decision === 'APPROVED' ? 'Approved' : 'Changes Required'}`,
@@ -1558,6 +1684,7 @@
 
             const timestamp = new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
             paper.status = 'FINAL_APPROVED';
+            window.QPMS?.updatePaper(paper.id, {status: paper.status}).catch(e => showToast('Final approval could not be saved: ' + e.message, 'error'));
             paper.auditTrail.push({
                 action: 'Final Approval & Secure Archive',
                 role: 'COE',
@@ -1644,7 +1771,7 @@ window.QPMS = {
       id, courseName: p.title || p.subject || 'Question Paper', courseCode: (p.course || '').toUpperCase(), school: p.school || '',
       department: p.department || '', program: p.program || '', semester: p.semester || '',
       examType: p.exam || '', paperDate: p.submission_date ? new Date(p.submission_date).toISOString().slice(0,10) : '',
-      facultyName: p.faculty || '', currentVersion: 1, status: p.status || 'SUBMITTED_TO_COE', hasFile: p.has_file !== false,
+      facultyName: p.faculty || '', currentVersion: 1, status: ({'Submitted by Faculty':'SUBMITTED_TO_COE','Submitted to COE':'SUBMITTED_TO_COE','Approved by Moderator':'APPROVED','Moderation Approved':'APPROVED','Changes Required':'CHANGES_REQUIRED','Resubmitted to COE':'RESUBMITTED_TO_COE','Final Approved':'FINAL_APPROVED','Final Approved & Archived':'FINAL_APPROVED'}[p.status] || p.status || 'SUBMITTED_TO_COE'), hasFile: p.has_file !== false,
       versions: [{version: 1, filename, uploadTime: p.created_at ? new Date(p.created_at).toLocaleString() : '', uploadedBy: p.faculty || ''}],
       auditForm: null, auditTrail: [{action: 'Uploaded Version 1', role: 'Faculty', user: p.faculty || '', timestamp: p.created_at ? new Date(p.created_at).toLocaleString() : '', details: 'Submitted question paper to COE'}]
     };
