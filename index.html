@@ -1536,16 +1536,58 @@
             }
         }
 
+        function qpmsNorm(value) {
+            return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ').replace(/[._-]+/g, ' ');
+        }
+        function qpmsExamNorm(value) {
+            const v = qpmsNorm(value).replace(/\bexam\b/g, '').trim();
+            if (v.includes('mid')) return 'mid semester';
+            if (v.includes('end')) return 'end semester';
+            if (v.includes('supplement')) return 'supplementary';
+            return v;
+        }
         function datesheetMatchForUpload(data) {
-            const norm = v => String(v || '').trim().toLowerCase().replace(/\s+/g, ' ');
             const matches = (datesheetSchedule || []).filter(s =>
-                norm(s.courseCode) === norm(data.course) &&
-                norm(s.department) === norm(data.department) &&
-                norm(s.semester) === norm(data.semester) &&
-                norm(s.examType) === norm(data.exam) &&
-                (!s.program || norm(s.program) === norm(data.program))
+                qpmsNorm(s.courseCode) === qpmsNorm(data.course) &&
+                qpmsNorm(s.semester) === qpmsNorm(data.semester) &&
+                qpmsExamNorm(s.examType) === qpmsExamNorm(data.exam) &&
+                (!data.program || !s.program || qpmsNorm(s.program) === qpmsNorm(data.program))
             );
             return {matches, expectedDates:[...new Set(matches.map(s => String(s.paperDate || '').slice(0,10)).filter(Boolean))]};
+        }
+
+        // Build the faculty programme list from the COE's actual schedule, not a stale hard-coded list.
+        function refreshUploadPrograms() {
+            const code = document.getElementById('upload-course-code');
+            const semester = document.getElementById('upload-semester');
+            const exam = document.getElementById('upload-exam');
+            const program = document.getElementById('upload-program');
+            if (!code || !semester || !exam || !program) return;
+            const current = program.value;
+            const matches = (datesheetSchedule || []).filter(s =>
+                qpmsNorm(s.courseCode) === qpmsNorm(code.value) &&
+                qpmsNorm(s.semester) === qpmsNorm(semester.value) &&
+                qpmsExamNorm(s.examType) === qpmsExamNorm(exam.value)
+            );
+            const programs = [...new Map(matches.filter(s => s.program).map(s => [qpmsNorm(s.program), s.program])).values()];
+            if (!code.value.trim() || !matches.length) return;
+            program.innerHTML = '<option value="">Select programme from COE datesheet</option>';
+            programs.forEach(name => {
+                const option = document.createElement('option'); option.value = name; option.textContent = name; program.appendChild(option);
+            });
+            if (programs.some(name => qpmsNorm(name) === qpmsNorm(current))) program.value = programs.find(name => qpmsNorm(name) === qpmsNorm(current));
+            else if (programs.length === 1) program.value = programs[0];
+            const dept = document.getElementById('upload-dept');
+            const departments = [...new Set(matches.map(s => s.department).filter(Boolean))];
+            if (dept && departments.length === 1) {
+                const existing = [...dept.options].find(o => qpmsNorm(o.value) === qpmsNorm(departments[0]) || qpmsNorm(o.textContent) === qpmsNorm(departments[0]));
+                if (existing) dept.value = existing.value;
+            }
+            const dates = [...new Set(matches.map(s => String(s.paperDate || '').slice(0,10)).filter(Boolean))];
+            const dateInput = document.getElementById('upload-paper-date');
+            if (dateInput && dates.length === 1) dateInput.value = dates[0];
+            const courseName = document.getElementById('upload-course-name');
+            if (courseName && !courseName.value.trim() && matches[0].courseName) courseName.value = matches[0].courseName;
         }
 
         async function loadDatesheetSchedule() {
@@ -1554,6 +1596,7 @@
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.error || 'Could not load datesheet schedule');
                 datesheetSchedule = result.schedules || [];
+                refreshUploadPrograms();
                 if (currentSession) renderDashboard();
             } catch (err) {
                 console.error('Datesheet schedule failed to load:', err);
@@ -1574,6 +1617,9 @@
             });
         }
         populateScheduleProgramOptions();
+        ['upload-course-code','upload-semester','upload-exam'].forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener('change', refreshUploadPrograms); });
+        const uploadCodeInput = document.getElementById('upload-course-code');
+        if (uploadCodeInput) uploadCodeInput.addEventListener('blur', refreshUploadPrograms);
 
         // 3. MODERATOR VIEW
         function renderModeratorView() {
