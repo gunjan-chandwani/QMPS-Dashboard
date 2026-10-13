@@ -941,13 +941,29 @@
         }
 
         // Calculate Unuploaded Papers from Datesheet Schedule
+        function qpmsNorm(value) {
+            return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ').replace(/[._-]+/g, ' ');
+        }
+        function qpmsExamNorm(value) {
+            const v = qpmsNorm(value).replace(/\bexam\b/g, '').trim();
+            if (v.includes('mid')) return 'mid semester';
+            if (v.includes('end')) return 'end semester';
+            if (v.includes('supplement')) return 'supplementary';
+            return v;
+        }
+        function qpmsScheduleMatchesPaper(sch, p) {
+            const same = (a,b) => qpmsNorm(a) === qpmsNorm(b);
+            const hasMapping = value => String(value || '').trim() && !['not specified','unmapped from pdf','examination'].includes(qpmsNorm(value));
+            return same(p.courseCode, sch.courseCode) &&
+                (!hasMapping(sch.department) || same(qpmsDepartmentFor(p), qpmsDepartmentFor(sch))) &&
+                (!hasMapping(sch.semester) || same(p.semester, sch.semester)) &&
+                (!hasMapping(sch.examType) || qpmsExamNorm(p.examType) === qpmsExamNorm(sch.examType)) &&
+                (!hasMapping(sch.program) || !p.program || same(p.program, sch.program));
+        }
         function getUnuploadedPapers() {
-            const norm = v => String(v || '').trim().toLowerCase().replace(/\s+/g, ' ');
-            return datesheetSchedule.filter(sch => !papersDatabase.some(p =>
-                norm(p.courseCode) === norm(sch.courseCode) && norm(p.department) === norm(sch.department) &&
-                norm(p.semester) === norm(sch.semester) && norm(p.examType) === norm(sch.examType) &&
-                (!sch.program || norm(p.program) === norm(sch.program)) && p.status !== 'CHANGES_REQUIRED'
-            ));
+            // A paper with Changes Required has still been uploaded; it is pending revision,
+            // not a missing upload. Compare the complete schedule identity, not course code alone.
+            return (datesheetSchedule || []).filter(sch => !(papersDatabase || []).some(p => qpmsScheduleMatchesPaper(sch, p)));
         }
 
         // App Initializer
@@ -1132,7 +1148,7 @@ window.onload = function() {
         function renderFacultyPendingAlert() {
             const unuploaded = getUnuploadedPapers();
             // Filter unuploaded papers for current faculty member
-            const myPending = unuploaded.filter(item => item.facultyName.toLowerCase() === currentSession.name.toLowerCase());
+            const myPending = unuploaded.filter(item => String(item.facultyName || '').trim() && String(item.facultyName).toLowerCase() === currentSession.name.toLowerCase());
             const alertBox = document.getElementById('faculty-pending-datesheet-alert');
             const listContainer = document.getElementById('faculty-pending-courses-list');
             const countBadge = document.getElementById('faculty-pending-count');
@@ -1320,23 +1336,23 @@ window.onload = function() {
             const inScope = item => !currentSession?.schoolScope || (qpmsSchoolFor(item) === currentSession.schoolScope && (!currentSession.departmentScope || qpmsDepartmentFor(item).toUpperCase() === currentSession.departmentScope.toUpperCase()));
             const papers = (papersDatabase || []).filter(inScope);
             const schedules = (datesheetSchedule || []).filter(inScope);
-            const uploadedCodes = new Set(papers.map(p => String(p.courseCode || '').trim().toUpperCase()));
-            const pending = schedules.filter(s => !uploadedCodes.has(String(s.courseCode || '').trim().toUpperCase()));
-            const moderated = papers.filter(p => p.status === 'APPROVED');
-            const finalApproved = papers.filter(p => p.status === 'FINAL_APPROVED');
+            const pending = schedules.filter(s => !(papers || []).some(p => qpmsScheduleMatchesPaper(s, p)));
+            const normalizedStatus = p => String(p.status || '').toUpperCase().replace(/[ -]+/g, '_').replace(/^AUDIT:_?/, '');
+            const moderated = papers.filter(p => ['APPROVED','APPROVED_BY_MODERATOR','MODERATION_APPROVED'].includes(normalizedStatus(p)));
+            const finalApproved = papers.filter(p => ['FINAL_APPROVED','FINAL_APPROVED_&_ARCHIVED'].includes(normalizedStatus(p)));
             const totalCard = (label, value, cls) => `<div class="rounded-xl border p-3 ${cls}"><div class="text-xs font-semibold opacity-80">${label}</div><div class="text-2xl font-black mt-1">${value}</div></div>`;
-            document.getElementById('coe-report-summary').innerHTML = [totalCard('Papers Uploaded',papers.length,'border-slate-200 bg-slate-50 text-slate-900'),totalCard('Pending Datesheet Uploads',pending.length,'border-rose-200 bg-rose-50 text-rose-900'),totalCard('Approved by Moderation',moderated.length,'border-violet-200 bg-violet-50 text-violet-900'),totalCard('Final Approved by COE',finalApproved.length,'border-emerald-200 bg-emerald-50 text-emerald-900')].join('');
+            document.getElementById('coe-report-summary').innerHTML = [totalCard('Papers Uploaded',papers.length,'border-slate-200 bg-slate-50 text-slate-900'),totalCard('Pending Datesheet Uploads',schedules.length ? pending.length : '—','border-rose-200 bg-rose-50 text-rose-900'),totalCard('Approved by Moderation',moderated.length,'border-violet-200 bg-violet-50 text-violet-900'),totalCard('Final Approved by COE',finalApproved.length,'border-emerald-200 bg-emerald-50 text-emerald-900')].join('');
             const keys = new Map();
             function row(school, dept, semester) { const key=[school,dept,semester].join('|||'); if(!keys.has(key)) keys.set(key,{school,dept,semester,scheduled:0,uploaded:0,pending:0,moderated:0,approved:0}); return keys.get(key); }
-            schedules.forEach(s=>{const r=row(qpmsSchoolFor(s),qpmsDepartmentFor(s),s.semester||'Not specified');r.scheduled++;if(!uploadedCodes.has(String(s.courseCode||'').trim().toUpperCase()))r.pending++;});
-            papers.forEach(p=>{const r=row(qpmsSchoolFor(p),qpmsDepartmentFor(p),p.semester||'Not specified');r.uploaded++;if(p.status==='APPROVED')r.moderated++;if(p.status==='FINAL_APPROVED')r.approved++;});
+            schedules.forEach(s=>{const r=row(qpmsSchoolFor(s),qpmsDepartmentFor(s),s.semester||'Not specified');r.scheduled++;if(!(papers || []).some(p=>qpmsScheduleMatchesPaper(s,p)))r.pending++;});
+            papers.forEach(p=>{const r=row(qpmsSchoolFor(p),qpmsDepartmentFor(p),p.semester||'Not specified');r.uploaded++;if(['APPROVED','APPROVED_BY_MODERATOR','MODERATION_APPROVED'].includes(String(p.status||'').toUpperCase().replace(/[ -]+/g,'_')))r.moderated++;if(['FINAL_APPROVED','FINAL_APPROVED_&_ARCHIVED'].includes(String(p.status||'').toUpperCase().replace(/[ -]+/g,'_')))r.approved++;});
             document.getElementById('coe-school-report').innerHTML = [...keys.values()].sort((a,b)=>a.school.localeCompare(b.school)||a.dept.localeCompare(b.dept)||a.semester.localeCompare(b.semester)).map(r=>`<tr><td class="p-3 font-semibold text-slate-800">${escapeHtml(r.school)}</td><td class="p-3">${escapeHtml(r.dept)}</td><td class="p-3">${escapeHtml(r.semester)}</td><td class="p-3">${r.scheduled}</td><td class="p-3 font-bold">${r.uploaded}</td><td class="p-3 ${r.pending?'text-rose-700 font-bold':''}">${r.pending}</td><td class="p-3 text-violet-700 font-bold">${r.moderated}</td><td class="p-3 text-emerald-700 font-bold">${r.approved}</td></tr>`).join('');
             document.getElementById('quick-moderated-count').textContent = moderated.length;
             document.getElementById('quick-moderated-list').innerHTML=moderated.length?moderated.map(qpmsPaperLink).join(''):'<p class="text-xs text-slate-500">No papers approved by moderation and awaiting COE approval.</p>';
             document.getElementById('quick-approved-count').textContent = finalApproved.length;
             document.getElementById('quick-approved-list').innerHTML=finalApproved.length?finalApproved.map(qpmsPaperLink).join(''):'<p class="text-xs text-slate-500">No final-approved papers available yet.</p>';
-            document.getElementById('quick-pending-count').textContent = pending.length;
-            document.getElementById('quick-pending-list').innerHTML=pending.length?pending.map(s=>`<div class="bg-white/80 border border-white rounded-lg p-2"><div class="font-semibold text-slate-800">${escapeHtml(s.courseName)}</div><div class="text-[10px] text-slate-500">${escapeHtml(s.courseCode)} · ${escapeHtml(qpmsSchoolFor(s))} · ${escapeHtml(qpmsDepartmentFor(s))} · ${escapeHtml(s.semester||'Semester not set')}</div><div class="text-[10px] text-rose-700 mt-1">Exam: ${escapeHtml(s.paperDate||'Date not set')} · ${escapeHtml(s.facultyName||'Faculty not assigned')}</div></div>`).join(''):'<p class="text-xs text-slate-500">All scheduled papers have been uploaded.</p>';
+            document.getElementById('quick-pending-count').textContent = schedules.length ? pending.length : '—';
+            document.getElementById('quick-pending-list').innerHTML = pending.length ? pending.map(s=>`<div class="bg-white/80 border border-white rounded-lg p-2"><div class="font-semibold text-slate-800">${escapeHtml(s.courseName)}</div><div class="text-[10px] text-slate-500">${escapeHtml(s.courseCode)} · ${escapeHtml(qpmsSchoolFor(s))} · ${escapeHtml(qpmsDepartmentFor(s))} · ${escapeHtml(s.semester||'Semester not set')}</div><div class="text-[10px] text-rose-700 mt-1">Exam: ${escapeHtml(s.paperDate||'Date not set')} · ${escapeHtml(s.facultyName||'Faculty not assigned')}</div></div>`).join('') : (schedules.length ? '<p class="text-xs text-emerald-700">All structured schedule entries have matching uploaded papers.</p>' : '<p class="text-xs text-amber-800">No structured datesheet schedule rows are loaded. Uploading a PDF alone does not create course-wise pending records; add/import the courses in COE Datesheet Schedule to calculate this count.</p>');
         }
         function qpmsReportInScope(item, role) {
             // Moderator reports must only include records assigned to that moderator's scope.
@@ -1345,15 +1361,15 @@ window.onload = function() {
         }
 
         function qpmsWorkflowCounts(papers) {
-            const statuses = papers.map(p => String(p.status || '').toUpperCase());
-            const moderatedStatuses = ['APPROVED', 'CHANGES_REQUIRED', 'FINAL_APPROVED', 'MODERATION_APPROVED', 'APPROVED_BY_MODERATOR'];
+            const statuses = papers.map(p => String(p.status || '').toUpperCase().replace(/[ -]+/g, '_').replace(/^AUDIT:_?/, ''));
+            const moderatedStatuses = ['APPROVED', 'CHANGES_REQUIRED', 'CHANGES_REQUIRED_BY_MODERATOR', 'FINAL_APPROVED', 'FINAL_APPROVED_&_ARCHIVED', 'MODERATION_APPROVED', 'APPROVED_BY_MODERATOR'];
             return {
                 uploaded: papers.length,
-                sentForModeration: statuses.filter(s => ['FORWARDED_FOR_MODERATION', 'RESUBMITTED_TO_COE'].includes(s)).length,
+                sentForModeration: statuses.filter(s => ['FORWARDED_FOR_MODERATION', 'RESUBMITTED_TO_COE', 'SENT_FOR_MODERATION'].includes(s)).length,
                 moderated: statuses.filter(s => moderatedStatuses.includes(s)).length,
                 moderationApproved: statuses.filter(s => ['APPROVED', 'MODERATION_APPROVED', 'APPROVED_BY_MODERATOR'].includes(s)).length,
-                changesRequired: statuses.filter(s => s === 'CHANGES_REQUIRED').length,
-                finalApproved: statuses.filter(s => s === 'FINAL_APPROVED').length,
+                changesRequired: statuses.filter(s => ['CHANGES_REQUIRED','CHANGES_REQUIRED_BY_MODERATOR'].includes(s)).length,
+                finalApproved: statuses.filter(s => ['FINAL_APPROVED','FINAL_APPROVED_&_ARCHIVED'].includes(s)).length,
                 pendingInitialVerification: statuses.filter(s => ['SUBMITTED_TO_COE', 'SUBMITTED TO COE', 'RESUBMITTED_TO_COE'].includes(s)).length
             };
         }
@@ -1611,16 +1627,6 @@ window.onload = function() {
             }
         }
 
-        function qpmsNorm(value) {
-            return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ').replace(/[._-]+/g, ' ');
-        }
-        function qpmsExamNorm(value) {
-            const v = qpmsNorm(value).replace(/\bexam\b/g, '').trim();
-            if (v.includes('mid')) return 'mid semester';
-            if (v.includes('end')) return 'end semester';
-            if (v.includes('supplement')) return 'supplementary';
-            return v;
-        }
         function datesheetMatchForUpload(data) {
             const matches = (datesheetSchedule || []).filter(s =>
                 qpmsNorm(s.courseCode) === qpmsNorm(data.course) &&
@@ -1869,7 +1875,8 @@ window.onload = function() {
                 document.getElementById('form-coe-notice').reset();
                 await loadCoeNotices();
                 renderDashboard();
-                showToast('Datesheet / format uploaded and saved. It is now available to Faculty, COE and Moderators.', 'success');
+                const importInfo = result.datesheetImport ? ` Automatically detected ${result.datesheetImport.detected} course/date row(s) from the PDF; ${result.datesheetImport.imported} schedule row(s) synced.` : '';
+                showToast('Datesheet / format uploaded and saved. It is now available to Faculty, COE and Moderators.' + importInfo, 'success');
             } catch (err) {
                 showToast(err.message || 'Document upload failed. Please try again.', 'warning');
             } finally { button.disabled = false; }

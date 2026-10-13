@@ -112,3 +112,9 @@ The `/api/papers` and `/api/papers/:id/replace-file` endpoints validate submissi
 - Faculty paper rows now show the saved moderator comments, review date, available audit checklist answers, and a clear resubmission reminder when changes are required.
 - COE report tools include **Download All Papers (ZIP)**. It packages all question-paper files currently available in the database/storage into one ZIP; it does not include datesheets or replace the separate CSV workflow report.
 - The ZIP endpoint is `GET /api/papers/download-all.zip`. The portal currently uses client-side role selection rather than server-side authentication, so deploy only in the existing trusted environment and add server-side authorization before exposing the service publicly.
+
+## Reporting count and datesheet pending-count behaviour
+
+- Dashboard/workflow status counts are normalized across common legacy labels (for example, `Approved by Moderator`, `APPROVED_BY_MODERATOR`, and `Final Approved & Archived`). A moderator report is intentionally limited to that moderator's assigned school/department, while the COE report can include all records; their totals will differ when the moderator is scoped to only part of the university.
+- Scheduled-vs-uploaded comparisons use course code, mapped department, semester, exam type, and programme where both sides provide it. A paper marked `Changes Required` is still an uploaded paper; it should not be counted as a missing upload.
+- The uploaded PDF is used for validating submissions, but PDF upload alone does not create structured course schedule rows. COE must add/import the datesheet courses into the COE Datesheet Schedule for the portal to calculate a numeric pending count. When no structured schedule rows exist, the dashboard now shows `—` and an explanatory message rather than incorrectly showing `0`.

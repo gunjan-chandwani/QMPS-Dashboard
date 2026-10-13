@@ -87,6 +87,8 @@ async function initDb() {
     paper_date DATE NOT NULL, faculty_name TEXT, updated_by TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()
   )`);
+  await pool.query(`ALTER TABLE datesheet_schedule ALTER COLUMN program DROP NOT NULL`);
+  await pool.query(`ALTER TABLE datesheet_schedule ALTER COLUMN faculty_name DROP NOT NULL`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_datesheet_schedule_lookup ON datesheet_schedule (UPPER(course_code), LOWER(department), LOWER(semester), LOWER(exam_type))`);
 }
 
@@ -108,6 +110,70 @@ function dateVariants(isoDate) {
 
 function normalizedPdfText(text) {
   return String(text || '').replace(/[\u00a0\u200b]/g, ' ').replace(/[–—]/g, '-').toLowerCase();
+}
+
+// Best-effort datesheet row extraction. The PDF remains the source of truth;
+// rows are imported automatically when a line contains both a recognizable course code and date.
+function extractDatesheetRows(rawText, title = '') {
+  const lines = String(rawText || '').replace(/[\u00a0\u200b]/g, ' ').replace(/[–—]/g, '-').split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+  const rows = new Map();
+  const dateRe = /\b(\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}|\d{4}[\/.\-]\d{1,2}[\/.\-]\d{1,2}|\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4})\b/i;
+  const codeRe = /\b(?=[A-Z0-9-]{5,16}\b)(?=[A-Z0-9-]*[A-Z])(?=[A-Z0-9-]*\d)[A-Z]{2,}[A-Z0-9-]*\d[A-Z0-9-]*\b/i;
+  const examType = /supplement/i.test(title) ? 'Supplementary Exam' : /mid[ -]?semester|mst/i.test(title) ? 'Mid Semester Exam' : /end[ -]?semester|est/i.test(title) ? 'End Semester Exam' : 'Examination';
+  function isoDate(value) {
+    let m = /^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{2,4})$/.exec(value);
+    if (m) { let [,d,mo,y]=m; if (y.length===2) y=Number(y)<70?'20'+y:'19'+y; d=String(d).padStart(2,'0'); mo=String(mo).padStart(2,'0'); const dt=new Date(`${y}-${mo}-${d}T00:00:00Z`); return !isNaN(dt) && dt.getUTCFullYear()===+y && dt.getUTCMonth()+1===+mo && dt.getUTCDate()===+d ? `${y}-${mo}-${d}` : null; }
+    m = /^(\d{4})[/.\-](\d{1,2})[/.\-](\d{1,2})$/.exec(value);
+    if (m) { const [,y,mo,d]=m; const dt=new Date(`${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}T00:00:00Z`); return !isNaN(dt) ? `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}` : null; }
+    m = /^(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{4})$/i.exec(value);
+    if (m) { const months={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12}; return `${m[3]}-${String(months[m[2].slice(0,3).toLowerCase()]).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`; }
+    return null;
+  }
+  for (let i=0; i<lines.length; i++) {
+    const line = lines[i];
+    const dm = line.match(dateRe);
+    const cm = line.match(codeRe);
+    if (!dm || !cm) continue;
+    const date = isoDate(dm[1]); if (!date) continue;
+    const code = cm[0].toUpperCase();
+    const nearby = `${lines[Math.max(0,i-1)] || ''} ${line} ${lines[i+1] || ''}`;
+    const sem = /\b(?:semester|sem\.?)[\s:-]*(\d{1,2}|I{1,3}|IV|V|VI{0,3}|IX|X)\b/i.exec(nearby);
+    const semester = sem ? `Sem ${sem[1]}` : '';
+    const name = line.replace(dm[0], ' ').replace(cm[0], ' ').replace(/[|,;:\t]+/g, ' ').replace(/\s+/g, ' ').trim();
+    const key = `${code}|${date}`;
+    rows.set(key, {courseCode:code, courseName:name || code, paperDate:date, semester, examType});
+  }
+  return [...rows.values()];
+}
+
+async function importDatesheetRows(rawText, title, updatedBy = 'COE') {
+  const extracted = extractDatesheetRows(rawText, title);
+  let imported = 0;
+  for (const item of extracted) {
+    // Preserve metadata already mapped by COE; otherwise keep the PDF-derived
+    // course/date visible as an unmapped pending entry instead of requiring manual entry.
+    const existing = await pool.query(`SELECT school, department, program, semester, exam_type, faculty_name
+      FROM datesheet_schedule WHERE UPPER(TRIM(course_code))=UPPER(TRIM($1)) ORDER BY updated_at DESC LIMIT 1`, [item.courseCode]);
+    const old = existing.rows[0] || {};
+    const semester = item.semester || old.semester || 'Not specified';
+    const exam = old.exam_type || item.examType;
+    const dept = old.department || 'Unmapped from PDF';
+    const matched = await pool.query(`SELECT id FROM datesheet_schedule WHERE UPPER(TRIM(course_code))=UPPER(TRIM($1))
+      AND LOWER(TRIM(department))=LOWER(TRIM($2)) AND LOWER(TRIM(semester))=LOWER(TRIM($3))
+      AND LOWER(TRIM(exam_type))=LOWER(TRIM($4)) ORDER BY updated_at DESC LIMIT 1`, [item.courseCode,dept,semester,exam]);
+    if (matched.rows.length) {
+      await pool.query(`UPDATE datesheet_schedule SET course_name=$2, paper_date=$3::date, updated_by=$4,
+        updated_at=NOW(), school=COALESCE(school,$5), program=COALESCE(program,$6), faculty_name=COALESCE(faculty_name,$7)
+        WHERE id=$1`, [matched.rows[0].id,item.courseName,item.paperDate,updatedBy,old.school || null,old.program || '',old.faculty_name || '']);
+    } else {
+      await pool.query(`INSERT INTO datesheet_schedule
+        (course_name, course_code, school, department, program, semester, exam_type, paper_date, faculty_name, updated_by)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8::date,$9,$10)`,
+        [item.courseName,item.courseCode,old.school || null,dept,old.program || '',semester,exam,item.paperDate,old.faculty_name || '',updatedBy]);
+    }
+    imported++;
+  }
+  return { detected: extracted.length, imported };
 }
 
 async function getPublishedDatesheetText() {
@@ -328,8 +394,12 @@ app.post("/api/notices", upload.single("file"), async (req, res) => {
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
       RETURNING id::text AS id, type, title, original_filename AS filename, file_mimetype, file_size, uploaded_by, created_at`,
       [type, title, req.file.originalname, req.file.mimetype, req.file.size, fileData, extractedText, req.body.uploaded_by || 'COE']);
+    let datesheetImport = null;
+    if (extractedText && (String(type).toLowerCase().includes('datesheet') || String(title).toLowerCase().includes('datesheet') || req.file.originalname.toLowerCase().includes('datesheet'))) {
+      datesheetImport = await importDatesheetRows(extractedText, title, req.body.uploaded_by || 'COE');
+    }
     try { fs.unlinkSync(req.file.path); } catch {}
-    res.status(201).json({ ok: true, notice: rows[0] });
+    res.status(201).json({ ok: true, notice: rows[0], datesheetImport });
   } catch (e) {
     if (req.file?.path) { try { fs.unlinkSync(req.file.path); } catch {} }
     res.status(500).json({ ok: false, error: e.message });
