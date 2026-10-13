@@ -118,19 +118,19 @@ function parseDatesheetScheduleRows(pdfText) {
     .replace(/[\u00a0\u200b\u200c\u200d\ufeff]/g, ' ')
     .replace(/\f/g, '\n')
     .replace(/\r/g, '\n')
-    .replace(/(?<!^)(?=\b\d{1,2}[./-]\d{1,2}[./-]20\d{2}\b)/g, '\n');
+    .replace(/(?=\d{1,2}[./-]\d{1,2}[./-]20\d{2})/g, '\n');
   const lines = flattenedSafeText
     .split('\n').map(x => x.replace(/\s+/g, ' ').trim()).filter(Boolean);
   const rows = [];
   let currentProgram = '';
   let currentSemester = '';
   let currentExam = 'Mid Semester';
-  const dateRe = /\b(\d{1,2})[./-](\d{1,2})[./-](20\d{2})\b/;
-  const codeRe = /(?<![\w.])(?:\d+\.\d+[A-Z]{2,4}\d{2}[A-Z0-9]\d{3}|[A-Z]{2,4}\d{2,4}[A-Z]\b)(?!\w)/i;
+  const dateRe = /(?<!\d)(\d{1,2})[./-](\d{1,2})[./-](20\d{2})/;
+  const codeRe = /(?:\d+\.\d+[A-Z]{2,4}\d{2}[A-Z0-9]\d{3}|[A-Z]{2,4}\d{2,4}[A-Z]\b)/i;
   const isHeader = x => /^(?:date\s+timings?|timings?|course code|course name|manav rachna|schedule for|controller of examination|semester\s*[-:])/i.test(x);
   const isProgramHeading = x => /^(?:bachelor|bachelors|master|masters|b\.?\s?tech|m\.?\s?tech|bca|mca|mba|bba|llb|llm|b\.?\s?sc|b\.?\s?com|m\.?\s?sc|b\.?sc\.?b\.?ed|b\.a\.|bb\.?a\.|ll\.?b)\b/i.test(x);
   const clean = x => String(x || '')
-    .replace(/\b\d{1,2}[./-]\d{1,2}[./-]20\d{2}\b/g, ' ')
+    .replace(/\d{1,2}[./-]\d{1,2}[./-]20\d{2}/g, ' ')
     .replace(/\b(?:DATE|TIMINGS?|COURSE CODE|COURSE NAME|MANAV RACHNA UNIVERSITY|CONTROLLER OF EXAMINATIONS?)\b/ig, ' ')
     .replace(/\d{1,2}\.\d{2}\s*(?:NOON|AM|PM)?\s*-\s*\d{1,2}\.\d{2}\s*(?:NOON|AM|PM)?/ig, ' ')
     .replace(/\d{1,2}\.\d{2}\s*(?:NOON|AM|PM)/ig, ' ')
