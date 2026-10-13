@@ -115,33 +115,54 @@ function normalizedPdfText(text) {
 // Best-effort datesheet row extraction. The PDF remains the source of truth;
 // rows are imported automatically when a line contains both a recognizable course code and date.
 function extractDatesheetRows(rawText, title = '') {
-  const lines = String(rawText || '').replace(/[\u00a0\u200b]/g, ' ').replace(/[–—]/g, '-').split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+  // pdf-parse often breaks table cells into separate lines. Build small text
+  // windows around each date so course code/date need not be on the same line.
+  const text = String(rawText || '').replace(/[\u00a0\u200b]/g, ' ').replace(/[–—]/g, '-');
+  const lines = text.split(/\r?\n/).map(x => x.replace(/\s+/g, ' ').trim()).filter(Boolean);
   const rows = new Map();
-  const dateRe = /\b(\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}|\d{4}[\/.\-]\d{1,2}[\/.\-]\d{1,2}|\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4})\b/i;
-  const codeRe = /\b(?=[A-Z0-9-]{5,16}\b)(?=[A-Z0-9-]*[A-Z])(?=[A-Z0-9-]*\d)[A-Z]{2,}[A-Z0-9-]*\d[A-Z0-9-]*\b/i;
+  const dateRe = /\b(\d{1,2}[/.\-]\d{1,2}[/.\-]\d{2,4}|\d{4}[/.\-]\d{1,2}[/.\-]\d{1,2}|\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4})\b/i;
+  // Accept common MRU-style codes: CSE301, 22CST-301, BCA-204, ECE 302, etc.
+  const codeRe = /\b(?=[A-Z0-9-]{4,20}\b)(?=[A-Z0-9-]*[A-Z])(?=[A-Z0-9-]*\d)[A-Z]{1,8}[A-Z0-9]*(?:[-/]?\d{2,4}[A-Z0-9-]*)\b/ig;
   const examType = /supplement/i.test(title) ? 'Supplementary Exam' : /mid[ -]?semester|mst/i.test(title) ? 'Mid Semester Exam' : /end[ -]?semester|est/i.test(title) ? 'End Semester Exam' : 'Examination';
   function isoDate(value) {
     let m = /^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{2,4})$/.exec(value);
-    if (m) { let [,d,mo,y]=m; if (y.length===2) y=Number(y)<70?'20'+y:'19'+y; d=String(d).padStart(2,'0'); mo=String(mo).padStart(2,'0'); const dt=new Date(`${y}-${mo}-${d}T00:00:00Z`); return !isNaN(dt) && dt.getUTCFullYear()===+y && dt.getUTCMonth()+1===+mo && dt.getUTCDate()===+d ? `${y}-${mo}-${d}` : null; }
+    if (m) {
+      let [,d,mo,y]=m; if (y.length===2) y=Number(y)<70?'20'+y:'19'+y;
+      d=String(d).padStart(2,'0'); mo=String(mo).padStart(2,'0');
+      const dt=new Date(`${y}-${mo}-${d}T00:00:00Z`);
+      return !isNaN(dt) && dt.getUTCFullYear()===+y && dt.getUTCMonth()+1===+mo && dt.getUTCDate()===+d ? `${y}-${mo}-${d}` : null;
+    }
     m = /^(\d{4})[/.\-](\d{1,2})[/.\-](\d{1,2})$/.exec(value);
-    if (m) { const [,y,mo,d]=m; const dt=new Date(`${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}T00:00:00Z`); return !isNaN(dt) ? `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}` : null; }
+    if (m) { const [,y,mo,d]=m; const dt=new Date(`${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}T00:00:00Z`); return !isNaN(dt) && dt.getUTCMonth()+1===+mo && dt.getUTCDate()===+d ? `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}` : null; }
     m = /^(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{4})$/i.exec(value);
     if (m) { const months={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12}; return `${m[3]}-${String(months[m[2].slice(0,3).toLowerCase()]).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`; }
     return null;
   }
-  for (let i=0; i<lines.length; i++) {
-    const line = lines[i];
-    const dm = line.match(dateRe);
-    const cm = line.match(codeRe);
-    if (!dm || !cm) continue;
-    const date = isoDate(dm[1]); if (!date) continue;
-    const code = cm[0].toUpperCase();
-    const nearby = `${lines[Math.max(0,i-1)] || ''} ${line} ${lines[i+1] || ''}`;
-    const sem = /\b(?:semester|sem\.?)[\s:-]*(\d{1,2}|I{1,3}|IV|V|VI{0,3}|IX|X)\b/i.exec(nearby);
-    const semester = sem ? `Sem ${sem[1]}` : '';
-    const name = line.replace(dm[0], ' ').replace(cm[0], ' ').replace(/[|,;:\t]+/g, ' ').replace(/\s+/g, ' ').trim();
-    const key = `${code}|${date}`;
-    rows.set(key, {courseCode:code, courseName:name || code, paperDate:date, semester, examType});
+  const dateEntries = [];
+  // Also inspect flattened text: some PDFs put a whole table row on one line.
+  lines.forEach((line, i) => {
+    const matches = [...line.matchAll(new RegExp(dateRe.source, 'ig'))];
+    for (const dm of matches) {
+      const date = isoDate(dm[1]);
+      if (date) dateEntries.push({ lineIndex:i, line, date, dateText:dm[1] });
+    }
+  });
+  for (const entry of dateEntries) {
+    const i = entry.lineIndex;
+    const contextLines = lines.slice(Math.max(0, i-2), Math.min(lines.length, i+3));
+    let context = contextLines.join(' | ');
+    // Remove date tokens before searching codes to avoid accidental date fragments.
+    context = context.replace(new RegExp(dateRe.source, 'ig'), ' ');
+    const codes = [...context.matchAll(codeRe)].map(m => m[0].replace(/\//g,'-').toUpperCase());
+    const code = codes.find(c => !/^\d{4}$/.test(c));
+    if (!code) continue;
+    const semMatch = /\b(?:semester|sem\.?|s)\s*[-:]?\s*(\d{1,2}|I{1,3}|IV|V|VI{0,3}|IX|X)\b/i.exec(context);
+    const semester = semMatch ? `Sem ${semMatch[1]}` : '';
+    const cleaned = contextLines.join(' ').replace(new RegExp(dateRe.source, 'ig'), ' ').replace(new RegExp(code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig'), ' ').replace(/\b(?:semester|sem\.?|exam date|date of exam|course code|subject code)\b/ig, ' ').replace(/[|,;:\t]+/g, ' ').replace(/\s+/g, ' ').trim();
+    // Avoid storing headers as course names; COE can map programme/department later.
+    const name = cleaned.length > 2 && !/^(datesheet|date sheet|examination|course|subject)+$/i.test(cleaned) ? cleaned.slice(0,180) : code;
+    const key = `${code}|${entry.date}|${semester}`;
+    if (!rows.has(key)) rows.set(key, { courseCode:code, courseName:name || code, paperDate:entry.date, semester, examType });
   }
   return [...rows.values()];
 }

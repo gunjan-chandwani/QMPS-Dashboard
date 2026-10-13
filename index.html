@@ -1874,9 +1874,15 @@ window.onload = function() {
                 closeModal('modal-coe-notice');
                 document.getElementById('form-coe-notice').reset();
                 await loadCoeNotices();
+                // Refresh the structured schedule immediately after PDF import so the pending count updates without a manual reload.
+                if (result.datesheetImport) await loadDatesheetSchedule();
                 renderDashboard();
-                const importInfo = result.datesheetImport ? ` Automatically detected ${result.datesheetImport.detected} course/date row(s) from the PDF; ${result.datesheetImport.imported} schedule row(s) synced.` : '';
-                showToast('Datesheet / format uploaded and saved. It is now available to Faculty, COE and Moderators.' + importInfo, 'success');
+                const importInfo = result.datesheetImport ? ` Detected ${result.datesheetImport.detected} course/date row(s); synced ${result.datesheetImport.imported} schedule row(s).` : '';
+                if (result.datesheetImport && result.datesheetImport.detected === 0) {
+                    showToast('PDF uploaded, but no course/date rows could be extracted. Check that the datesheet is searchable and its course codes and exam dates are readable.', 'warning');
+                } else {
+                    showToast('Datesheet / format uploaded and saved. It is now available to Faculty, COE and Moderators.' + importInfo, 'success');
+                }
             } catch (err) {
                 showToast(err.message || 'Document upload failed. Please try again.', 'warning');
             } finally { button.disabled = false; }
