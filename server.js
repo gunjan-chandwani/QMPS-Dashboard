@@ -112,8 +112,15 @@ function normalizedPdfText(text) {
 
 
 function parseDatesheetScheduleRows(pdfText) {
-  const lines = String(pdfText || '').replace(/\f/g, '\n').replace(/\r/g, '\n')
-    .split('\n').map(x => x.replace(/[\u00a0\u200b\u200c\u200d\ufeff]/g, ' ').replace(/\s+/g, ' ').trim()).filter(Boolean);
+  // pdf-parse may flatten the entire table into one line. Force each date-led
+  // exam row onto a separate line before applying the row parser.
+  const flattenedSafeText = String(pdfText || '')
+    .replace(/[\u00a0\u200b\u200c\u200d\ufeff]/g, ' ')
+    .replace(/\f/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/(?<!^)(?=\b\d{1,2}[./-]\d{1,2}[./-]20\d{2}\b)/g, '\n');
+  const lines = flattenedSafeText
+    .split('\n').map(x => x.replace(/\s+/g, ' ').trim()).filter(Boolean);
   const rows = [];
   let currentProgram = '';
   let currentSemester = '';
