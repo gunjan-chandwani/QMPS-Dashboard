@@ -147,7 +147,7 @@ function parseDatesheetScheduleRows(pdfText) {
     // Retain the programme's wrapped specialization heading where present.
     else if (currentProgram && !dateRe.test(line) && !codeRe.test(line) && !isHeader(line) &&
       /^[A-Z0-9/&(), .-]+$/.test(line) &&
-      /SPECIALIZATION|ENGINEERING|COMPUTING|MANAGEMENT|CLOUD|FINTECH|VLSI|CHIP DESIGN|ROBOTICS|ARTIFICIAL INTELLIGENCE/i.test(line)) {
+      /SPECIALIZATION|CLOUD|FINTECH|VLSI|CHIP DESIGN|ROBOTICS|ARTIFICIAL INTELLIGENCE|CSTI|AIML|GEN AI|FSD/i.test(line)) {
       currentProgram = (currentProgram + ' ' + line).replace(/\s+/g, ' ').trim();
     }
 
