@@ -393,28 +393,66 @@ app.get('/api/datesheet-schedule', async (_req, res) => {
       WHERE LOWER(type) LIKE '%datesheet%' OR LOWER(title) LIKE '%datesheet%' OR LOWER(original_filename) LIKE '%datesheet%'
       ORDER BY created_at ASC`);
     let parsedFromNotices = 0;
+    const noticeDiagnostics = [];
     for (const notice of noticeResult.rows) {
       let sourceText = notice.extracted_text || '';
       let sync = sourceText.trim() ? await syncDatesheetScheduleFromPdf(sourceText, notice.uploaded_by || 'COE') : {count:0};
-      if (!(sync.count > 0) && notice.file_data &&
-          (String(notice.file_mimetype || '').includes('pdf') || String(notice.original_filename || '').toLowerCase().endsWith('.pdf'))) {
+      let extractionAttempted = false;
+      let extractionError = null;
+      let bufferInfo = null;
+      if (!(sync.count > 0) &&
+          (String(notice.file_mimetype || '').toLowerCase().includes('pdf') || String(notice.original_filename || '').toLowerCase().endsWith('.pdf'))) {
+        extractionAttempted = true;
         try {
-          const parsedPdf = await pdfParse(notice.file_data);
-          sourceText = parsedPdf.text || '';
-          if (sourceText.trim()) {
-            await pool.query('UPDATE coe_notices SET extracted_text=$2 WHERE id=$1', [notice.id, sourceText]);
-            sync = await syncDatesheetScheduleFromPdf(sourceText, notice.uploaded_by || 'COE');
+          if (!notice.file_data) {
+            extractionError = 'No file_data stored for this notice';
+          } else {
+            bufferInfo = {type: notice.file_data.constructor && notice.file_data.constructor.name || typeof notice.file_data,
+              isBuffer: Buffer.isBuffer(notice.file_data), byteLength: notice.file_data.length || null};
+            let pdfBuffer = notice.file_data;
+            if (!Buffer.isBuffer(pdfBuffer)) {
+              if (typeof pdfBuffer === 'string') {
+                if (pdfBuffer.startsWith('\\x')) pdfBuffer = Buffer.from(pdfBuffer.slice(2), 'hex');
+                else pdfBuffer = Buffer.from(pdfBuffer, 'base64');
+              } else if (pdfBuffer && pdfBuffer.data && Array.isArray(pdfBuffer.data)) {
+                pdfBuffer = Buffer.from(pdfBuffer.data);
+              } else {
+                throw new Error('Unsupported file_data type: ' + (typeof pdfBuffer));
+              }
+            }
+            const parsedPdf = await pdfParse(pdfBuffer);
+            sourceText = parsedPdf.text || '';
+            if (sourceText.trim()) {
+              await pool.query('UPDATE coe_notices SET extracted_text=$2 WHERE id=$1', [notice.id, sourceText]);
+              sync = await syncDatesheetScheduleFromPdf(sourceText, notice.uploaded_by || 'COE');
+            } else {
+              extractionError = 'PDF extracted successfully but contains no selectable text (possibly scanned/image PDF)';
+            }
           }
         } catch (e) {
+          extractionError = e.message;
           console.warn('Could not re-extract datesheet PDF ' + notice.id + ':', e.message);
         }
       }
+      noticeDiagnostics.push({
+        id: notice.id,
+        filename: notice.original_filename || null,
+        mimetype: notice.file_mimetype || null,
+        storedTextLength: String(notice.extracted_text || '').length,
+        extractedTextLength: String(sourceText || '').length,
+        fileDataPresent: !!notice.file_data,
+        bufferInfo,
+        extractionAttempted,
+        extractionError,
+        parsedRows: sync.count || 0,
+        textPreview: String(sourceText || '').slice(0, 180).replace(/\\s+/g, ' ')
+      });
       parsedFromNotices += sync.count || 0;
     }
     const { rows } = await pool.query(`SELECT id::text AS id, course_name AS "courseName", course_code AS "courseCode",
       school, department, program, semester, exam_type AS "examType", TO_CHAR(paper_date,'YYYY-MM-DD') AS "paperDate",
       faculty_name AS "facultyName", updated_at FROM datesheet_schedule ORDER BY paper_date, course_code`);
-    res.json({ok:true,schedules:rows,diagnostics:{datesheetNoticesFound:noticeResult.rows.length,parsedCourseRows:parsedFromNotices,loadedScheduleRows:rows.length}});
+    res.json({ok:true,schedules:rows,diagnostics:{datesheetNoticesFound:noticeResult.rows.length,parsedCourseRows:parsedFromNotices,loadedScheduleRows:rows.length,notices:noticeDiagnostics}});
   } catch (e) { res.status(500).json({ok:false,error:e.message}); }
 });
 
