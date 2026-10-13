@@ -119,7 +119,7 @@ function parseDatesheetScheduleRows(pdfText) {
   let currentExam = 'Mid Semester';
   const dateRe = /\b(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})\b/;
   // Course codes have a numeric prefix plus a fixed alphanumeric suffix; deliberately exclude times like 12.00NOON.
-  const codeRe = /\b\d+\.\d+[A-Z]{2}\d{2}[A-Z]\d{3}\b/i;
+  const codeRe = /\b(?:\d+(?:\.\d+)?[A-Z]{2,4}\d{2,4}[A-Z]\d{0,4}|[A-Z]{2,4}\d{3,4}[A-Z]?)\b/i;
   const isHeader = x => /^(date|timings?|course code|course name|manav rachna|schedule for|controller of examination|semester\s*[-:])/i.test(x);
   const isProgramHeading = x => /^(bachelor|bachelors|master|masters|b\.?\s?tech|m\.?\s?tech|bca|mca|mba|bba|llb|llm|b\.?\s?sc|m\.?\s?sc)\b/i.test(x);
   const cleanName = x => String(x || '').replace(dateRe, ' ').replace(codeRe, ' ').replace(/\d{1,2}\.\d{2}\s*(?:noon|am|pm)?\s*[-–]\s*\d{1,2}\.\d{2}\s*(?:noon|am|pm)?/ig, ' ').replace(/\d{1,2}\.\d{2}\s*(?:noon|am|pm)/ig, ' ').replace(/\s+/g, ' ').replace(/^[|: -]+|[|: -]+$/g, '').trim();
@@ -337,10 +337,19 @@ app.get("/api/papers", async (_req, res) => {
 // Adding the same course/program/semester/exam again updates the existing schedule row.
 app.get('/api/datesheet-schedule', async (_req, res) => {
   try {
+    // Self-heal schedule on read: re-process stored PDFs uploaded before parser fixes.
+    const noticeResult = await pool.query(`SELECT extracted_text, uploaded_by FROM coe_notices
+      WHERE (LOWER(type) LIKE '%datesheet%' OR LOWER(title) LIKE '%datesheet%' OR LOWER(original_filename) LIKE '%datesheet%')
+      AND COALESCE(extracted_text, '') <> '' ORDER BY created_at ASC`);
+    let parsedFromNotices = 0;
+    for (const notice of noticeResult.rows) {
+      const sync = await syncDatesheetScheduleFromPdf(notice.extracted_text, notice.uploaded_by || 'COE');
+      parsedFromNotices += sync.count || 0;
+    }
     const { rows } = await pool.query(`SELECT id::text AS id, course_name AS "courseName", course_code AS "courseCode",
       school, department, program, semester, exam_type AS "examType", TO_CHAR(paper_date,'YYYY-MM-DD') AS "paperDate",
       faculty_name AS "facultyName", updated_at FROM datesheet_schedule ORDER BY paper_date, course_code`);
-    res.json({ok:true,schedules:rows});
+    res.json({ok:true,schedules:rows,diagnostics:{datesheetNoticesFound:noticeResult.rows.length,parsedCourseRows:parsedFromNotices,loadedScheduleRows:rows.length}});
   } catch (e) { res.status(500).json({ok:false,error:e.message}); }
 });
 
