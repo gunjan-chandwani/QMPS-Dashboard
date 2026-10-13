@@ -1717,15 +1717,8 @@ window.onload = function() {
                 submission_date: paperDate
             };
 
-            const scheduleCheck = datesheetMatchForUpload(data);
-            if (!scheduleCheck.matches.length) {
-                showToast('No matching COE schedule entry found for this course, department, program, semester and exam. Please contact COE to add/update the schedule before uploading.', 'warning');
-                return false;
-            }
-            if (!scheduleCheck.expectedDates.includes(paperDate)) {
-                showToast(`Date mismatch: COE master schedule shows ${scheduleCheck.expectedDates.join(', ')}. Select the scheduled date or ask COE to update the schedule.`, 'warning');
-                return false;
-            }
+            // Let the backend verify the submitted date against the actual COE PDF.
+            // The PDF is authoritative; an optional manual schedule row is not required.
 
             try {
                 document.getElementById('btn-submit-paper').disabled = true;

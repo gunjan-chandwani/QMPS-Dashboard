@@ -139,11 +139,21 @@ async function validatePaperDateAgainstSchedule(data) {
   const program = String(data.program || '').trim();
   const submittedDate = String(data.submission_date || '').slice(0, 10);
   if (!courseCode || !department || !semester || !exam || !program || !submittedDate) {
-    const error = new Error('Course code, department, programme, semester, examination type and paper date are all required for COE datesheet validation.');
+    const error = new Error('Course code, department, programme, semester, examination type and paper date are required.');
     error.statusCode = 400;
     throw error;
   }
 
+  // The published COE PDF is the source of truth. Do not force COE to duplicate
+  // every row manually in datesheet_schedule before the PDF can be used.
+  const documents = await getPublishedDatesheetText();
+  if (!documents.length) {
+    const error = new Error('No readable COE Examination Datesheet PDF was found in the portal. COE must publish a searchable PDF (scanned PDFs need OCR).');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // If COE has also maintained a structured row, use it as an additional check.
   const { rows } = await pool.query(`SELECT TO_CHAR(paper_date, 'YYYY-MM-DD') AS paper_date, course_name
     FROM datesheet_schedule
     WHERE UPPER(TRIM(course_code))=UPPER(TRIM($1))
@@ -152,42 +162,42 @@ async function validatePaperDateAgainstSchedule(data) {
       AND LOWER(TRIM(exam_type))=LOWER(TRIM($4))
       AND (COALESCE(TRIM(program),'')='' OR LOWER(TRIM(program))=LOWER(TRIM($5)))
     ORDER BY updated_at DESC`, [courseCode, department, semester, exam, program]);
-  if (!rows.length) {
-    const error = new Error('Upload blocked: COE master schedule mein is course code, department, programme, semester aur examination type ka matching record nahi mila. COE ko schedule add/update karna hoga.');
-    error.statusCode = 400;
-    throw error;
-  }
   const scheduledDates = [...new Set(rows.map(r => r.paper_date).filter(Boolean))];
-  if (!scheduledDates.includes(submittedDate)) {
-    const error = new Error(`Upload blocked: faculty ki entered date COE master schedule se match nahi karti. Official scheduled date: ${scheduledDates.join(', ')}.`);
+  if (scheduledDates.length && !scheduledDates.includes(submittedDate)) {
+    const error = new Error(`Date mismatch: COE schedule record shows ${scheduledDates.join(', ')}. Please use the official date or ask COE to correct the schedule/PDF.`);
     error.statusCode = 400;
     throw error;
   }
 
-  // Validate against the actual PDF published in the COE portal, not only the editable schedule table.
-  const documents = await getPublishedDatesheetText();
-  if (!documents.length) {
-    const error = new Error('Upload blocked: COE portal par readable, text-based official datesheet PDF publish nahi hai. COE pehle datesheet PDF publish kare. Scanned PDF ko OCR/text-searchable PDF bana kar upload karein.');
-    error.statusCode = 400;
-    throw error;
-  }
-  const codeNeedle = courseCode.toLowerCase();
   const variants = dateVariants(submittedDate);
-  const evidence = documents.filter(doc => {
-    const text = doc.text;
-    const codeIndex = text.indexOf(codeNeedle);
-    if (codeIndex < 0) return false;
-    // First look near the course-code occurrence to avoid matching a date elsewhere in the document.
-    const nearby = text.slice(Math.max(0, codeIndex - 220), Math.min(text.length, codeIndex + 500));
-    return variants.some(v => nearby.includes(v)) || (text.includes(codeNeedle) && variants.some(v => text.includes(v)) && text.length < 2500);
-  });
+  const codeNeedle = courseCode.toLowerCase();
+  const evidence = [];
+  for (const doc of documents) {
+    const text = doc.text || '';
+    let from = 0;
+    while (from < text.length) {
+      const codeIndex = text.indexOf(codeNeedle, from);
+      if (codeIndex < 0) break;
+      // Check the same table row/nearby wrapped lines around every occurrence,
+      // rather than just the first occurrence of the course code in the PDF.
+      const left = Math.max(0, text.lastIndexOf('\n', codeIndex) - 220, codeIndex - 180);
+      const rightNewline = text.indexOf('\n', codeIndex);
+      const right = Math.min(text.length, codeIndex + 900, rightNewline >= 0 ? rightNewline + 500 : text.length);
+      const nearby = text.slice(left, right);
+      if (variants.some(v => nearby.includes(v))) {
+        evidence.push(doc);
+        break;
+      }
+      from = codeIndex + codeNeedle.length;
+    }
+  }
   if (!evidence.length) {
     const titles = documents.map(d => d.title || d.filename || 'COE datesheet').join('; ');
-    const error = new Error(`Upload blocked: published COE datesheet PDF mein course code ${courseCode} ke saath ${submittedDate} date verify nahi hui. Datesheet documents checked: ${titles}. Agar PDF scanned hai, searchable PDF/OCR version upload karein.`);
+    const error = new Error(`Upload blocked: uploaded COE PDF was read, but course code ${courseCode} was not found with date ${submittedDate}. Checked: ${titles}. Please verify the date format/course code in the PDF; if it is scanned, upload an OCR/searchable PDF.`);
     error.statusCode = 400;
     throw error;
   }
-  return { matched: true, dates: scheduledDates, pdfVerified: true, documents: evidence.map(d => d.title || d.filename) };
+  return { matched: true, dates: scheduledDates.length ? scheduledDates : [submittedDate], pdfVerified: true, documents: [...new Set(evidence.map(d => d.title || d.filename))] };
 }
 
 app.get("/health", async (_req, res) => {
