@@ -112,15 +112,17 @@ function normalizedPdfText(text) {
 
 
 function parseDatesheetScheduleRows(pdfText) {
-  const lines = String(pdfText || '').replace(/\r/g, '\n').split('\n').map(x => x.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  const lines = String(pdfText || '').replace(/\f/g, '\n').replace(/\r/g, '\n').split('\n').map(x => x.replace(/[\u00a0\u200b]/g, ' ').replace(/\s+/g, ' ').trim()).filter(Boolean);
   const rows = [];
   let currentProgram = '';
   let currentSemester = '';
   let currentExam = 'Mid Semester';
-  const dateRe = /(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})/;
-  const codeRe = /\b(?=[A-Z0-9.]*[A-Z])(?=[A-Z0-9.]*\d)[A-Z0-9.]{6,}\b/i;
+  const dateRe = /\b(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})\b/;
+  // Course codes have a numeric prefix plus a fixed alphanumeric suffix; deliberately exclude times like 12.00NOON.
+  const codeRe = /\b\d+\.\d+[A-Z]{2}\d{2}[A-Z]\d{3}\b/i;
   const isHeader = x => /^(date|timings?|course code|course name|manav rachna|schedule for|controller of examination|semester\s*[-:])/i.test(x);
-  const cleanName = x => String(x || '').replace(dateRe, ' ').replace(codeRe, ' ').replace(/\d{1,2}\.\d{2}\s*(?:am|pm)?\s*[-–]\s*\d{1,2}\.\d{2}\s*(?:am|pm)?/ig, ' ').replace(/\s+/g, ' ').replace(/^[|: -]+|[|: -]+$/g, '').trim();
+  const isProgramHeading = x => /^(bachelor|bachelors|master|masters|b\.?\s?tech|m\.?\s?tech|bca|mca|mba|bba|llb|llm|b\.?\s?sc|m\.?\s?sc)\b/i.test(x);
+  const cleanName = x => String(x || '').replace(dateRe, ' ').replace(codeRe, ' ').replace(/\d{1,2}\.\d{2}\s*(?:noon|am|pm)?\s*[-–]\s*\d{1,2}\.\d{2}\s*(?:noon|am|pm)?/ig, ' ').replace(/\d{1,2}\.\d{2}\s*(?:noon|am|pm)/ig, ' ').replace(/\s+/g, ' ').replace(/^[|: -]+|[|: -]+$/g, '').trim();
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const sem = line.match(/SEMESTER\s*[-:]?\s*(FIRST|SECOND|THIRD|FOURTH|FIFTH|SIXTH|SEVENTH|EIGHTH|[1-8](?:ST|ND|RD|TH)?)/i);
@@ -134,26 +136,32 @@ function parseDatesheetScheduleRows(pdfText) {
       else if (/SUPPLEMENT/i.test(line)) currentExam = 'Supplementary';
       else if (/MID\s*SEM/i.test(line)) currentExam = 'Mid Semester';
     }
-    if (/^(Bachelor|Master|B\.?\s?Tech|M\.?\s?Tech|BCA|MCA|MBA|BBA|LLB|LLM|B\.?\s?Sc|M\.?\s?Sc)/i.test(line) && !/course code|course name/i.test(line)) currentProgram = line;
-    const cm = line.match(codeRe);
-    if (!cm) continue;
-    const code = cm[0].replace(/[.,;:]$/, '').toUpperCase();
-    // Ignore headings/IDs and require a date on this line or the immediately adjacent line.
-    let dateMatch = line.match(dateRe), dateLine = i;
-    if (!dateMatch && i > 0) { dateMatch = lines[i-1].match(dateRe); dateLine = i-1; }
-    if (!dateMatch && i+1 < lines.length) { dateMatch = lines[i+1].match(dateRe); dateLine = i+1; }
+    if (isProgramHeading(line) && !isHeader(line)) currentProgram = line;
+    // Preserve wrapped programme headings (e.g. the specialization on the next line).
+    if (currentProgram && !isProgramHeading(line) && !dateRe.test(line) && !codeRe.test(line) && !isHeader(line) && /^[A-Z0-9/&(), .-]+$/.test(line) && /SPECIALIZATION|ENGINEERING|COMPUTING|MANAGEMENT|CLOUD|FINTECH|VLSI|CHIP DESIGN/i.test(line)) {
+      currentProgram = (currentProgram + ' ' + line).replace(/\s+/g, ' ').trim();
+    }
+    const dateMatch = line.match(dateRe);
     if (!dateMatch) continue;
-    const dd = String(dateMatch[1]).padStart(2,'0'), mm = String(dateMatch[2]).padStart(2,'0'), yyyy = dateMatch[3];
-    const paperDate = `${yyyy}-${mm}-${dd}`;
-    let name = cleanName(line.replace(code, ''));
-    if (!name || name.length < 3 || /^\d/.test(name)) {
-      const candidates = [lines[i+1], lines[i-1], lines[i+2]].filter(Boolean).filter(x => !dateRe.test(x) && !codeRe.test(x) && !isHeader(x) && !/^(manav rachna|schedule for|controller of examination)/i.test(x));
-      name = cleanName(candidates[0] || '');
+    const codeMatch = line.match(codeRe) || (i + 1 < lines.length ? lines[i + 1].match(codeRe) : null);
+    if (!codeMatch) continue;
+    const code = codeMatch[0].toUpperCase();
+    const dd = String(dateMatch[1]).padStart(2, '0');
+    const mm = String(dateMatch[2]).padStart(2, '0');
+    const yyyy = dateMatch[3];
+    const paperDate = yyyy + '-' + mm + '-' + dd;
+    let name = cleanName(line.slice(line.indexOf(codeMatch[0]) + codeMatch[0].length));
+    if (!name || name.length < 3) {
+      const prev = i > 0 ? lines[i - 1] : '';
+      const next = i + 1 < lines.length ? lines[i + 1] : '';
+      const prevOk = prev && !dateRe.test(prev) && !codeRe.test(prev) && !isHeader(prev) && !isProgramHeading(prev) && /^[A-Z0-9&(), /.-]+$/.test(prev);
+      const nextOk = next && !dateRe.test(next) && !codeRe.test(next) && !isHeader(next) && !isProgramHeading(next) && /^[A-Z0-9&(), /.-]+$/.test(next);
+      name = cleanName((prevOk ? prev + ' ' : '') + (nextOk ? next : ''));
     }
     if (!name || name.length < 3) name = code;
     const program = currentProgram || 'Unmapped Programme';
-    const low = `${program} ${name}`.toLowerCase();
-    let department = /robot|artificial intelligence/i.test(low) ? 'Robotics & AI' : /electronics|electrical|vlsi/i.test(low) ? 'Electronics & Communication' : /mechanical|manufacturing/i.test(low) ? 'Mechanical Engineering' : /computer science|csti|aiml|gen ai|quantum computing/i.test(low) ? 'Computer Science & Technology' : /law|llb|llm/i.test(low) ? 'Law' : /business|management|mba|bba/i.test(low) ? 'Business' : /education|itep|b\.ed/i.test(low) ? 'Education & Humanities' : /physics|chemistry|mathematics|science/i.test(low) ? 'Sciences' : 'Unmapped Department';
+    const low = (program + ' ' + name).toLowerCase();
+    let department = /robot|artificial intelligence/i.test(low) ? 'Robotics & AI' : /electronics|electrical|vlsi|chip design/i.test(low) ? 'Electronics & Communication' : /mechanical|manufacturing/i.test(low) ? 'Mechanical Engineering' : /computer science|csti|aiml|gen ai|quantum computing|cloud computing/i.test(low) ? 'Computer Science & Technology' : /law|llb|llm/i.test(low) ? 'Law' : /business|management|mba|bba|fintech/i.test(low) ? 'Business' : /education|itep|b\.ed/i.test(low) ? 'Education & Humanities' : /physics|chemistry|mathematics|science/i.test(low) ? 'Sciences' : 'Unmapped Department';
     const school = ['Computer Science & Technology','Robotics & AI','Electronics & Communication','Mechanical Engineering'].includes(department) ? 'School of Engineering' : department === 'Law' ? 'School of Law' : department === 'Business' ? 'School of Business' : department === 'Sciences' ? 'School of Sciences' : department === 'Education & Humanities' ? 'School of Education & Humanities' : 'Unmapped / Other';
     rows.push({courseCode:code,courseName:name,school,department,program,semester:currentSemester || 'Not specified',examType:currentExam,paperDate});
   }
@@ -161,7 +169,6 @@ function parseDatesheetScheduleRows(pdfText) {
   for (const r of rows) unique.set([r.courseCode,r.program,r.semester,r.examType,r.paperDate].join('|'),r);
   return [...unique.values()];
 }
-
 async function syncDatesheetScheduleFromPdf(pdfText, uploadedBy) {
   const parsed = parseDatesheetScheduleRows(pdfText);
   let inserted = 0, updated = 0;
@@ -183,6 +190,18 @@ async function syncDatesheetScheduleFromPdf(pdfText, uploadedBy) {
     }
   }
   return {count: parsed.length, inserted, updated, rows: parsed};
+}
+
+async function backfillDatesheetSchedulesFromExistingNotices() {
+  const result = await pool.query(`SELECT extracted_text, uploaded_by FROM coe_notices
+    WHERE (LOWER(type) LIKE '%datesheet%' OR LOWER(title) LIKE '%datesheet%' OR LOWER(original_filename) LIKE '%datesheet%')
+      AND COALESCE(extracted_text, '') <> '' ORDER BY created_at ASC`);
+  let total = 0;
+  for (const notice of result.rows) {
+    const synced = await syncDatesheetScheduleFromPdf(notice.extracted_text, notice.uploaded_by || 'COE');
+    total += synced.count || 0;
+  }
+  console.log('Datesheet startup sync complete; parsed course/date rows:', total);
 }
 
 async function getPublishedDatesheetText() {
@@ -691,7 +710,10 @@ app.get("*", (_req, res) => {
 });
 
 initDb()
-  .then(() => app.listen(PORT, () => console.log(`QPMS server listening on ${PORT}`)))
+  .then(async () => {
+    await backfillDatesheetSchedulesFromExistingNotices();
+    app.listen(PORT, () => console.log(`QPMS server listening on ${PORT}`));
+  })
   .catch(err => {
     console.error("Database initialization failed:", err);
     app.listen(PORT, () => console.log(`QPMS server listening on ${PORT} (DB unavailable)`));
