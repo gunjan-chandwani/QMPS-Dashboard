@@ -231,7 +231,7 @@
                         <span id="stat-pending" class="font-bold text-blue-800 text-base">0</span>
                     </div>
                     <div class="bg-amber-50 p-2.5 rounded-lg border border-amber-100">
-                        <span class="text-amber-600 block mb-0.5">Needs Revision</span>
+                        <span class="text-amber-600 block mb-0.5">Under Revision / Changes Required</span>
                         <span id="stat-action" class="font-bold text-amber-800 text-base">0</span>
                     </div>
                     <div class="bg-emerald-50 p-2.5 rounded-lg border border-emerald-100">
@@ -344,10 +344,11 @@
                                 <a href="/api/papers/download-all.zip" class="px-3 py-2 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-xs font-semibold"><i class="fa-solid fa-file-zipper mr-1"></i> Download All Papers (ZIP)</a>
                             </div>
                         </div>
-                        <div id="coe-report-summary" class="grid grid-cols-2 lg:grid-cols-4 gap-3"></div>
+                        <div id="coe-report-summary" class="grid grid-cols-2 lg:grid-cols-5 gap-3"></div>
                         <div class="overflow-x-auto border border-slate-100 rounded-xl"><table class="w-full text-xs text-left"><thead class="bg-slate-50 uppercase text-slate-500"><tr><th class="p-3">School</th><th class="p-3">Department / Programme</th><th class="p-3">Semester</th><th class="p-3">Scheduled</th><th class="p-3">Uploaded</th><th class="p-3">Pending Upload</th><th class="p-3">Moderated</th><th class="p-3">Final Approved</th></tr></thead><tbody id="coe-school-report" class="divide-y divide-slate-100"></tbody></table></div>
-                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
-                            <div class="rounded-xl border border-violet-200 bg-violet-50/60 p-3"><div class="flex justify-between items-center gap-2"><div><h4 class="font-bold text-violet-900 text-sm">Moderated Papers</h4><p class="text-[11px] text-violet-700">Moderation committee approved; awaiting COE final archive if applicable.</p></div><span id="quick-moderated-count" class="text-xl font-black text-violet-800">0</span></div><div id="quick-moderated-list" class="mt-3 space-y-2 max-h-56 overflow-auto"></div></div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                            <div class="rounded-xl border border-violet-200 bg-violet-50/60 p-3"><div class="flex justify-between items-center gap-2"><div><h4 class="font-bold text-violet-900 text-sm">Approved by Moderation</h4><p class="text-[11px] text-violet-700">Papers approved by the moderation committee and awaiting COE final approval.</p></div><span id="quick-moderated-count" class="text-xl font-black text-violet-800">0</span></div><div id="quick-moderated-list" class="mt-3 space-y-2 max-h-56 overflow-auto"></div></div>
+                            <div class="rounded-xl border border-amber-200 bg-amber-50/60 p-3"><div class="flex justify-between items-center gap-2"><div><h4 class="font-bold text-amber-900 text-sm">Changes Required</h4><p class="text-[11px] text-amber-700">Papers returned to faculty for correction; count excludes missing uploads.</p></div><span id="quick-changes-count" class="text-xl font-black text-amber-800">0</span></div><div id="quick-changes-list" class="mt-3 space-y-2 max-h-56 overflow-auto"></div></div>
                             <div class="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3"><div class="flex justify-between items-center gap-2"><div><h4 class="font-bold text-emerald-900 text-sm">Final Approved Papers</h4><p class="text-[11px] text-emerald-700">COE-approved papers, ready for direct access.</p></div><span id="quick-approved-count" class="text-xl font-black text-emerald-800">0</span></div><div id="quick-approved-list" class="mt-3 space-y-2 max-h-56 overflow-auto"></div></div>
                             <div class="rounded-xl border border-rose-200 bg-rose-50/60 p-3"><div class="flex justify-between items-center gap-2"><div><h4 class="font-bold text-rose-900 text-sm">Datesheet Papers Not Uploaded</h4><p class="text-[11px] text-rose-700">Scheduled courses with no matching uploaded course code.</p></div><span id="quick-pending-count" class="text-xl font-black text-rose-800">0</span></div><div id="quick-pending-list" class="mt-3 space-y-2 max-h-56 overflow-auto"></div></div>
                         </div>
@@ -364,10 +365,10 @@
                             <span id="coe-badge-unuploaded" class="ml-1 px-1.5 py-0.2 bg-rose-100 text-rose-700 rounded-full text-[10px] font-bold">0</span>
                         </button>
                         <button onclick="filterCoeTab('MODERATION_APPROVED')" id="coe-tab-moderation_approved" class="pb-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-700 whitespace-nowrap">
-                            Approved by Moderation
+                            Approved by Moderation <span id="coe-badge-moderation-approved" class="ml-1 px-1.5 py-0.5 bg-violet-100 text-violet-800 rounded-full text-[10px] font-bold">0</span>
                         </button>
                         <button onclick="filterCoeTab('RESUBMITTED')" id="coe-tab-resubmitted" class="pb-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-700 whitespace-nowrap">
-                            Revised Papers
+                            Changes Required / Awaiting Revision <span id="coe-badge-changes-required" class="ml-1 px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded-full text-[10px] font-bold">0</span>
                         </button>
                         <button onclick="filterCoeTab('ARCHIVED')" id="coe-tab-archived" class="pb-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-700 whitespace-nowrap">
                             Final Archived Papers
@@ -1146,7 +1147,7 @@ window.onload = function() {
             document.getElementById('coe-badge-unuploaded').textContent = unuploaded.length;
             document.getElementById('stat-total').textContent = papersDatabase.length;
             document.getElementById('stat-pending').textContent = papersDatabase.filter(p => ['SUBMITTED_TO_COE', 'FORWARDED_FOR_MODERATION', 'RESUBMITTED_TO_COE'].includes(p.status)).length;
-            document.getElementById('stat-action').textContent = papersDatabase.filter(p => p.status === 'CHANGES_REQUIRED').length;
+            document.getElementById('stat-action').textContent = papersDatabase.filter(p => ['CHANGES_REQUIRED', 'CHANGES_REQUIRED_BY_MODERATOR'].includes(String(p.status || '').toUpperCase())).length;
             document.getElementById('stat-approved').textContent = papersDatabase.filter(p => p.status === 'FINAL_APPROVED').length;
         }
 
@@ -1296,10 +1297,10 @@ window.onload = function() {
                 titleElement.innerHTML = `<i class="fa-solid fa-list-check text-brand-600"></i><span>Submitted Question Papers Pending Verification</span>`;
                 actionBar.classList.add('hidden');
             } else if (tab === 'MODERATION_APPROVED') {
-                titleElement.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-600"></i><span>Approved by Moderation — Awaiting COE Final Approval</span>`;
+                titleElement.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-600"></i><span>Approved by Moderation — ${document.getElementById('coe-badge-moderation-approved')?.textContent || 0} paper(s) awaiting COE final approval</span>`;
                 actionBar.classList.add('hidden');
             } else if (tab === 'RESUBMITTED') {
-                titleElement.innerHTML = `<i class="fa-solid fa-rotate-right text-purple-600"></i><span>Revised Papers / Changes Required</span>`;
+                titleElement.innerHTML = `<i class="fa-solid fa-rotate-right text-amber-600"></i><span>Changes Required — ${document.getElementById('coe-badge-changes-required')?.textContent || 0} paper(s) returned to faculty for correction</span>`;
                 actionBar.classList.add('hidden');
             } else {
                 titleElement.innerHTML = `<i class="fa-solid fa-box-archive text-teal-600"></i><span>Final Approved & Archived Question Papers</span>`;
@@ -1311,13 +1312,21 @@ window.onload = function() {
 
         const QPMS_SCHOOL_DEPARTMENTS = {}; // Report groups are derived from live records
         function qpmsSchoolFor(item) {
-            const raw = `${item.school || ''} ${item.department || ''} ${item.program || ''}`.toLowerCase();
-            if (raw.includes('law')) return 'School of Law';
+            const schoolValue = String(item.school || '').trim();
+            const school = schoolValue.toLowerCase();
+            // Trust a valid explicit school value first; do not display placeholder values as real schools.
+            if (school.includes('school of law')) return 'School of Law';
+            if (school.includes('school of science')) return 'School of Sciences';
+            if (school.includes('school of education')) return 'School of Education';
+            if (school.includes('school of business')) return 'School of Business';
+            if (school.includes('school of engineering')) return 'School of Engineering';
+            const raw = `${item.department || ''} ${item.program || ''} ${item.courseName || ''} ${item.courseCode || ''}`.toLowerCase();
+            if (raw.includes('law') || /(^|[^a-z])lw\w*/.test(String(item.courseCode || '').toLowerCase())) return 'School of Law';
             if (raw.includes('physics') || raw.includes('chemistry') || raw.includes('chem') || raw.includes('mathematics') || raw.includes('math')) return 'School of Sciences';
-            if (raw.includes('education') || raw.includes('b.ed') || raw.includes('b.ed.') || raw.includes('itep')) return 'School of Education';
+            if (raw.includes('education') || raw.includes('b.ed') || raw.includes('itep') || /(^|[^a-z])ed\w*/.test(String(item.courseCode || '').toLowerCase())) return 'School of Education';
             if (raw.includes('business') || raw.includes('management') || raw.includes('mba') || raw.includes('bba')) return 'School of Business';
             if (raw.includes('engineering') || raw.includes('computer science') || raw.includes('cst') || raw.includes('mechanical') || raw.includes('robotics') || raw.includes('artificial intelligence') || raw.includes('ece') || raw.includes('electronics')) return 'School of Engineering';
-            return item.school || 'Unmapped / Other';
+            return 'School mapping required';
         }
         function qpmsDepartmentFor(item) {
             const raw = `${item.department || ''} ${item.program || ''}`.toLowerCase();
@@ -1345,6 +1354,7 @@ window.onload = function() {
             const pending = schedules.filter(s => !(papers || []).some(p => qpmsScheduleMatchesPaper(s, p)));
             const normalizedStatus = p => String(p.status || '').toUpperCase().replace(/[ -]+/g, '_').replace(/^AUDIT:_?/, '');
             const moderated = papers.filter(p => ['APPROVED','APPROVED_BY_MODERATOR','MODERATION_APPROVED'].includes(normalizedStatus(p)));
+            const changesRequired = papers.filter(p => ['CHANGES_REQUIRED','CHANGES_REQUIRED_BY_MODERATOR'].includes(normalizedStatus(p)));
             const finalApproved = papers.filter(p => ['FINAL_APPROVED','FINAL_APPROVED_&_ARCHIVED'].includes(normalizedStatus(p)));
             const totalCard = (label, value, cls) => `<div class="rounded-xl border p-3 ${cls}"><div class="text-xs font-semibold opacity-80">${label}</div><div class="text-2xl font-black mt-1">${value}</div></div>`;
             document.getElementById('coe-report-summary').innerHTML = [totalCard('Papers Uploaded',papers.length,'border-slate-200 bg-slate-50 text-slate-900'),totalCard('Pending Datesheet Uploads',schedules.length ? pending.length : '—','border-rose-200 bg-rose-50 text-rose-900'),totalCard('Approved by Moderation',moderated.length,'border-violet-200 bg-violet-50 text-violet-900'),totalCard('Final Approved by COE',finalApproved.length,'border-emerald-200 bg-emerald-50 text-emerald-900')].join('');
@@ -1354,11 +1364,15 @@ window.onload = function() {
             papers.forEach(p=>{const r=row(qpmsSchoolFor(p),qpmsDepartmentFor(p),p.semester||'Not specified');r.uploaded++;if(['APPROVED','APPROVED_BY_MODERATOR','MODERATION_APPROVED'].includes(String(p.status||'').toUpperCase().replace(/[ -]+/g,'_')))r.moderated++;if(['FINAL_APPROVED','FINAL_APPROVED_&_ARCHIVED'].includes(String(p.status||'').toUpperCase().replace(/[ -]+/g,'_')))r.approved++;});
             document.getElementById('coe-school-report').innerHTML = [...keys.values()].sort((a,b)=>a.school.localeCompare(b.school)||a.dept.localeCompare(b.dept)||a.semester.localeCompare(b.semester)).map(r=>`<tr><td class="p-3 font-semibold text-slate-800">${escapeHtml(r.school)}</td><td class="p-3">${escapeHtml(r.dept)}</td><td class="p-3">${escapeHtml(r.semester)}</td><td class="p-3">${r.scheduled}</td><td class="p-3 font-bold">${r.uploaded}</td><td class="p-3 ${r.pending?'text-rose-700 font-bold':''}">${r.pending}</td><td class="p-3 text-violet-700 font-bold">${r.moderated}</td><td class="p-3 text-emerald-700 font-bold">${r.approved}</td></tr>`).join('');
             document.getElementById('quick-moderated-count').textContent = moderated.length;
-            document.getElementById('quick-moderated-list').innerHTML=moderated.length?moderated.map(qpmsPaperLink).join(''):'<p class="text-xs text-slate-500">No papers approved by moderation and awaiting COE approval.</p>';
+            document.getElementById('quick-moderated-list').innerHTML=moderated.length?moderated.map(qpmsPaperLink).join(''):'<p class="text-xs text-slate-500">No papers currently approved by moderation.</p>';
+            document.getElementById('quick-changes-count').textContent = changesRequired.length;
+            document.getElementById('quick-changes-list').innerHTML=changesRequired.length?changesRequired.map(qpmsPaperLink).join(''):'<p class="text-xs text-slate-500">No papers are currently awaiting faculty correction.</p>';
+            const moderationBadge = document.getElementById('coe-badge-moderation-approved'); if (moderationBadge) moderationBadge.textContent = moderated.length;
+            const changesBadge = document.getElementById('coe-badge-changes-required'); if (changesBadge) changesBadge.textContent = changesRequired.length;
             document.getElementById('quick-approved-count').textContent = finalApproved.length;
             document.getElementById('quick-approved-list').innerHTML=finalApproved.length?finalApproved.map(qpmsPaperLink).join(''):'<p class="text-xs text-slate-500">No final-approved papers available yet.</p>';
             document.getElementById('quick-pending-count').textContent = schedules.length ? pending.length : '—';
-            document.getElementById('quick-pending-list').innerHTML = pending.length ? pending.map(s=>`<div class="bg-white/80 border border-white rounded-lg p-2"><div class="font-semibold text-slate-800">${escapeHtml(s.courseName)}</div><div class="text-[10px] text-slate-500">${escapeHtml(s.courseCode)} · ${escapeHtml(qpmsSchoolFor(s))} · ${escapeHtml(qpmsDepartmentFor(s))} · ${escapeHtml(s.semester||'Semester not set')}</div><div class="text-[10px] text-rose-700 mt-1">Exam: ${escapeHtml(s.paperDate||'Date not set')} · ${escapeHtml(s.facultyName||'Faculty not assigned')}</div></div>`).join('') : (schedules.length ? '<p class="text-xs text-emerald-700">All structured schedule entries have matching uploaded papers.</p>' : '<p class="text-xs text-amber-800">No structured datesheet schedule rows are loaded. Uploading a PDF alone does not create course-wise pending records; add/import the courses in COE Datesheet Schedule to calculate this count.</p>');
+            document.getElementById('quick-pending-list').innerHTML = pending.length ? pending.map(s=>`<div class="bg-white/80 border border-white rounded-lg p-2"><div class="font-semibold text-slate-800">${escapeHtml(s.courseName)}</div><div class="text-[10px] text-slate-500">${escapeHtml(s.courseCode)} · ${escapeHtml(qpmsSchoolFor(s))} · ${escapeHtml(qpmsDepartmentFor(s))} · ${escapeHtml(s.semester||'Semester not set')}</div><div class="text-[10px] text-rose-700 mt-1">Exam: ${escapeHtml(s.paperDate||'Date not set')} · ${escapeHtml(s.facultyName||'Faculty not assigned')}${qpmsSchoolFor(s)==='School mapping required' ? ' · COE school mapping required' : ''}</div></div>`).join('') : (schedules.length ? '<p class="text-xs text-emerald-700">All structured schedule entries have matching uploaded papers.</p>' : '<p class="text-xs text-amber-800">No structured datesheet schedule rows are loaded. Uploading a PDF alone does not create course-wise pending records; add/import the courses in COE Datesheet Schedule to calculate this count.</p>');
         }
         function qpmsReportInScope(item, role) {
             // Moderator reports must only include records assigned to that moderator's scope.
@@ -1504,7 +1518,7 @@ window.onload = function() {
                             </div>
                         </td>
                         <td class="px-4 py-3.5 text-slate-600">
-                            <div>${sch.department}</div>
+                            <div>${sch.department || 'Department not mapped'}</div><div class="text-[10px] font-semibold ${qpmsSchoolFor(sch)==='School mapping required' ? 'text-amber-700' : 'text-slate-500'}">${qpmsSchoolFor(sch)==='School mapping required' ? 'School mapping required — please verify datesheet row' : qpmsSchoolFor(sch)}</div>
                             <div class="text-xs font-semibold text-rose-800"><i class="fa-regular fa-calendar mr-1"></i>Exam Date: ${sch.paperDate}</div>
                         </td>
                         <td class="px-4 py-3.5 text-slate-600 text-xs font-medium">${sch.examType}</td>
@@ -1542,7 +1556,7 @@ window.onload = function() {
             } else if (coeTabFilter === 'MODERATION_APPROVED') {
                 filtered = papersDatabase.filter(p => p.status === 'APPROVED');
             } else if (coeTabFilter === 'RESUBMITTED') {
-                filtered = papersDatabase.filter(p => ['RESUBMITTED_TO_COE', 'CHANGES_REQUIRED'].includes(p.status));
+                filtered = papersDatabase.filter(p => ['CHANGES_REQUIRED', 'CHANGES_REQUIRED_BY_MODERATOR'].includes(String(p.status || '').toUpperCase()));
             } else {
                 filtered = papersDatabase.filter(p => p.status === 'FINAL_APPROVED');
             }
