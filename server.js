@@ -113,22 +113,20 @@ function normalizedPdfText(text) {
 
 function parseDatesheetScheduleRows(pdfText) {
   const lines = String(pdfText || '').replace(/\f/g, '\n').replace(/\r/g, '\n')
-    .split('\n').map(x => x.replace(/[\u00a0\u200b]/g, ' ').replace(/\s+/g, ' ').trim()).filter(Boolean);
+    .split('\n').map(x => x.replace(/[\u00a0\u200b\u200c\u200d\ufeff]/g, ' ').replace(/\s+/g, ' ').trim()).filter(Boolean);
   const rows = [];
   let currentProgram = '';
   let currentSemester = '';
   let currentExam = 'Mid Semester';
-  const dateRe = /\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b/;
-  // Match the full decimal-prefixed codes first; prevent matching only the digit after the decimal point.
-  const codeRe = /(?<![\w.])(?:\d+\.\d+[A-Z]{2,4}\d{2}[A-Z]\d{3}|[A-Z]{2,4}\d{3,4}[A-Z]?)(?!\w)/i;
+  const dateRe = /\b(\d{1,2})[./-](\d{1,2})[./-](20\d{2})\b/;
+  const codeRe = /(?<![\w.])(?:\d+\.\d+[A-Z]{2,4}\d{2}[A-Z0-9]\d{3}|[A-Z]{2,4}\d{2,4}[A-Z]\b)(?!\w)/i;
   const isHeader = x => /^(?:date\s+timings?|timings?|course code|course name|manav rachna|schedule for|controller of examination|semester\s*[-:])/i.test(x);
-  const isProgramHeading = x => /^(?:bachelor|bachelors|master|masters|b\.?\s?tech|m\.?\s?tech|bca|mca|mba|bba|llb|llm|b\.?\s?sc|b\.?\s?com|m\.?\s?sc|b\.?sc\.?b\.?ed)\b/i.test(x);
-  const cleanName = x => String(x || '')
-    .replace(dateRe, ' ')
-    .replace(/\b(?:DATE|TIMINGS?|COURSE CODE|COURSE NAME)\b/ig, ' ')
+  const isProgramHeading = x => /^(?:bachelor|bachelors|master|masters|b\.?\s?tech|m\.?\s?tech|bca|mca|mba|bba|llb|llm|b\.?\s?sc|b\.?\s?com|m\.?\s?sc|b\.?sc\.?b\.?ed|b\.a\.|bb\.?a\.|ll\.?b)\b/i.test(x);
+  const clean = x => String(x || '')
+    .replace(/\b\d{1,2}[./-]\d{1,2}[./-]20\d{2}\b/g, ' ')
+    .replace(/\b(?:DATE|TIMINGS?|COURSE CODE|COURSE NAME|MANAV RACHNA UNIVERSITY|CONTROLLER OF EXAMINATIONS?)\b/ig, ' ')
     .replace(/\d{1,2}\.\d{2}\s*(?:NOON|AM|PM)?\s*-\s*\d{1,2}\.\d{2}\s*(?:NOON|AM|PM)?/ig, ' ')
     .replace(/\d{1,2}\.\d{2}\s*(?:NOON|AM|PM)/ig, ' ')
-    .replace(/\b(?:MANAV RACHNA UNIVERSITY|CONTROLLER OF EXAMINATIONS?)\b/ig, ' ')
     .replace(/\s+/g, ' ').replace(/^[|: -]+|[|: -]+$/g, '').trim();
 
   for (let i = 0; i < lines.length; i++) {
@@ -144,42 +142,39 @@ function parseDatesheetScheduleRows(pdfText) {
     else if (/SCHEDULE FOR .*MID\s*SEM/i.test(line)) currentExam = 'Mid Semester';
 
     if (isProgramHeading(line) && !isHeader(line)) currentProgram = line;
-    // Retain the programme's wrapped specialization heading where present.
     else if (currentProgram && !dateRe.test(line) && !codeRe.test(line) && !isHeader(line) &&
       /^[A-Z0-9/&(), .-]+$/.test(line) &&
       /SPECIALIZATION|CLOUD|FINTECH|VLSI|CHIP DESIGN|ROBOTICS|ARTIFICIAL INTELLIGENCE|CSTI|AIML|GEN AI|FSD/i.test(line)) {
       currentProgram = (currentProgram + ' ' + line).replace(/\s+/g, ' ').trim();
     }
 
-    const dateMatch = line.match(dateRe);
-    if (!dateMatch) continue;
-
-    // Build only this paper's block. Stop at the next date, new programme heading, or repeated table header.
+    const dm = line.match(dateRe);
+    if (!dm) continue;
     const blockLines = [line];
-    for (let j = i + 1; j < lines.length && j <= i + 5; j++) {
-      if (dateRe.test(lines[j])) break;
-      if (isProgramHeading(lines[j]) || /^(?:DATE\s+TIMINGS?|COURSE CODE\s+COURSE NAME|SCHEDULE FOR|MANAV RACHNA UNIVERSITY)/i.test(lines[j])) break;
+    for (let j = i + 1; j < lines.length && j <= i + 3; j++) {
+      if (dateRe.test(lines[j]) || isProgramHeading(lines[j]) || isHeader(lines[j]) ||
+          /^(?:SCHEDULE FOR|MANAV RACHNA UNIVERSITY|CONTROLLER OF EXAMINATION)/i.test(lines[j])) break;
       blockLines.push(lines[j]);
-      if (codeRe.test(blockLines.join(' ')) && cleanName(blockLines.join(' ')).length > 8 &&
-          !/\/$/.test(lines[j])) {
-        // Continue one line for wrapped subject names, then stop before unrelated page text.
+      if (codeRe.test(blockLines.join(' '))) {
+        const codes = blockLines.join(' ').match(new RegExp(codeRe.source, 'ig')) || [];
+        if (codes.length > 1) blockLines.pop();
         if (j + 1 < lines.length && !dateRe.test(lines[j + 1]) && !isHeader(lines[j + 1]) &&
             !isProgramHeading(lines[j + 1]) && !codeRe.test(lines[j + 1]) &&
-            /^[A-Z][A-Z0-9 &(),./-]{2,}$/.test(lines[j + 1])) blockLines.push(lines[++j]);
+            /^[A-Z][A-Z0-9 &(),./-]{2,}$/.test(lines[j + 1]) &&
+            !/AMCAT EXAM/i.test(blockLines.join(' '))) blockLines.push(lines[j + 1]);
         break;
       }
     }
     const block = blockLines.join(' ');
-    const codeMatch = block.match(codeRe);
-    if (!codeMatch) continue;
-    const code = codeMatch[0].toUpperCase();
-    const afterCode = block.slice(block.indexOf(codeMatch[0]) + codeMatch[0].length);
-    let name = cleanName(afterCode);
-    // Do not allow wrapped headers or a second course to leak into this course name.
+    const cm = block.match(codeRe);
+    if (!cm) continue;
+    const code = cm[0].toUpperCase();
+    let name = clean(block.slice(block.indexOf(cm[0]) + cm[0].length));
     name = name.split(/\b(?:DATE\s+TIMINGS?|COURSE CODE|COURSE NAME|SCHEDULE FOR|CONTROLLER OF EXAMINATION|BACHELOR\s+OF|MASTER\s+OF)\b/i)[0].trim();
     const nextCodeIndex = name.search(codeRe);
     if (nextCodeIndex >= 0) name = name.slice(0, nextCodeIndex).trim();
-    if (!name || name.length < 3 || /^(?:AMCAT EXAM|DATE|TIMINGS?)$/i.test(name)) continue;
+    if (!name || name.length < 3 || /^(?:AMCAT EXAM|DATE|TIMINGS?)$/i.test(name) ||
+        /CONTROLLER OF EXAMINATION|MANAV RACHNA UNIVERSITY/i.test(name)) continue;
 
     const program = currentProgram || 'Unmapped Programme';
     const low = (program + ' ' + name).toLowerCase();
@@ -195,10 +190,10 @@ function parseDatesheetScheduleRows(pdfText) {
       : department === 'Law' ? 'School of Law'
       : department === 'Business' ? 'School of Business'
       : department === 'Sciences' ? 'School of Sciences'
-      : department === 'Education & Humanities' ? 'School of Education' : 'Unmapped / Other';
-    const dd = String(dateMatch[1]).padStart(2, '0');
-    const mm = String(dateMatch[2]).padStart(2, '0');
-    rows.push({courseCode:code,courseName:name,school,department,program,semester:currentSemester || 'Not specified',examType:currentExam,paperDate:dateMatch[3] + '-' + mm + '-' + dd});
+      : department === 'Education & Humanities' ? 'School of Education & Humanities' : 'Unmapped / Other';
+    const dd = String(dm[1]).padStart(2, '0');
+    const mm = String(dm[2]).padStart(2, '0');
+    rows.push({courseCode:code,courseName:name,school,department,program,semester:currentSemester || 'Not specified',examType:currentExam,paperDate:dm[3] + '-' + mm + '-' + dd});
   }
   const unique = new Map();
   for (const r of rows) unique.set([r.courseCode,r.program,r.semester,r.examType,r.paperDate].join('|'),r);
@@ -232,7 +227,7 @@ async function backfillDatesheetSchedulesFromExistingNotices() {
   // Remove obviously malformed rows left by the previous parser (truncated codes, mixed subject rows, footer dates).
   await pool.query(`DELETE FROM datesheet_schedule
     WHERE course_code ~ '^[0-9][A-Z]{2,4}[0-9]{2}[A-Z][0-9]{3}$'
-       OR course_name ~* '[0-9]{2}[.][0-9]{2}[.][0-9]{4}|DATETimingsCourse Name|CONTROLLER OF EXAMINATION'`);
+       OR course_name ~* '[0-9]{2}[.][0-9]{2}[.][0-9]{4}|DATETimingsCourse Name|CONTROLLER OF EXAMINATION|T[[:space:]]*-?[[:space:]]*T WIRELESS SENSOR NETWORK OPERATION RESEARCH'`);
   const result = await pool.query(`SELECT extracted_text, uploaded_by FROM coe_notices
     WHERE (LOWER(type) LIKE '%datesheet%' OR LOWER(title) LIKE '%datesheet%' OR LOWER(original_filename) LIKE '%datesheet%')
       AND COALESCE(extracted_text, '') <> '' ORDER BY created_at ASC`);
