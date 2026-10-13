@@ -960,10 +960,14 @@
                 qpmsExamNorm(p.examType) === qpmsExamNorm(sch.examType) &&
                 (!sch.program || !p.program || same(p.program, sch.program));
         }
-        function getUnuploadedPapers() {
+        function getUnuploadedPapers(scopeRole = 'GLOBAL') {
             // A paper with Changes Required has still been uploaded; it is pending revision,
             // not a missing upload. Compare the complete schedule identity, not course code alone.
-            return (datesheetSchedule || []).filter(sch => !(papersDatabase || []).some(p => qpmsScheduleMatchesPaper(sch, p)));
+            // Moderator dashboards must count only datesheet courses in their assigned school/department.
+            const schedules = (datesheetSchedule || []).filter(sch =>
+                scopeRole !== 'MODERATOR' || qpmsReportInScope(sch, 'MODERATOR')
+            );
+            return schedules.filter(sch => !(papersDatabase || []).some(p => qpmsScheduleMatchesPaper(sch, p)));
         }
 
         // App Initializer
@@ -1142,13 +1146,19 @@ window.onload = function() {
         }
 
         function updateStats() {
-            const unuploaded = getUnuploadedPapers();
-            document.getElementById('stat-unuploaded').textContent = unuploaded.length;
-            document.getElementById('coe-badge-unuploaded').textContent = unuploaded.length;
-            document.getElementById('stat-total').textContent = papersDatabase.length;
-            document.getElementById('stat-pending').textContent = papersDatabase.filter(p => ['SUBMITTED_TO_COE', 'FORWARDED_FOR_MODERATION', 'RESUBMITTED_TO_COE'].includes(p.status)).length;
-            document.getElementById('stat-action').textContent = papersDatabase.filter(p => ['CHANGES_REQUIRED', 'CHANGES_REQUIRED_BY_MODERATOR'].includes(String(p.status || '').toUpperCase())).length;
-            document.getElementById('stat-approved').textContent = papersDatabase.filter(p => p.status === 'FINAL_APPROVED').length;
+            const allUnuploaded = getUnuploadedPapers('GLOBAL');
+            const scopedUnuploaded = currentSession?.role === 'MODERATOR' ? getUnuploadedPapers('MODERATOR') : allUnuploaded;
+            // The top dashboard metric follows the signed-in user's scope; COE navigation badge remains university-wide.
+            document.getElementById('stat-unuploaded').textContent = scopedUnuploaded.length;
+            const coeBadge = document.getElementById('coe-badge-unuploaded');
+            if (coeBadge) coeBadge.textContent = allUnuploaded.length;
+            const scopedPapers = currentSession?.role === 'MODERATOR'
+                ? (papersDatabase || []).filter(p => qpmsReportInScope(p, 'MODERATOR'))
+                : (papersDatabase || []);
+            document.getElementById('stat-total').textContent = scopedPapers.length;
+            document.getElementById('stat-pending').textContent = scopedPapers.filter(p => ['SUBMITTED_TO_COE', 'FORWARDED_FOR_MODERATION', 'RESUBMITTED_TO_COE'].includes(qpmsNormalizeStatus(p.status))).length;
+            document.getElementById('stat-action').textContent = scopedPapers.filter(p => ['CHANGES_REQUIRED', 'CHANGES_REQUIRED_BY_MODERATOR'].includes(qpmsNormalizeStatus(p.status))).length;
+            document.getElementById('stat-approved').textContent = scopedPapers.filter(p => qpmsNormalizeStatus(p.status) === 'FINAL_APPROVED').length;
         }
 
         // 1. FACULTY VIEW
