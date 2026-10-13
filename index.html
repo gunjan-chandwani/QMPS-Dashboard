@@ -452,6 +452,23 @@
                 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
+                        <label class="block font-medium text-slate-700 mb-1">School *</label>
+                        <select id="upload-school" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg" required>
+                            <option value="">Select School</option>
+                            <option>School of Engineering</option><option>School of Law</option>
+                            <option>School of Education & Humanities</option><option>School of Sciences</option>
+                            <option>School of Business</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Academic Year *</label>
+                        <select id="upload-academic-year" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg" required>
+                            <option value="2026-2027" selected>2026-2027</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
                         <label class="block font-medium text-slate-700 mb-1">Course Name *</label>
                         <input type="text" id="upload-course-name" placeholder="e.g. Data Structures & Algorithms" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none" required />
                     </div>
@@ -465,112 +482,13 @@
                     <div>
                         <label class="block font-medium text-slate-700 mb-1">Select Department *</label>
                         <select id="upload-dept" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none" required>
-                            <option value="Computer Science">Computer Science</option>
-                            <option value="Mechanical Eng.">Mechanical Eng.</option>
-                            <option value="Electrical Eng.">Electrical Eng.</option>
-                            <option value="Management Studies">Management Studies</option>
-                            <option value="CST">CST</option><option value="ME">ME</option><option value="ECE">ECE</option><option value="Robotics & AI">Robotics & AI</option>
-                            <option value="Law">Law</option><option value="Physics">Physics</option><option value="Chemistry">Chemistry</option><option value="Mathematics">Mathematics</option><option value="Education">Education</option><option value="Business">Business</option>
+                            <option value="">Select department</option>
                         </select>
                     </div>
                     <div>
                         <label class="block font-medium text-slate-700 mb-1">Program / Degree *</label>
 <select id="upload-program" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none" required>
-                            <option value="">Select batch-specific program</option>
-                            <optgroup label="2022 BATCH">
-                                <option value="B.A.LL.B.(H)">B.A.LL.B.(H)</option>
-                                <option value="BBA.LL.B(H)">BBA.LL.B(H)</option>
-                            </optgroup>
-                            <optgroup label="2023 BATCH">
-                                <option value="B.tech Computer Science Engineering">B.tech Computer Science Engineering</option>
-                                <option value="B.tech Computer Science Engineering with specialization in AIML">B.tech Computer Science Engineering with specialization in AIML</option>
-                                <option value="B.tech Computer Science Engineering with specialization in CSTI">B.tech Computer Science Engineering with specialization in CSTI</option>
-                                <option value="B.tech Computer Science Engineering with specialization in FSD">B.tech Computer Science Engineering with specialization in FSD</option>
-                                <option value="B.tech Robotics &amp; Artificial Intelligence">B.tech Robotics &amp; Artificial Intelligence</option>
-                                <option value="B.tech Electronics &amp; Communication">B.tech Electronics &amp; Communication</option>
-                                <option value="B.tech Electronics &amp; Communication with specialization in VLSI">B.tech Electronics &amp; Communication with specialization in VLSI</option>
-                                <option value="B.Tech Mechanical Engineering with specialization in SMA">B.Tech Mechanical Engineering with specialization in SMA</option>
-                                <option value="B.A.B.Ed.">B.A.B.Ed.</option>
-                                <option value="B.Sc.B.Ed.">B.Sc.B.Ed.</option>
-                                <option value="B.A.LL.B.(H)">B.A.LL.B.(H)</option>
-                                <option value="BBA.LL.B(H)">BBA.LL.B(H)</option>
-                            </optgroup>
-                            <optgroup label="2024 BATCH">
-                                <option value="B.tech Computer Science Engineering">B.tech Computer Science Engineering</option>
-                                <option value="B.tech Computer Science Engineering with specialization in AIML">B.tech Computer Science Engineering with specialization in AIML</option>
-                                <option value="B.tech Computer Science Engineering with specialization in CSTI">B.tech Computer Science Engineering with specialization in CSTI</option>
-                                <option value="B.tech Computer Science Engineering with specialization in FSD">B.tech Computer Science Engineering with specialization in FSD</option>
-                                <option value="B.tech Robotics &amp; Artificial Intelligence">B.tech Robotics &amp; Artificial Intelligence</option>
-                                <option value="B.tech Electronics &amp; Communication">B.tech Electronics &amp; Communication</option>
-                                <option value="B.tech Electronics &amp; Communication with specialization in VLSI">B.tech Electronics &amp; Communication with specialization in VLSI</option>
-                                <option value="B.Tech Mechanical Engineering with specialization in SMA">B.Tech Mechanical Engineering with specialization in SMA</option>
-                                <option value="B.A.B.Ed.">B.A.B.Ed.</option>
-                                <option value="B.Sc.B.Ed.">B.Sc.B.Ed.</option>
-                                <option value="B.A.LL.B.(H)">B.A.LL.B.(H)</option>
-                                <option value="BBA.LL.B(H)">BBA.LL.B(H)</option>
-                                <option value="LL.B(3 YEAR)">LL.B(3 YEAR)</option>
-                                <option value="Bachelor of Business Administration with specialization in Finance &amp; Accounts">Bachelor of Business Administration with specialization in Finance &amp; Accounts</option>
-                                <option value="Bachelor of Business Administration with specialization in Entrepreneurship &amp; Family Business">Bachelor of Business Administration with specialization in Entrepreneurship &amp; Family Business</option>
-                                <option value="Bachelor of Business Administration with specialization in Global Operation Management">Bachelor of Business Administration with specialization in Global Operation Management</option>
-                                <option value="Bachelor of Business Administration with specialization in Business Analytics">Bachelor of Business Administration with specialization in Business Analytics</option>
-                                <option value="Bachelor of Business Administration with specialization in Global Health Care Management">Bachelor of Business Administration with specialization in Global Health Care Management</option>
-                            </optgroup>
-                            <optgroup label="2025 BATCH">
-                                <option value="B.tech Computer Science Engineering">B.tech Computer Science Engineering</option>
-                                <option value="B.tech Computer Science Engineering with specialization in AIML">B.tech Computer Science Engineering with specialization in AIML</option>
-                                <option value="B.tech Computer Science Engineering with specialization in CSTI">B.tech Computer Science Engineering with specialization in CSTI</option>
-                                <option value="B.tech Computer Science Engineering with specialization in FSD">B.tech Computer Science Engineering with specialization in FSD</option>
-                                <option value="B.tech Computer Science Engineering with specialization in Gen AI">B.tech Computer Science Engineering with specialization in Gen AI</option>
-                                <option value="B.tech Robotics &amp; Artificial Intelligence">B.tech Robotics &amp; Artificial Intelligence</option>
-                                <option value="B.tech Electronics &amp; Communication with specialization in VLSI">B.tech Electronics &amp; Communication with specialization in VLSI</option>
-                                <option value="B.Tech Mechanical Engineering with specialization in SMA">B.Tech Mechanical Engineering with specialization in SMA</option>
-                                <option value="B.Tech Mechanical Engineering with specialization in EV">B.Tech Mechanical Engineering with specialization in EV</option>
-                                <option value="M.Tech. Mechanical Engineering">M.Tech. Mechanical Engineering</option>
-                                <option value="M.Tech. Electronics and Communication Engineering">M.Tech. Electronics and Communication Engineering</option>
-                                <option value="M.Tech. Computer Engineering">M.Tech. Computer Engineering</option>
-                                <option value="B.A.B.Ed.">B.A.B.Ed.</option>
-                                <option value="B.Sc.B.Ed.">B.Sc.B.Ed.</option>
-                                <option value="B.Ed.">B.Ed.</option>
-                                <option value="B.A.LL.B.(H)">B.A.LL.B.(H)</option>
-                                <option value="BBA.LL.B(H)">BBA.LL.B(H)</option>
-                                <option value="LL.B(3 YEAR)">LL.B(3 YEAR)</option>
-                                <option value="Bachelor of Business Administration with specialization in Finance &amp; Accounts">Bachelor of Business Administration with specialization in Finance &amp; Accounts</option>
-                                <option value="Bachelor of Business Administration with specialization in Entrepreneurship &amp; Family Business">Bachelor of Business Administration with specialization in Entrepreneurship &amp; Family Business</option>
-                                <option value="Bachelor of Business Administration with specialization in Global Operation Management">Bachelor of Business Administration with specialization in Global Operation Management</option>
-                                <option value="Bachelor of Business Administration with specialization in Business Analytics">Bachelor of Business Administration with specialization in Business Analytics</option>
-                                <option value="MBA (Business Analytics)">MBA (Business Analytics)</option>
-                                <option value="M.Sc. Chemistry">M.Sc. Chemistry</option>
-                                <option value="Bachelor of Computer Applications">Bachelor of Computer Applications</option>
-                            </optgroup>
-                            <optgroup label="2026 BATCH">
-                                <option value="B.tech Computer Science Engineering">B.tech Computer Science Engineering</option>
-                                <option value="B.tech Computer Science Engineering with specialization in AIML">B.tech Computer Science Engineering with specialization in AIML</option>
-                                <option value="B.tech Computer Science Engineering with specialization in CSTI">B.tech Computer Science Engineering with specialization in CSTI</option>
-                                <option value="B.tech Computer Science Engineering with specialization in Gen AI">B.tech Computer Science Engineering with specialization in Gen AI</option>
-                                <option value="B.tech Robotics &amp; Artificial Intelligence">B.tech Robotics &amp; Artificial Intelligence</option>
-                                <option value="B.tech Electronics &amp; Communication with specialization in VLSI">B.tech Electronics &amp; Communication with specialization in VLSI</option>
-                                <option value="B.Tech Mechanical Engineering with specialization in SMA">B.Tech Mechanical Engineering with specialization in SMA</option>
-                                <option value="B.Tech Mechanical Engineering with specialization in EV">B.Tech Mechanical Engineering with specialization in EV</option>
-                                <option value="M.Tech. Mechanical Engineering">M.Tech. Mechanical Engineering</option>
-                                <option value="B.A.B.Ed.">B.A.B.Ed.</option>
-                                <option value="B.Sc.B.Ed.">B.Sc.B.Ed.</option>
-                                <option value="B.Ed.">B.Ed.</option>
-                                <option value="B.A.LL.B.(H)">B.A.LL.B.(H)</option>
-                                <option value="BBA.LL.B(H)">BBA.LL.B(H)</option>
-                                <option value="LL.B(3 YEAR)">LL.B(3 YEAR)</option>
-                                <option value="Bachelor of Business Administration with specialization in Finance &amp; Accounts">Bachelor of Business Administration with specialization in Finance &amp; Accounts</option>
-                                <option value="Bachelor of Business Administration with specialization in Entrepreneurship &amp; Family Business">Bachelor of Business Administration with specialization in Entrepreneurship &amp; Family Business</option>
-                                <option value="Bachelor of Business Administration with specialization in Global Operation Management">Bachelor of Business Administration with specialization in Global Operation Management</option>
-                                <option value="Bachelor of Business Administration with specialization in Business Analytics">Bachelor of Business Administration with specialization in Business Analytics</option>
-                                <option value="Bachelor of Business Administration with specialization in Artificial Intelligence">Bachelor of Business Administration with specialization in Artificial Intelligence</option>
-                                <option value="MBA (Business Analytics)">MBA (Business Analytics)</option>
-                                <option value="Bachelor of Computer Applications">Bachelor of Computer Applications</option>
-                                <option value="ITEP BA B.ED">ITEP BA B.ED</option>
-                                <option value="ITEP BSc B.Ed">ITEP BSc B.Ed</option>
-                                <option value="M.A. in Education (International Education)">M.A. in Education (International Education)</option>
-                                <option value="M.A. in Education with Specialization in IEELD">M.A. in Education with Specialization in IEELD</option>
-                                <option value="LLM(1 Year)">LLM(1 Year)</option>
-                            </optgroup>
+                            <option value="">Select department first</option>
                         </select>
                     </div>
                 </div>
@@ -997,7 +915,65 @@
         }
 
         // App Initializer
-        window.onload = function() {
+        
+        // MRU academic hierarchy: School -> Department -> Programme; academic year is selected separately.
+        const MRU_PROGRAMS = {
+          "School of Engineering": {
+            "Computer Science & Technology": [
+              "B.tech Computer Science Engineering",
+              "B.tech Computer Science Engineering with specialization in AIML",
+              "B.tech Computer Science Engineering with specialization in CSTI",
+              "B.tech Computer Science Engineering with specialization in FSD",
+              "B.tech Computer Science Engineering with specialization in Gen AI",
+              "M.Tech. Computer Engineering","Bachelor of Computer Applications"
+            ],
+            "Mechanical Engineering": [
+              "B.Tech Mechanical Engineering with specialization in SMA",
+              "B.Tech Mechanical Engineering with specialization in EV","M.Tech. Mechanical Engineering"
+            ],
+            "Electronics and Communication": [
+              "B.tech Electronics & Communication","B.tech Electronics & Communication with specialization in VLSI",
+              "M.Tech. Electronics and Communication Engineering"
+            ],
+            "Robotics & AI": ["B.tech Robotics & Artificial Intelligence"]
+          },
+          "School of Law": {"Law":["B.A.LL.B.(H)","BBA.LL.B(H)","LL.B(3 YEAR)"]},
+          "School of Education & Humanities": {"Education":["B.A.B.Ed.","B.Sc.B.Ed.","B.Ed.","ITEP BA B.ED","ITEP BSc B.Ed","M.A. in Education (International Education)","M.A. in Education with Specialization in IEELD"]},
+          "School of Sciences": {"Chemistry":["M.Sc. Chemistry"]},
+          "School of Business": {"Business":[
+            "Bachelor of Business Administration with specialization in Finance & Accounts",
+            "Bachelor of Business Administration with specialization in Entrepreneurship & Family Business",
+            "Bachelor of Business Administration with specialization in Global Operation Management",
+            "Bachelor of Business Administration with specialization in Business Analytics",
+            "Bachelor of Business Administration with specialization in Artificial Intelligence",
+            "MBA (Business Analytics)"
+          ]}
+        };
+        function refreshAcademicHierarchy() {
+          const school = document.getElementById('upload-school');
+          const dept = document.getElementById('upload-dept');
+          const program = document.getElementById('upload-program');
+          if (!school || !dept || !program) return;
+          const oldDept = dept.value, oldProgram = program.value;
+          const departments = Object.keys(MRU_PROGRAMS[school.value] || {});
+          dept.innerHTML = '<option value="">Select department</option>' + departments.map(d=>`<option value="${d}">${d}</option>`).join('');
+          if (departments.includes(oldDept)) dept.value = oldDept;
+          // Auto-select the department when the selected school has one department grouping.
+          if (!dept.value && departments.length === 1) dept.value = departments[0];
+          const choices = (MRU_PROGRAMS[school.value] || {})[dept.value] || [];
+          program.innerHTML = '<option value="">Select programme</option>' + choices.map(p=>`<option value="${p.replace(/&/g,'&amp;')}">${p}</option>`).join('');
+          if (choices.includes(oldProgram)) program.value = oldProgram;
+          const schoolInput = document.getElementById('upload-school');
+          if (schoolInput) schoolInput.dataset.selected = schoolInput.value;
+          if (typeof refreshUploadPrograms === 'function') refreshUploadPrograms();
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+          ['upload-school','upload-dept'].forEach(id => {
+            const el=document.getElementById(id); if(el) el.addEventListener('change', refreshAcademicHierarchy);
+          });
+          refreshAcademicHierarchy();
+        });
+window.onload = function() {
             // Default to Login View
             document.getElementById('view-login').classList.remove('hidden');
             document.getElementById('app-portal').classList.add('hidden');
@@ -1563,20 +1539,12 @@
             const exam = document.getElementById('upload-exam');
             const program = document.getElementById('upload-program');
             if (!code || !semester || !exam || !program) return;
-            const current = program.value;
             const matches = (datesheetSchedule || []).filter(s =>
                 qpmsNorm(s.courseCode) === qpmsNorm(code.value) &&
                 qpmsNorm(s.semester) === qpmsNorm(semester.value) &&
                 qpmsExamNorm(s.examType) === qpmsExamNorm(exam.value)
             );
-            const programs = [...new Map(matches.filter(s => s.program).map(s => [qpmsNorm(s.program), s.program])).values()];
             if (!code.value.trim() || !matches.length) return;
-            program.innerHTML = '<option value="">Select programme from COE datesheet</option>';
-            programs.forEach(name => {
-                const option = document.createElement('option'); option.value = name; option.textContent = name; program.appendChild(option);
-            });
-            if (programs.some(name => qpmsNorm(name) === qpmsNorm(current))) program.value = programs.find(name => qpmsNorm(name) === qpmsNorm(current));
-            else if (programs.length === 1) program.value = programs[0];
             const dept = document.getElementById('upload-dept');
             const departments = [...new Set(matches.map(s => s.department).filter(Boolean))];
             if (dept && departments.length === 1) {
@@ -1611,7 +1579,7 @@
             const seen = new Set();
             [...source.options].forEach(option => {
                 const value = (option.value || option.textContent || '').trim();
-                if (!value || /select batch-specific program/i.test(value) || seen.has(value.toLowerCase())) return;
+                if (!value || /select (programme|program|department)/i.test(value) || seen.has(value.toLowerCase())) return;
                 seen.add(value.toLowerCase());
                 const clone = document.createElement('option'); clone.value = value; clone.textContent = value; target.appendChild(clone);
             });
