@@ -338,7 +338,11 @@
                     <section class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4">
                         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                             <div><h3 class="text-base font-extrabold text-slate-900">School-wise & Department-wise Examination Report</h3><p class="text-xs text-slate-500">Live database counts, school/program mapping, semester-wise breakdown and datesheet compliance.</p></div>
-                            <button onclick="downloadWorkflowReport('COE')" class="px-3 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold"><i class="fa-solid fa-file-csv mr-1"></i> Download COE Report</button>
+                            <div class="flex flex-wrap gap-2">
+                                <button onclick="downloadWorkflowReport('COE')" class="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold"><i class="fa-solid fa-file-csv mr-1"></i> Download COE Report</button>
+                                <button onclick="downloadAllWorkflowReport()" class="px-3 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold"><i class="fa-solid fa-download mr-1"></i> Download All Records</button>
+                                <a href="/api/papers/download-all.zip" class="px-3 py-2 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-xs font-semibold"><i class="fa-solid fa-file-zipper mr-1"></i> Download All Papers (ZIP)</a>
+                            </div>
                         </div>
                         <div id="coe-report-summary" class="grid grid-cols-2 lg:grid-cols-4 gap-3"></div>
                         <div class="overflow-x-auto border border-slate-100 rounded-xl"><table class="w-full text-xs text-left"><thead class="bg-slate-50 uppercase text-slate-500"><tr><th class="p-3">School</th><th class="p-3">Department / Programme</th><th class="p-3">Semester</th><th class="p-3">Scheduled</th><th class="p-3">Uploaded</th><th class="p-3">Pending Upload</th><th class="p-3">Moderated</th><th class="p-3">Final Approved</th></tr></thead><tbody id="coe-school-report" class="divide-y divide-slate-100"></tbody></table></div>
@@ -1235,6 +1239,13 @@ window.onload = function() {
                         </button>
                     </td>
                 </tr>
+                ${(paper.moderationDetails || paper.moderation_details || paper.auditForm || paper.comments) ? (() => {
+                    const audit = paper.moderationDetails || paper.moderation_details || paper.auditForm || {};
+                    const feedback = audit.comments || paper.comments || '';
+                    const reviewDate = audit.date || paper.moderationDate || '';
+                    const checklist = [audit.q1 && `Q1: ${audit.q1}`, audit.q2 && `Q2: ${audit.q2}`, audit.q3 && `Q3: ${audit.q3}`, audit.q4 && `Q4: ${audit.q4}`, audit.q5 && `Q5: ${audit.q5}`, audit.q6 && `Q6: ${audit.q6}`, audit.q7 && `Q7: ${audit.q7}`, audit.q8 && `Q8: ${audit.q8}`, audit.q9 && `Q9: ${audit.q9}`, audit.q10 && `Q10: ${audit.q10}`, audit.q11 && `Q11: ${audit.q11}`, audit.q12 && `Q12: ${audit.q12}`].filter(Boolean).join(' • ');
+                    return `<tr class="bg-amber-50/70"><td colspan="6" class="px-4 pb-4 pt-2"><div class="rounded-lg border border-amber-200 p-3"><div class="flex flex-wrap items-center justify-between gap-2"><strong class="text-amber-900"><i class="fa-solid fa-message mr-1"></i> Moderator Feedback / Required Changes</strong><span class="text-xs text-amber-800">${escapeHtml(reviewDate || 'Review date not recorded')}</span></div><p class="mt-2 text-sm text-slate-800 whitespace-pre-wrap">${escapeHtml(feedback || (paper.status === 'CHANGES_REQUIRED' ? 'Moderator marked changes as required. Please contact the moderator/COE for details.' : 'No written comments provided.'))}</p>${checklist ? `<p class="mt-2 text-xs text-slate-700"><strong>Audit checklist:</strong> ${escapeHtml(checklist)}</p>` : ''}${paper.status === 'CHANGES_REQUIRED' ? '<p class="mt-2 text-xs font-bold text-amber-900">Please revise your question paper according to the moderator feedback and resubmit it.</p>' : ''}</div></td></tr>`;
+                })() : ''}
             `).join('');
         }
 
@@ -1365,6 +1376,27 @@ window.onload = function() {
             target.innerHTML = cards.join('');
         }
 
+        function qpmsAuditDetails(p) {
+            const a = p.moderationDetails || p.moderation_details || p.auditForm || {};
+            const read = (key) => a[key] ?? a[key.toLowerCase()] ?? '';
+            return {
+                date: read('date') || p.moderationDate || '',
+                decision: p.status || '',
+                comments: read('comments') || p.comments || '',
+                q1: read('q1'), q2: read('q2'), q3: read('q3'), q4: read('q4'),
+                q5: read('q5'), q6: read('q6'), q7: read('q7'), q8: read('q8'),
+                q9: read('q9'), q10: read('q10'), q11: read('q11'), q12: read('q12')
+            };
+        }
+
+        function qpmsDownloadCsv(filename, rows) {
+            const csv = rows.map(row => row.map(v => '"' + String(v ?? '').replace(/"/g, '""').replace(/\r?\n/g, ' ') + '"').join(',')).join('\r\n');
+            const blobUrl = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' }));
+            const a = document.createElement('a'); a.href = blobUrl; a.download = filename;
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+        }
+
         function downloadWorkflowReport(role) {
             const papers = (papersDatabase || []).filter(p => qpmsReportInScope(p, role));
             const counts = qpmsWorkflowCounts(papers);
@@ -1372,30 +1404,42 @@ window.onload = function() {
                 [`QPMS ${role === 'MODERATOR' ? 'MODERATOR' : 'COE'} WORKFLOW REPORT`],
                 ['Generated At', new Date().toLocaleString()],
                 ['Report Scope', role === 'MODERATOR' ? (currentSession?.departmentScope || currentSession?.schoolScope || 'Current moderator scope') : (currentSession?.schoolScope || 'All schools')],
-                [],
-                ['SUMMARY METRIC', 'COUNT'],
+                [], ['SUMMARY METRIC', 'COUNT'],
                 ['Papers Uploaded', counts.uploaded],
                 ['Sent for Moderation / Re-submitted', counts.sentForModeration],
                 ['Moderation Completed', counts.moderated],
                 ['Approved by Moderator (awaiting COE or already final-approved)', counts.moderationApproved + counts.finalApproved],
                 ['Changes Required', counts.changesRequired],
                 ['Final Approved by COE', counts.finalApproved],
-                ['Pending Initial Verification', counts.pendingInitialVerification],
-                [],
-                ['School','Department','Program','Semester','Course Code','Course Name','Faculty','Exam Type','Exam Date','Status','Version','Submitted On','Comments']
+                ['Pending Initial Verification', counts.pendingInitialVerification], [],
+                ['School','Department','Program','Semester','Course Code','Course Name','Faculty','Exam Type','Exam Date','Status','Version','Submitted On','Moderator Decision Date','Moderator Comments / Changes Required']
             ];
-            papers.forEach(p => reportRows.push([
-                qpmsSchoolFor(p), qpmsDepartmentFor(p), p.program || '', p.semester || '', p.courseCode || '',
-                p.courseName || '', p.facultyName || '', p.examType || '', p.paperDate || '', p.status || '',
-                p.currentVersion ?? '', p.submissionDate || p.createdAt || '', p.comments || p.auditForm?.comments || ''
-            ]));
-            const csv = reportRows.map(row => row.map(v => '"' + String(v ?? '').replace(/"/g, '""') + '"').join(',')).join('\r\n');
-            const blobUrl = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' }));
-            const a = document.createElement('a');
-            a.href = blobUrl;
-            a.download = `QPMS_${role === 'MODERATOR' ? 'Moderator' : 'COE'}_Workflow_Report_${new Date().toISOString().slice(0,10)}.csv`;
-            document.body.appendChild(a); a.click(); a.remove();
-            setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+            papers.forEach(p => {
+                const a = qpmsAuditDetails(p);
+                reportRows.push([qpmsSchoolFor(p), qpmsDepartmentFor(p), p.program || '', p.semester || '', p.courseCode || '', p.courseName || '', p.facultyName || '', p.examType || '', p.paperDate || '', p.status || '', p.currentVersion ?? '', p.submissionDate || p.createdAt || '', a.date, a.comments]);
+            });
+            qpmsDownloadCsv(`QPMS_${role === 'MODERATOR' ? 'Moderator' : 'COE'}_Workflow_Report_${new Date().toISOString().slice(0,10)}.csv`, reportRows);
+        }
+
+        // COE bulk report includes every available paper and the full moderation checklist feedback.
+        function downloadAllWorkflowReport() {
+            const papers = (papersDatabase || []).filter(p => qpmsReportInScope(p, 'COE'));
+            const counts = qpmsWorkflowCounts(papers);
+            const rows = [
+                ['QPMS COE — ALL QUESTION PAPER & MODERATION RECORDS'],
+                ['Generated At', new Date().toLocaleString()],
+                ['Total Paper Records', papers.length],
+                ['Moderation Completed', counts.moderated],
+                ['Approved by Moderator', counts.moderationApproved],
+                ['Changes Required', counts.changesRequired],
+                ['Final Approved by COE', counts.finalApproved], [],
+                ['School','Department','Program','Semester','Course Code','Course Name','Faculty','Exam Type','Exam Date','Current Status','Version','Submitted On','Last Updated','Moderator Review Date','Moderator Comments / Required Changes','Audit Q1','Audit Q2','Audit Q3','Audit Q4','Audit Q5','Audit Q6','Audit Q7','Audit Q8','Audit Q9','Audit Q10','Audit Q11: Standard','Audit Q12: Coverage','File Available']
+            ];
+            papers.forEach(p => {
+                const a = qpmsAuditDetails(p);
+                rows.push([qpmsSchoolFor(p), qpmsDepartmentFor(p), p.program || '', p.semester || '', p.courseCode || '', p.courseName || '', p.facultyName || '', p.examType || '', p.paperDate || '', p.status || '', p.currentVersion ?? '', p.submissionDate || p.createdAt || '', p.updatedAt || '', a.date, a.comments, a.q1, a.q2, a.q3, a.q4, a.q5, a.q6, a.q7, a.q8, a.q9, a.q10, a.q11, a.q12, p.hasFile === false ? 'No' : 'Yes']);
+            });
+            qpmsDownloadCsv(`QPMS_COE_All_Records_With_Moderator_Feedback_${new Date().toISOString().slice(0,10)}.csv`, rows);
         }
 
         // Backwards-compatible name for any existing UI references.
@@ -1904,7 +1948,7 @@ window.onload = function() {
             paper.status = decision; // 'APPROVED' or 'CHANGES_REQUIRED'
             try {
                 if (!window.QPMS) throw new Error('Persistent API is not available');
-                await window.QPMS.updatePaper(paper.id, {status: paper.status, comments});
+                await window.QPMS.updatePaper(paper.id, {status: paper.status, comments, moderationDetails: paper.auditForm});
                 // Re-read the server record so the displayed status always reflects PostgreSQL.
                 const fresh = await window.QPMS.loadPapers();
                 papersDatabase = fresh.map(window.QPMS.toUiPaper);
@@ -2033,7 +2077,7 @@ window.QPMS = {
       examType: p.exam || '', paperDate: p.submission_date ? new Date(p.submission_date).toISOString().slice(0,10) : '',
       facultyName: p.faculty || '', currentVersion: 1, status: ({'Submitted by Faculty':'SUBMITTED_TO_COE','Submitted to COE':'SUBMITTED_TO_COE','Approved by Moderator':'APPROVED','Approved by Moderation':'APPROVED','Moderation Approved':'APPROVED','APPROVED_BY_MODERATOR':'APPROVED','Changes Required':'CHANGES_REQUIRED','Resubmitted to COE':'RESUBMITTED_TO_COE','Final Approved':'FINAL_APPROVED','Final Approved & Archived':'FINAL_APPROVED'}[p.status] || p.status || 'SUBMITTED_TO_COE'), hasFile: p.has_file !== false,
       versions: [{version: 1, filename, uploadTime: p.created_at ? new Date(p.created_at).toLocaleString() : '', uploadedBy: p.faculty || ''}],
-      auditForm: null, auditTrail: [{action: 'Uploaded Version 1', role: 'Faculty', user: p.faculty || '', timestamp: p.created_at ? new Date(p.created_at).toLocaleString() : '', details: 'Submitted question paper to COE'}]
+      auditForm: p.moderation_details || p.moderationDetails || (p.comments ? {comments: p.comments} : null), moderationDetails: p.moderation_details || p.moderationDetails || null, comments: p.comments || '', updatedAt: p.updated_at || '', submissionDate: p.submission_date || '', hasFile: p.has_file !== false, auditTrail: [{action: 'Uploaded Version 1', role: 'Faculty', user: p.faculty || '', timestamp: p.created_at ? new Date(p.created_at).toLocaleString() : '', details: 'Submitted question paper to COE'}]
     };
   },
   async loadPapers() {

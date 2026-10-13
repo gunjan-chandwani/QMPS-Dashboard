@@ -5,6 +5,7 @@ const path = require("path");
 const fs = require("fs");
 const { Pool } = require("pg");
 const pdfParse = require("pdf-parse");
+const zlib = require("zlib");
 require("dotenv").config();
 
 const app = express();
@@ -59,12 +60,14 @@ async function initDb() {
       file_mimetype TEXT,
       file_size BIGINT,
       comments TEXT,
+      moderation_details JSONB,
       created_at TIMESTAMPTZ DEFAULT NOW(),
       updated_at TIMESTAMPTZ DEFAULT NOW(),
       file_data BYTEA
     )
   `);
   await pool.query(`ALTER TABLE papers ADD COLUMN IF NOT EXISTS file_data BYTEA`);
+  await pool.query(`ALTER TABLE papers ADD COLUMN IF NOT EXISTS moderation_details JSONB`);
   await pool.query(`CREATE TABLE IF NOT EXISTS coe_notices (
     id BIGSERIAL PRIMARY KEY,
     type TEXT NOT NULL,
@@ -225,7 +228,7 @@ app.get("/api/papers", async (_req, res) => {
     const { rows } = await pool.query(`
       SELECT id::text AS id, paper_no, title, school, program, department, semester,
              course, subject, faculty, exam, submission_date, status, expected,
-             original_filename, file_mimetype, file_size, comments,
+             original_filename, file_mimetype, file_size, comments, moderation_details,
              created_at, updated_at, (file_data IS NOT NULL OR file_path IS NOT NULL) AS has_file
       FROM papers
       ORDER BY created_at DESC
@@ -390,6 +393,72 @@ app.get("/api/papers/:id/file", async (req, res) => {
   }
 });
 
+
+// Build a standards-compliant ZIP in memory using Node built-ins (no extra package needed).
+function crc32(buffer) {
+  let crc = 0xffffffff;
+  for (let i = 0; i < buffer.length; i++) {
+    crc ^= buffer[i];
+    for (let j = 0; j < 8; j++) crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+function makeZip(files) {
+  const localParts = [], centralParts = [];
+  let offset = 0;
+  for (const file of files) {
+    const name = Buffer.from(file.name, 'utf8');
+    const raw = Buffer.from(file.data);
+    const compressed = zlib.deflateRawSync(raw);
+    const crc = crc32(raw);
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(0x04034b50, 0); local.writeUInt16LE(20, 4); local.writeUInt16LE(0x0800, 6);
+    local.writeUInt16LE(8, 8); local.writeUInt32LE(crc, 14); local.writeUInt32LE(compressed.length, 18);
+    local.writeUInt32LE(raw.length, 22); local.writeUInt16LE(name.length, 26);
+    localParts.push(local, name, compressed);
+    const central = Buffer.alloc(46);
+    central.writeUInt32LE(0x02014b50, 0); central.writeUInt16LE(20, 4); central.writeUInt16LE(20, 6);
+    central.writeUInt16LE(0x0800, 8); central.writeUInt16LE(8, 10); central.writeUInt32LE(crc, 16);
+    central.writeUInt32LE(compressed.length, 20); central.writeUInt32LE(raw.length, 24);
+    central.writeUInt16LE(name.length, 28); central.writeUInt32LE(offset, 42);
+    centralParts.push(central, name);
+    offset += local.length + name.length + compressed.length;
+  }
+  const centralSize = centralParts.reduce((n, b) => n + b.length, 0);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(files.length, 8); end.writeUInt16LE(files.length, 10);
+  end.writeUInt32LE(centralSize, 12); end.writeUInt32LE(offset, 16);
+  return Buffer.concat([...localParts, ...centralParts, end]);
+}
+
+app.get('/api/papers/download-all.zip', async (_req, res) => {
+  try {
+    const { rows } = await pool.query(`SELECT id::text AS id, title, course, subject, original_filename, file_path, file_data
+      FROM papers WHERE file_data IS NOT NULL OR file_path IS NOT NULL ORDER BY created_at ASC`);
+    const files = [];
+    const used = new Set();
+    for (const p of rows) {
+      let data = p.file_data;
+      if (!data && p.file_path && fs.existsSync(p.file_path)) data = fs.readFileSync(p.file_path);
+      if (!data) continue;
+      let base = String(p.original_filename || `${p.course || p.subject || p.title || 'question-paper'}-${p.id}.pdf`)
+        .replace(/[\\/:*?"<>|\x00-\x1f]/g, '_').trim();
+      if (!base) base = `question-paper-${p.id}.pdf`;
+      let name = `${String(p.id).padStart(5, '0')}_${base}`;
+      let suffix = 1;
+      while (used.has(name.toLowerCase())) name = `${String(p.id).padStart(5, '0')}_${suffix++}_${base}`;
+      used.add(name.toLowerCase());
+      files.push({ name, data });
+    }
+    if (!files.length) return res.status(404).send('No question-paper files are available to download.');
+    const zip = makeZip(files);
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="QPMS_All_Question_Papers_${new Date().toISOString().slice(0,10)}.zip"`);
+    res.setHeader('Content-Length', zip.length);
+    res.end(zip);
+  } catch (e) { res.status(500).send(`Could not package question papers: ${e.message}`); }
+});
+
 app.get("/api/papers/:id/view", async (req, res) => {
   try {
     const { rows } = await pool.query(
@@ -499,9 +568,12 @@ app.patch("/api/papers/:id", async (req, res) => {
       "subject","faculty","exam","status","expected","comments"
     ];
     const entries = Object.entries(req.body || {}).filter(([k]) => allowed.includes(k));
+    if (req.body && Object.prototype.hasOwnProperty.call(req.body, "moderationDetails")) {
+      entries.push(["moderation_details", req.body.moderationDetails == null ? null : JSON.stringify(req.body.moderationDetails)]);
+    }
     if (!entries.length) return res.status(400).json({ ok:false, error:"No editable fields supplied" });
 
-    const sets = entries.map(([k], i) => `"${k}"=$${i+1}`);
+    const sets = entries.map(([k], i) => k === "moderation_details" ? `"${k}"=$${i+1}::jsonb` : `"${k}"=$${i+1}`);
     const values = entries.map(([,v]) => v);
     values.push(req.params.id);
 

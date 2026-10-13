@@ -99,3 +99,16 @@ The `/api/papers` and `/api/papers/:id/replace-file` endpoints validate submissi
 - Scanned/image-only PDFs must be OCR-processed and saved as searchable PDFs before upload.
 - COE must also maintain the matching structured schedule row in the portal. A PDF upload alone does not create programme/semester schedule records.
 - If the PDF or structured schedule does not verify the course/date, the backend returns HTTP 400 and rejects the paper upload/revision.
+
+## October 2026 report update
+- Moderator audit checklist responses and comments are now persisted in PostgreSQL (`papers.moderation_details` JSONB) along with the status/comments. The server creates this column safely for existing deployments.
+- Moderator and COE workflow CSV exports include the moderator review date and feedback/changes-required comments.
+- COE has a **Download All Records** CSV export containing all available paper records, status/count summary, moderator comments, and audit checklist answers.
+- Existing paper records are not deleted or replaced by this migration. Older records without stored audit details will show existing `comments` where available.
+
+
+## Latest update: Faculty moderator feedback + COE bulk paper download
+
+- Faculty paper rows now show the saved moderator comments, review date, available audit checklist answers, and a clear resubmission reminder when changes are required.
+- COE report tools include **Download All Papers (ZIP)**. It packages all question-paper files currently available in the database/storage into one ZIP; it does not include datesheets or replace the separate CSV workflow report.
+- The ZIP endpoint is `GET /api/papers/download-all.zip`. The portal currently uses client-side role selection rather than server-side authentication, so deploy only in the existing trusted environment and add server-side authorization before exposing the service publicly.
