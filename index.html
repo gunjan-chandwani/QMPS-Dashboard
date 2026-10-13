@@ -349,7 +349,7 @@
                         <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
                             <div class="rounded-xl border border-violet-200 bg-violet-50/60 p-3"><div class="flex justify-between items-center gap-2"><div><h4 class="font-bold text-violet-900 text-sm">Moderated Papers</h4><p class="text-[11px] text-violet-700">Moderation committee approved; awaiting COE final archive if applicable.</p></div><span id="quick-moderated-count" class="text-xl font-black text-violet-800">0</span></div><div id="quick-moderated-list" class="mt-3 space-y-2 max-h-56 overflow-auto"></div></div>
                             <div class="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3"><div class="flex justify-between items-center gap-2"><div><h4 class="font-bold text-emerald-900 text-sm">Final Approved Papers</h4><p class="text-[11px] text-emerald-700">COE-approved papers, ready for direct access.</p></div><span id="quick-approved-count" class="text-xl font-black text-emerald-800">0</span></div><div id="quick-approved-list" class="mt-3 space-y-2 max-h-56 overflow-auto"></div></div>
-                            <div class="rounded-xl border border-rose-200 bg-rose-50/60 p-3"><div class="flex justify-between items-center gap-2"><div><h4 class="font-bold text-rose-900 text-sm">Datesheet Papers Not Uploaded</h4><p class="text-[11px] text-rose-700">Pending papers grouped by school and department.</p></div><span id="quick-pending-count" class="text-xl font-black text-rose-800">0</span></div><label class="block text-[10px] font-semibold text-rose-800 mt-3 mb-1" for="quick-pending-school-filter">Filter by School</label><select id="quick-pending-school-filter" onchange="renderCoeReports()" class="w-full rounded-lg border border-rose-200 bg-white px-2 py-1.5 text-xs text-slate-700"><option value="ALL">All Schools</option></select><div id="quick-pending-list" class="mt-3 space-y-2 max-h-56 overflow-auto"></div></div>
+                            <div class="rounded-xl border border-rose-200 bg-rose-50/60 p-3"><div class="flex justify-between items-center gap-2"><div><h4 class="font-bold text-rose-900 text-sm">Datesheet Papers Not Uploaded</h4><p class="text-[11px] text-rose-700">Scheduled courses with no matching uploaded course code.</p></div><span id="quick-pending-count" class="text-xl font-black text-rose-800">0</span></div><div id="quick-pending-list" class="mt-3 space-y-2 max-h-56 overflow-auto"></div></div>
                         </div>
                     </section>
 
@@ -1120,16 +1120,23 @@ window.onload = function() {
         }
 
         function renderDashboard() {
-            updateStats();
-            renderNoticesForRole();
+            // Keep one dashboard section from preventing the others from rendering.
+            // In particular, a datesheet/notice rendering error must not hide saved faculty papers.
+            try { updateStats(); } catch (err) { console.error('QMPS stats render failed:', err); }
+            try { renderNoticesForRole(); } catch (err) { console.error('QMPS notices render failed:', err); }
 
+            if (!currentSession) return;
             if (currentSession.role === 'FACULTY') {
-                renderFacultyPendingAlert();
-                renderFacultyView();
+                try { renderFacultyPendingAlert(); } catch (err) { console.error('QMPS faculty pending alert failed:', err); }
+                try { renderFacultyView(); } catch (err) {
+                    console.error('QMPS faculty paper table failed:', err);
+                    const tbody = document.getElementById('faculty-papers-list');
+                    if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-rose-600">Could not display saved papers. Please refresh or contact the QMPS administrator.</td></tr>';
+                }
             } else if (currentSession.role === 'COE') {
-                renderCoeView();
+                try { renderCoeView(); } catch (err) { console.error('QMPS COE view failed:', err); }
             } else if (currentSession.role === 'MODERATOR') {
-                renderModeratorView();
+                try { renderModeratorView(); } catch (err) { console.error('QMPS moderator view failed:', err); }
             }
         }
 
@@ -1351,25 +1358,7 @@ window.onload = function() {
             document.getElementById('quick-approved-count').textContent = finalApproved.length;
             document.getElementById('quick-approved-list').innerHTML=finalApproved.length?finalApproved.map(qpmsPaperLink).join(''):'<p class="text-xs text-slate-500">No final-approved papers available yet.</p>';
             document.getElementById('quick-pending-count').textContent = schedules.length ? pending.length : '—';
-            const pendingSchoolFilter = document.getElementById('quick-pending-school-filter');
-            const priorSchoolFilter = pendingSchoolFilter ? pendingSchoolFilter.value : 'ALL';
-            const pendingSchools = [...new Set(pending.map(s => qpmsSchoolFor(s)))].sort((a,b)=>a.localeCompare(b));
-            if (pendingSchoolFilter) {
-                pendingSchoolFilter.innerHTML = '<option value="ALL">All Schools</option>' + pendingSchools.map(s=>`<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
-                pendingSchoolFilter.value = pendingSchools.includes(priorSchoolFilter) ? priorSchoolFilter : 'ALL';
-            }
-            const selectedPendingSchool = pendingSchoolFilter ? pendingSchoolFilter.value : 'ALL';
-            const visiblePending = selectedPendingSchool === 'ALL' ? pending : pending.filter(s=>qpmsSchoolFor(s)===selectedPendingSchool);
-            const pendingGroups = new Map();
-            visiblePending.forEach(s => {
-                const school = qpmsSchoolFor(s), dept = qpmsDepartmentFor(s);
-                if (!pendingGroups.has(school)) pendingGroups.set(school, new Map());
-                const departments = pendingGroups.get(school);
-                if (!departments.has(dept)) departments.set(dept, []);
-                departments.get(dept).push(s);
-            });
-            document.getElementById('quick-pending-list').innerHTML = pending.length ? [...pendingGroups.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([school, departments]) =>
-                `<section class="rounded-lg border border-rose-100 bg-rose-50/50 p-2"><div class="font-extrabold text-rose-900 text-xs">${escapeHtml(school)} <span class="font-semibold">(${[...departments.values()].reduce((n,items)=>n+items.length,0)})</span></div>${[...departments.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([dept,items])=>`<div class="mt-2"><div class="text-[10px] uppercase tracking-wide font-bold text-slate-600">${escapeHtml(dept)} · ${items.length} pending</div>${items.map(s=>`<div class="bg-white border border-rose-100 rounded-lg p-2 mt-1"><div class="font-semibold text-slate-800">${escapeHtml(s.courseName)}</div><div class="text-[10px] text-slate-500">${escapeHtml(s.courseCode)} · Semester ${escapeHtml(s.semester||'Not specified')}</div><div class="text-[10px] text-rose-700 mt-1">Exam: ${escapeHtml(s.paperDate||'Date not set')} · ${escapeHtml(s.facultyName||'Faculty not assigned')}</div></div>`).join('')}</div>`).join('')}</section>`).join('') : (schedules.length ? '<p class="text-xs text-emerald-700">All structured schedule entries have matching uploaded papers.</p>' : '<p class="text-xs text-amber-800">No structured datesheet schedule rows are loaded. Uploading a PDF alone does not create course-wise pending records; add/import the courses in COE Datesheet Schedule to calculate this count.</p>');
+            document.getElementById('quick-pending-list').innerHTML = pending.length ? pending.map(s=>`<div class="bg-white/80 border border-white rounded-lg p-2"><div class="font-semibold text-slate-800">${escapeHtml(s.courseName)}</div><div class="text-[10px] text-slate-500">${escapeHtml(s.courseCode)} · ${escapeHtml(qpmsSchoolFor(s))} · ${escapeHtml(qpmsDepartmentFor(s))} · ${escapeHtml(s.semester||'Semester not set')}</div><div class="text-[10px] text-rose-700 mt-1">Exam: ${escapeHtml(s.paperDate||'Date not set')} · ${escapeHtml(s.facultyName||'Faculty not assigned')}</div></div>`).join('') : (schedules.length ? '<p class="text-xs text-emerald-700">All structured schedule entries have matching uploaded papers.</p>' : '<p class="text-xs text-amber-800">No structured datesheet schedule rows are loaded. Uploading a PDF alone does not create course-wise pending records; add/import the courses in COE Datesheet Schedule to calculate this count.</p>');
         }
         function qpmsReportInScope(item, role) {
             // Moderator reports must only include records assigned to that moderator's scope.
@@ -2143,7 +2132,13 @@ window.QPMS = {
     const apiPapers = await window.QPMS.loadPapers();
     papersDatabase = apiPapers.map(window.QPMS.toUiPaper);
     window.dispatchEvent(new CustomEvent("qpms:persistent-data-loaded", {detail: papersDatabase}));
+    // Repaint immediately after PostgreSQL data arrives. Do not let a separate widget
+    // failure block the faculty's saved submission history.
     if (currentSession) renderDashboard();
+    const facultyTable = document.getElementById('faculty-papers-list');
+    if (facultyTable && currentSession && currentSession.role === 'FACULTY') {
+      try { renderFacultyView(); } catch (err) { console.error('QMPS faculty paper repaint failed:', err); }
+    }
     console.log("QPMS: loaded", papersDatabase.length, "persistent records from PostgreSQL");
   } catch (e) {
     console.warn("QPMS: persistent data could not be loaded:", e.message);

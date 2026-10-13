@@ -112,30 +112,15 @@ function normalizedPdfText(text) {
 
 
 function parseDatesheetScheduleRows(pdfText) {
-  // pdf-parse may flatten the entire table into one line. Force each date-led
-  // exam row onto a separate line before applying the row parser.
-  const flattenedSafeText = String(pdfText || '')
-    .replace(/[\u00a0\u200b\u200c\u200d\ufeff]/g, ' ')
-    .replace(/\f/g, '\n')
-    .replace(/\r/g, '\n')
-    .replace(/(?=\d{1,2}[./-]\d{1,2}[./-]20\d{2})/g, '\n');
-  const lines = flattenedSafeText
-    .split('\n').map(x => x.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  const lines = String(pdfText || '').replace(/\r/g, '\n').split('\n').map(x => x.replace(/\s+/g, ' ').trim()).filter(Boolean);
   const rows = [];
   let currentProgram = '';
   let currentSemester = '';
   let currentExam = 'Mid Semester';
-  const dateRe = /(?<!\d)(\d{1,2})[./-](\d{1,2})[./-](20\d{2})/;
-  const codeRe = /(?:\d+\.\d+[A-Z]{2,4}\d{2}[A-Z0-9]\d{3}|[A-Z]{2,4}\d{2,4}[A-Z]\b)/i;
-  const isHeader = x => /^(?:date\s+timings?|timings?|course code|course name|manav rachna|schedule for|controller of examination|semester\s*[-:])/i.test(x);
-  const isProgramHeading = x => /^(?:bachelor|bachelors|master|masters|b\.?\s?tech|m\.?\s?tech|bca|mca|mba|bba|llb|llm|b\.?\s?sc|b\.?\s?com|m\.?\s?sc|b\.?sc\.?b\.?ed|b\.a\.|bb\.?a\.|ll\.?b)\b/i.test(x);
-  const clean = x => String(x || '')
-    .replace(/\d{1,2}[./-]\d{1,2}[./-]20\d{2}/g, ' ')
-    .replace(/\b(?:DATE|TIMINGS?|COURSE CODE|COURSE NAME|MANAV RACHNA UNIVERSITY|CONTROLLER OF EXAMINATIONS?)\b/ig, ' ')
-    .replace(/\d{1,2}\.\d{2}\s*(?:NOON|AM|PM)?\s*-\s*\d{1,2}\.\d{2}\s*(?:NOON|AM|PM)?/ig, ' ')
-    .replace(/\d{1,2}\.\d{2}\s*(?:NOON|AM|PM)/ig, ' ')
-    .replace(/\s+/g, ' ').replace(/^[|: -]+|[|: -]+$/g, '').trim();
-
+  const dateRe = /(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})/;
+  const codeRe = /\b(?=[A-Z0-9.]*[A-Z])(?=[A-Z0-9.]*\d)[A-Z0-9.]{6,}\b/i;
+  const isHeader = x => /^(date|timings?|course code|course name|manav rachna|schedule for|controller of examination|semester\s*[-:])/i.test(x);
+  const cleanName = x => String(x || '').replace(dateRe, ' ').replace(codeRe, ' ').replace(/\d{1,2}\.\d{2}\s*(?:am|pm)?\s*[-–]\s*\d{1,2}\.\d{2}\s*(?:am|pm)?/ig, ' ').replace(/\s+/g, ' ').replace(/^[|: -]+|[|: -]+$/g, '').trim();
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const sem = line.match(/SEMESTER\s*[-:]?\s*(FIRST|SECOND|THIRD|FOURTH|FIFTH|SIXTH|SEVENTH|EIGHTH|[1-8](?:ST|ND|RD|TH)?)/i);
@@ -144,63 +129,33 @@ function parseDatesheetScheduleRows(pdfText) {
       const map = {FIRST:'1st',SECOND:'2nd',THIRD:'3rd',FOURTH:'4th',FIFTH:'5th',SIXTH:'6th',SEVENTH:'7th',EIGHTH:'8th'};
       currentSemester = map[v] || (/^\d/.test(v) ? v.replace(/ST|ND|RD|TH/, '') : v);
     }
-    if (/SCHEDULE FOR .*END\s*SEM/i.test(line)) currentExam = 'End Semester';
-    else if (/SCHEDULE FOR .*SUPPLEMENT/i.test(line)) currentExam = 'Supplementary';
-    else if (/SCHEDULE FOR .*MID\s*SEM/i.test(line)) currentExam = 'Mid Semester';
-
-    if (isProgramHeading(line) && !isHeader(line)) currentProgram = line;
-    else if (currentProgram && !dateRe.test(line) && !codeRe.test(line) && !isHeader(line) &&
-      /^[A-Z0-9/&(), .-]+$/.test(line) &&
-      /SPECIALIZATION|CLOUD|FINTECH|VLSI|CHIP DESIGN|ROBOTICS|ARTIFICIAL INTELLIGENCE|CSTI|AIML|GEN AI|FSD/i.test(line)) {
-      currentProgram = (currentProgram + ' ' + line).replace(/\s+/g, ' ').trim();
+    if (/SCHEDULE FOR .*EXAMINATION/i.test(line)) {
+      if (/END\s*SEM/i.test(line)) currentExam = 'End Semester';
+      else if (/SUPPLEMENT/i.test(line)) currentExam = 'Supplementary';
+      else if (/MID\s*SEM/i.test(line)) currentExam = 'Mid Semester';
     }
-
-    const dm = line.match(dateRe);
-    if (!dm) continue;
-    const blockLines = [line];
-    for (let j = i + 1; j < lines.length && j <= i + 3; j++) {
-      if (dateRe.test(lines[j]) || isProgramHeading(lines[j]) || isHeader(lines[j]) ||
-          /^(?:SCHEDULE FOR|MANAV RACHNA UNIVERSITY|CONTROLLER OF EXAMINATION)/i.test(lines[j])) break;
-      blockLines.push(lines[j]);
-      if (codeRe.test(blockLines.join(' '))) {
-        const codes = blockLines.join(' ').match(new RegExp(codeRe.source, 'ig')) || [];
-        if (codes.length > 1) blockLines.pop();
-        if (j + 1 < lines.length && !dateRe.test(lines[j + 1]) && !isHeader(lines[j + 1]) &&
-            !isProgramHeading(lines[j + 1]) && !codeRe.test(lines[j + 1]) &&
-            /^[A-Z][A-Z0-9 &(),./-]{2,}$/.test(lines[j + 1]) &&
-            !/AMCAT EXAM/i.test(blockLines.join(' '))) blockLines.push(lines[j + 1]);
-        break;
-      }
-    }
-    const block = blockLines.join(' ');
-    const cm = block.match(codeRe);
+    if (/^(Bachelor|Master|B\.?\s?Tech|M\.?\s?Tech|BCA|MCA|MBA|BBA|LLB|LLM|B\.?\s?Sc|M\.?\s?Sc)/i.test(line) && !/course code|course name/i.test(line)) currentProgram = line;
+    const cm = line.match(codeRe);
     if (!cm) continue;
-    const code = cm[0].toUpperCase();
-    let name = clean(block.slice(block.indexOf(cm[0]) + cm[0].length));
-    name = name.split(/\b(?:DATE\s+TIMINGS?|COURSE CODE|COURSE NAME|SCHEDULE FOR|CONTROLLER OF EXAMINATION|BACHELOR\s+OF|MASTER\s+OF)\b/i)[0].trim();
-    const nextCodeIndex = name.search(codeRe);
-    if (nextCodeIndex >= 0) name = name.slice(0, nextCodeIndex).trim();
-    if (!name || name.length < 3 || /^(?:AMCAT EXAM|DATE|TIMINGS?)$/i.test(name) ||
-        /CONTROLLER OF EXAMINATION|MANAV RACHNA UNIVERSITY/i.test(name)) continue;
-
+    const code = cm[0].replace(/[.,;:]$/, '').toUpperCase();
+    // Ignore headings/IDs and require a date on this line or the immediately adjacent line.
+    let dateMatch = line.match(dateRe), dateLine = i;
+    if (!dateMatch && i > 0) { dateMatch = lines[i-1].match(dateRe); dateLine = i-1; }
+    if (!dateMatch && i+1 < lines.length) { dateMatch = lines[i+1].match(dateRe); dateLine = i+1; }
+    if (!dateMatch) continue;
+    const dd = String(dateMatch[1]).padStart(2,'0'), mm = String(dateMatch[2]).padStart(2,'0'), yyyy = dateMatch[3];
+    const paperDate = `${yyyy}-${mm}-${dd}`;
+    let name = cleanName(line.replace(code, ''));
+    if (!name || name.length < 3 || /^\d/.test(name)) {
+      const candidates = [lines[i+1], lines[i-1], lines[i+2]].filter(Boolean).filter(x => !dateRe.test(x) && !codeRe.test(x) && !isHeader(x) && !/^(manav rachna|schedule for|controller of examination)/i.test(x));
+      name = cleanName(candidates[0] || '');
+    }
+    if (!name || name.length < 3) name = code;
     const program = currentProgram || 'Unmapped Programme';
-    const low = (program + ' ' + name).toLowerCase();
-    const department = /robot|artificial intelligence/i.test(low) ? 'Robotics & AI'
-      : /electronics|electrical|vlsi|chip design/i.test(low) ? 'Electronics & Communication'
-      : /mechanical|manufacturing/i.test(low) ? 'Mechanical Engineering'
-      : /computer science|csti|aiml|gen ai|quantum computing|cloud computing|computer application/i.test(low) ? 'Computer Science & Technology'
-      : /law|llb|llm|public international/i.test(low) ? 'Law'
-      : /business|management|mba|bba|fintech|finance & accounts|quantitative fundamentals/i.test(low) ? 'Business'
-      : /education|itep|b\.ed|child development|teaching learning/i.test(low) ? 'Education & Humanities'
-      : /physics|chemistry|mathematics|science/i.test(low) ? 'Sciences' : 'Unmapped Department';
-    const school = ['Computer Science & Technology','Robotics & AI','Electronics & Communication','Mechanical Engineering'].includes(department) ? 'School of Engineering'
-      : department === 'Law' ? 'School of Law'
-      : department === 'Business' ? 'School of Business'
-      : department === 'Sciences' ? 'School of Sciences'
-      : department === 'Education & Humanities' ? 'School of Education & Humanities' : 'Unmapped / Other';
-    const dd = String(dm[1]).padStart(2, '0');
-    const mm = String(dm[2]).padStart(2, '0');
-    rows.push({courseCode:code,courseName:name,school,department,program,semester:currentSemester || 'Not specified',examType:currentExam,paperDate:dm[3] + '-' + mm + '-' + dd});
+    const low = `${program} ${name}`.toLowerCase();
+    let department = /robot|artificial intelligence/i.test(low) ? 'Robotics & AI' : /electronics|electrical|vlsi/i.test(low) ? 'Electronics & Communication' : /mechanical|manufacturing/i.test(low) ? 'Mechanical Engineering' : /computer science|csti|aiml|gen ai|quantum computing/i.test(low) ? 'Computer Science & Technology' : /law|llb|llm/i.test(low) ? 'Law' : /business|management|mba|bba/i.test(low) ? 'Business' : /education|itep|b\.ed/i.test(low) ? 'Education & Humanities' : /physics|chemistry|mathematics|science/i.test(low) ? 'Sciences' : 'Unmapped Department';
+    const school = ['Computer Science & Technology','Robotics & AI','Electronics & Communication','Mechanical Engineering'].includes(department) ? 'School of Engineering' : department === 'Law' ? 'School of Law' : department === 'Business' ? 'School of Business' : department === 'Sciences' ? 'School of Sciences' : department === 'Education & Humanities' ? 'School of Education & Humanities' : 'Unmapped / Other';
+    rows.push({courseCode:code,courseName:name,school,department,program,semester:currentSemester || 'Not specified',examType:currentExam,paperDate});
   }
   const unique = new Map();
   for (const r of rows) unique.set([r.courseCode,r.program,r.semester,r.examType,r.paperDate].join('|'),r);
@@ -228,38 +183,6 @@ async function syncDatesheetScheduleFromPdf(pdfText, uploadedBy) {
     }
   }
   return {count: parsed.length, inserted, updated, rows: parsed};
-}
-
-async function backfillDatesheetSchedulesFromExistingNotices() {
-  // Remove obviously malformed rows left by the previous parser (truncated codes, mixed subject rows, footer dates).
-  await pool.query(`DELETE FROM datesheet_schedule
-    WHERE course_code ~ '^[0-9][A-Z]{2,4}[0-9]{2}[A-Z][0-9]{3}$'
-       OR course_name ~* '[0-9]{2}[.][0-9]{2}[.][0-9]{4}|DATETimingsCourse Name|CONTROLLER OF EXAMINATION|T[[:space:]]*-?[[:space:]]*T WIRELESS SENSOR NETWORK OPERATION RESEARCH'`);
-  const result = await pool.query(`SELECT id::text AS id, extracted_text, file_data, file_mimetype, original_filename, uploaded_by
-    FROM coe_notices
-    WHERE (LOWER(type) LIKE '%datesheet%' OR LOWER(title) LIKE '%datesheet%' OR LOWER(original_filename) LIKE '%datesheet%')
-    ORDER BY created_at ASC`);
-  let total = 0;
-  for (const notice of result.rows) {
-    let sourceText = notice.extracted_text || '';
-    let synced = sourceText.trim() ? await syncDatesheetScheduleFromPdf(sourceText, notice.uploaded_by || 'COE') : {count:0};
-    // Existing extracted_text can be stale/poorly extracted. Re-read the stored original PDF if it yields no rows.
-    if (!(synced.count > 0) && notice.file_data &&
-        (String(notice.file_mimetype || '').includes('pdf') || String(notice.original_filename || '').toLowerCase().endsWith('.pdf'))) {
-      try {
-        const parsedPdf = await pdfParse(notice.file_data);
-        sourceText = parsedPdf.text || '';
-        if (sourceText.trim()) {
-          await pool.query('UPDATE coe_notices SET extracted_text=$2 WHERE id=$1', [notice.id, sourceText]);
-          synced = await syncDatesheetScheduleFromPdf(sourceText, notice.uploaded_by || 'COE');
-        }
-      } catch (e) {
-        console.warn('Could not re-extract datesheet PDF ' + notice.id + ':', e.message);
-      }
-    }
-    total += synced.count || 0;
-  }
-  console.log('Datesheet startup sync complete; parsed course/date rows:', total);
 }
 
 async function getPublishedDatesheetText() {
@@ -395,71 +318,10 @@ app.get("/api/papers", async (_req, res) => {
 // Adding the same course/program/semester/exam again updates the existing schedule row.
 app.get('/api/datesheet-schedule', async (_req, res) => {
   try {
-    // Self-heal schedule on read: re-process stored PDFs uploaded before parser fixes.
-    const noticeResult = await pool.query(`SELECT id::text AS id, extracted_text, file_data, file_mimetype, original_filename, uploaded_by FROM coe_notices
-      WHERE LOWER(type) LIKE '%datesheet%' OR LOWER(title) LIKE '%datesheet%' OR LOWER(original_filename) LIKE '%datesheet%'
-      ORDER BY created_at ASC`);
-    let parsedFromNotices = 0;
-    const noticeDiagnostics = [];
-    for (const notice of noticeResult.rows) {
-      let sourceText = notice.extracted_text || '';
-      let sync = sourceText.trim() ? await syncDatesheetScheduleFromPdf(sourceText, notice.uploaded_by || 'COE') : {count:0};
-      let extractionAttempted = false;
-      let extractionError = null;
-      let bufferInfo = null;
-      if (!(sync.count > 0) &&
-          (String(notice.file_mimetype || '').toLowerCase().includes('pdf') || String(notice.original_filename || '').toLowerCase().endsWith('.pdf'))) {
-        extractionAttempted = true;
-        try {
-          if (!notice.file_data) {
-            extractionError = 'No file_data stored for this notice';
-          } else {
-            bufferInfo = {type: notice.file_data.constructor && notice.file_data.constructor.name || typeof notice.file_data,
-              isBuffer: Buffer.isBuffer(notice.file_data), byteLength: notice.file_data.length || null};
-            let pdfBuffer = notice.file_data;
-            if (!Buffer.isBuffer(pdfBuffer)) {
-              if (typeof pdfBuffer === 'string') {
-                if (pdfBuffer.startsWith('\\x')) pdfBuffer = Buffer.from(pdfBuffer.slice(2), 'hex');
-                else pdfBuffer = Buffer.from(pdfBuffer, 'base64');
-              } else if (pdfBuffer && pdfBuffer.data && Array.isArray(pdfBuffer.data)) {
-                pdfBuffer = Buffer.from(pdfBuffer.data);
-              } else {
-                throw new Error('Unsupported file_data type: ' + (typeof pdfBuffer));
-              }
-            }
-            const parsedPdf = await pdfParse(pdfBuffer);
-            sourceText = parsedPdf.text || '';
-            if (sourceText.trim()) {
-              await pool.query('UPDATE coe_notices SET extracted_text=$2 WHERE id=$1', [notice.id, sourceText]);
-              sync = await syncDatesheetScheduleFromPdf(sourceText, notice.uploaded_by || 'COE');
-            } else {
-              extractionError = 'PDF extracted successfully but contains no selectable text (possibly scanned/image PDF)';
-            }
-          }
-        } catch (e) {
-          extractionError = e.message;
-          console.warn('Could not re-extract datesheet PDF ' + notice.id + ':', e.message);
-        }
-      }
-      noticeDiagnostics.push({
-        id: notice.id,
-        filename: notice.original_filename || null,
-        mimetype: notice.file_mimetype || null,
-        storedTextLength: String(notice.extracted_text || '').length,
-        extractedTextLength: String(sourceText || '').length,
-        fileDataPresent: !!notice.file_data,
-        bufferInfo,
-        extractionAttempted,
-        extractionError,
-        parsedRows: sync.count || 0,
-        textPreview: String(sourceText || '').slice(0, 180).replace(/\\s+/g, ' ')
-      });
-      parsedFromNotices += sync.count || 0;
-    }
     const { rows } = await pool.query(`SELECT id::text AS id, course_name AS "courseName", course_code AS "courseCode",
       school, department, program, semester, exam_type AS "examType", TO_CHAR(paper_date,'YYYY-MM-DD') AS "paperDate",
       faculty_name AS "facultyName", updated_at FROM datesheet_schedule ORDER BY paper_date, course_code`);
-    res.json({ok:true,schedules:rows,diagnostics:{datesheetNoticesFound:noticeResult.rows.length,parsedCourseRows:parsedFromNotices,loadedScheduleRows:rows.length,notices:noticeDiagnostics}});
+    res.json({ok:true,schedules:rows});
   } catch (e) { res.status(500).json({ok:false,error:e.message}); }
 });
 
@@ -829,10 +691,7 @@ app.get("*", (_req, res) => {
 });
 
 initDb()
-  .then(async () => {
-    await backfillDatesheetSchedulesFromExistingNotices();
-    app.listen(PORT, () => console.log(`QPMS server listening on ${PORT}`));
-  })
+  .then(() => app.listen(PORT, () => console.log(`QPMS server listening on ${PORT}`)))
   .catch(err => {
     console.error("Database initialization failed:", err);
     app.listen(PORT, () => console.log(`QPMS server listening on ${PORT} (DB unavailable)`));
