@@ -4,6 +4,7 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const { Pool } = require("pg");
+const pdfParse = require("pdf-parse");
 require("dotenv").config();
 
 const app = express();
@@ -72,9 +73,11 @@ async function initDb() {
     file_mimetype TEXT,
     file_size BIGINT,
     file_data BYTEA NOT NULL,
+    extracted_text TEXT,
     uploaded_by TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
   )`);
+  await pool.query(`ALTER TABLE coe_notices ADD COLUMN IF NOT EXISTS extracted_text TEXT`);
   await pool.query(`CREATE TABLE IF NOT EXISTS datesheet_schedule (
     id BIGSERIAL PRIMARY KEY, course_name TEXT NOT NULL, course_code TEXT NOT NULL, school TEXT,
     department TEXT NOT NULL, program TEXT, semester TEXT NOT NULL, exam_type TEXT NOT NULL,
@@ -84,28 +87,107 @@ async function initDb() {
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_datesheet_schedule_lookup ON datesheet_schedule (UPPER(course_code), LOWER(department), LOWER(semester), LOWER(exam_type))`);
 }
 
+function dateVariants(isoDate) {
+  const value = String(isoDate || '').slice(0, 10);
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!m) return [];
+  const [, yyyy, mm, dd] = m;
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const monthLong = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const monthIndex = Number(mm) - 1;
+  return [
+    `${yyyy}-${mm}-${dd}`, `${dd}/${mm}/${yyyy}`, `${dd}-${mm}-${yyyy}`,
+    `${dd}.${mm}.${yyyy}`, `${dd}/${mm}/${yyyy.slice(2)}`, `${dd}-${mm}-${yyyy.slice(2)}`,
+    `${Number(dd)} ${months[monthIndex]} ${yyyy}`, `${dd} ${months[monthIndex]} ${yyyy}`,
+    `${Number(dd)} ${monthLong[monthIndex]} ${yyyy}`, `${dd} ${monthLong[monthIndex]} ${yyyy}`
+  ].map(v => v.toLowerCase());
+}
+
+function normalizedPdfText(text) {
+  return String(text || '').replace(/[\u00a0\u200b]/g, ' ').replace(/[–—]/g, '-').toLowerCase();
+}
+
+async function getPublishedDatesheetText() {
+  const { rows } = await pool.query(`SELECT id::text AS id, title, original_filename, file_mimetype, file_data, extracted_text
+    FROM coe_notices
+    WHERE LOWER(type) LIKE '%datesheet%' OR LOWER(title) LIKE '%datesheet%' OR LOWER(original_filename) LIKE '%datesheet%'
+    ORDER BY created_at DESC`);
+  const docs = [];
+  for (const row of rows) {
+    let extracted = row.extracted_text || '';
+    if (!extracted && (String(row.file_mimetype || '').includes('pdf') || String(row.original_filename || '').toLowerCase().endsWith('.pdf'))) {
+      try {
+        const parsed = await pdfParse(row.file_data);
+        extracted = parsed.text || '';
+        if (extracted.trim()) {
+          await pool.query('UPDATE coe_notices SET extracted_text=$2 WHERE id=$1', [row.id, extracted]);
+        }
+      } catch (e) {
+        console.warn(`Could not extract text from existing datesheet ${row.id}:`, e.message);
+      }
+    }
+    if (extracted.trim()) docs.push({ title: row.title, filename: row.original_filename, text: normalizedPdfText(extracted) });
+  }
+  return docs;
+}
+
 async function validatePaperDateAgainstSchedule(data) {
-  const { rows } = await pool.query(`SELECT TO_CHAR(paper_date, 'YYYY-MM-DD') AS paper_date
+  const courseCode = String(data.course || '').trim();
+  const department = String(data.department || '').trim();
+  const semester = String(data.semester || '').trim();
+  const exam = String(data.exam || '').trim();
+  const program = String(data.program || '').trim();
+  const submittedDate = String(data.submission_date || '').slice(0, 10);
+  if (!courseCode || !department || !semester || !exam || !program || !submittedDate) {
+    const error = new Error('Course code, department, programme, semester, examination type and paper date are all required for COE datesheet validation.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const { rows } = await pool.query(`SELECT TO_CHAR(paper_date, 'YYYY-MM-DD') AS paper_date, course_name
     FROM datesheet_schedule
     WHERE UPPER(TRIM(course_code))=UPPER(TRIM($1))
       AND LOWER(TRIM(department))=LOWER(TRIM($2))
       AND LOWER(TRIM(semester))=LOWER(TRIM($3))
       AND LOWER(TRIM(exam_type))=LOWER(TRIM($4))
       AND (COALESCE(TRIM(program),'')='' OR LOWER(TRIM(program))=LOWER(TRIM($5)))
-    ORDER BY updated_at DESC`, [data.course || '', data.department || '', data.semester || '', data.exam || '', data.program || '']);
+    ORDER BY updated_at DESC`, [courseCode, department, semester, exam, program]);
   if (!rows.length) {
-    const error = new Error('No matching COE master schedule entry was found for this course, department, program, semester and exam. Ask COE to add or update the schedule before uploading.');
+    const error = new Error('Upload blocked: COE master schedule mein is course code, department, programme, semester aur examination type ka matching record nahi mila. COE ko schedule add/update karna hoga.');
     error.statusCode = 400;
     throw error;
   }
-  const dates = [...new Set(rows.map(r => r.paper_date).filter(Boolean))];
-  const submittedDate = String(data.submission_date || '').slice(0,10);
-  if (dates.length && !dates.includes(submittedDate)) {
-    const error = new Error(`Paper date does not match the COE datesheet. Scheduled date: ${dates.join(', ')}.`);
+  const scheduledDates = [...new Set(rows.map(r => r.paper_date).filter(Boolean))];
+  if (!scheduledDates.includes(submittedDate)) {
+    const error = new Error(`Upload blocked: faculty ki entered date COE master schedule se match nahi karti. Official scheduled date: ${scheduledDates.join(', ')}.`);
     error.statusCode = 400;
     throw error;
   }
-  return {matched:true, dates};
+
+  // Validate against the actual PDF published in the COE portal, not only the editable schedule table.
+  const documents = await getPublishedDatesheetText();
+  if (!documents.length) {
+    const error = new Error('Upload blocked: COE portal par readable, text-based official datesheet PDF publish nahi hai. COE pehle datesheet PDF publish kare. Scanned PDF ko OCR/text-searchable PDF bana kar upload karein.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const codeNeedle = courseCode.toLowerCase();
+  const variants = dateVariants(submittedDate);
+  const evidence = documents.filter(doc => {
+    const text = doc.text;
+    const codeIndex = text.indexOf(codeNeedle);
+    if (codeIndex < 0) return false;
+    // First look near the course-code occurrence to avoid matching a date elsewhere in the document.
+    const nearby = text.slice(Math.max(0, codeIndex - 220), Math.min(text.length, codeIndex + 500));
+    return variants.some(v => nearby.includes(v)) || (text.includes(codeNeedle) && variants.some(v => text.includes(v)) && text.length < 2500);
+  });
+  if (!evidence.length) {
+    const titles = documents.map(d => d.title || d.filename || 'COE datesheet').join('; ');
+    const error = new Error(`Upload blocked: published COE datesheet PDF mein course code ${courseCode} ke saath ${submittedDate} date verify nahi hui. Datesheet documents checked: ${titles}. Agar PDF scanned hai, searchable PDF/OCR version upload karein.`);
+    error.statusCode = 400;
+    throw error;
+  }
+  return { matched: true, dates: scheduledDates, pdfVerified: true, documents: evidence.map(d => d.title || d.filename) };
 }
 
 app.get("/health", async (_req, res) => {
@@ -201,11 +283,30 @@ app.post("/api/notices", upload.single("file"), async (req, res) => {
       return res.status(400).json({ ok: false, error: "Document category and title are required." });
     }
     const fileData = fs.readFileSync(req.file.path);
+    let extractedText = null;
+    if (String(type).toLowerCase().includes('datesheet') || String(title).toLowerCase().includes('datesheet') || req.file.originalname.toLowerCase().includes('datesheet')) {
+      const isPdf = req.file.mimetype === 'application/pdf' || req.file.originalname.toLowerCase().endsWith('.pdf');
+      if (!isPdf) {
+        try { fs.unlinkSync(req.file.path); } catch {}
+        return res.status(400).json({ok:false,error:'Official examination datesheet must be uploaded as a PDF.'});
+      }
+      try {
+        const parsed = await pdfParse(fileData);
+        extractedText = parsed.text || '';
+        if (!extractedText.trim()) {
+          try { fs.unlinkSync(req.file.path); } catch {}
+          return res.status(400).json({ok:false,error:'This PDF has no extractable text. Please OCR it / make it searchable and upload again so faculty submissions can be validated against it.'});
+        }
+      } catch (parseError) {
+        try { fs.unlinkSync(req.file.path); } catch {}
+        return res.status(400).json({ok:false,error:'Could not read the datesheet PDF. Please upload a valid, searchable PDF.'});
+      }
+    }
     const { rows } = await pool.query(`INSERT INTO coe_notices
-      (type, title, original_filename, file_mimetype, file_size, file_data, uploaded_by)
-      VALUES ($1,$2,$3,$4,$5,$6,$7)
+      (type, title, original_filename, file_mimetype, file_size, file_data, extracted_text, uploaded_by)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
       RETURNING id::text AS id, type, title, original_filename AS filename, file_mimetype, file_size, uploaded_by, created_at`,
-      [type, title, req.file.originalname, req.file.mimetype, req.file.size, fileData, req.body.uploaded_by || 'COE']);
+      [type, title, req.file.originalname, req.file.mimetype, req.file.size, fileData, extractedText, req.body.uploaded_by || 'COE']);
     try { fs.unlinkSync(req.file.path); } catch {}
     res.status(201).json({ ok: true, notice: rows[0] });
   } catch (e) {
@@ -279,6 +380,11 @@ app.post("/api/papers", upload.single("file"), async (req, res) => {
   try {
     const b = req.body || {};
     const f = req.file;
+    if (!f) return res.status(400).json({ok:false,error:"Please attach the question paper PDF."});
+    if (!(f.mimetype === 'application/pdf' || f.originalname.toLowerCase().endsWith('.pdf'))) {
+      try { fs.unlinkSync(f.path); } catch {}
+      return res.status(400).json({ok:false,error:"Only PDF question papers are accepted."});
+    }
     await validatePaperDateAgainstSchedule(b);
 
     const { rows } = await pool.query(`
@@ -324,6 +430,10 @@ app.post("/api/papers", upload.single("file"), async (req, res) => {
 app.post("/api/papers/:id/replace-file", upload.single("file"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ok:false, error:"No file uploaded"});
+    if (!(req.file.mimetype === 'application/pdf' || req.file.originalname.toLowerCase().endsWith('.pdf'))) {
+      try { fs.unlinkSync(req.file.path); } catch {}
+      return res.status(400).json({ok:false,error:"Only PDF question papers are accepted."});
+    }
     const b = req.body || {};
     await validatePaperDateAgainstSchedule(b);
     const { rows } = await pool.query(`

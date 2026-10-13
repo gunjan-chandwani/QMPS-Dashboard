@@ -88,3 +88,14 @@ The current database schema stores paper school/program/department as entered du
 - The same live documents list is shown on Faculty, COE, and Moderator dashboards.
 - View opens the stored original file in a new tab (`/api/notices/:id/view`); Download retrieves the original file.
 - Existing paper records and the `papers` table are not reset or modified by this feature. The new table is created automatically when `DATABASE_URL` is configured.
+
+## Backend COE Datesheet PDF Validation
+
+The `/api/papers` and `/api/papers/:id/replace-file` endpoints validate submissions on the server before saving them. A submission must match the COE structured schedule (course code, department, programme when specified, semester, exam type and date) and the text extracted from a published COE Datesheet PDF. Datesheet PDFs are parsed at publication time and their extracted text is stored in PostgreSQL. Older published PDFs are parsed on demand when possible.
+
+- Install dependencies with `npm install` (includes `pdf-parse`).
+- Keep `DATABASE_URL` configured in Render.
+- COE must publish the official datesheet as a text-searchable PDF under the **Examination Datesheet** category.
+- Scanned/image-only PDFs must be OCR-processed and saved as searchable PDFs before upload.
+- COE must also maintain the matching structured schedule row in the portal. A PDF upload alone does not create programme/semester schedule records.
+- If the PDF or structured schedule does not verify the course/date, the backend returns HTTP 400 and rejects the paper upload/revision.
