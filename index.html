@@ -45,6 +45,20 @@
 <body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
 
     <!-- Notification Toast Container -->
+    <!-- Large, accessible validation alert for incorrect exam dates / datesheet mismatches -->
+    <div id="validation-alert-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4" role="alertdialog" aria-modal="true" aria-labelledby="validation-alert-title" aria-describedby="validation-alert-message">
+        <div class="w-full max-w-2xl rounded-2xl border-2 border-rose-300 bg-white shadow-2xl overflow-hidden">
+            <div class="flex items-center gap-4 bg-rose-700 px-6 py-5 text-white">
+                <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white/15"><i class="fa-solid fa-triangle-exclamation text-3xl"></i></div>
+                <div><h2 id="validation-alert-title" class="text-xl sm:text-2xl font-extrabold">Datesheet Validation Failed</h2><p class="mt-1 text-sm text-rose-100">Please correct the exam date before continuing.</p></div>
+            </div>
+            <div class="p-6 sm:p-8">
+                <p id="validation-alert-message" class="whitespace-pre-line break-words text-base sm:text-lg leading-7 text-slate-800">The entered date does not match the official COE datesheet.</p>
+                <div class="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"><strong>What to do:</strong> Check the course code and exam date against the official COE datesheet. If the datesheet is scanned, upload a searchable/OCR PDF.</div>
+                <div class="mt-6 flex justify-end"><button type="button" onclick="closeValidationAlert()" class="min-w-32 rounded-xl bg-rose-700 px-6 py-3 text-base font-bold text-white shadow hover:bg-rose-800 focus:outline-none focus:ring-4 focus:ring-rose-300">OK, I’ll correct it</button></div>
+            </div>
+        </div>
+    </div>
     <div id="toast-container" class="fixed top-5 right-5 z-50 space-y-2 pointer-events-none"></div>
 
     <!-- 1. DEDICATED LOGIN SCREEN (Shown when user is logged out) -->
@@ -883,6 +897,24 @@
         // Central Question Papers Database State (Uploaded Papers)
         let papersDatabase = []; // Always populated from PostgreSQL API
 
+        // Large prompt-style alert for exam-date / datesheet validation errors.
+        function showValidationAlert(message) {
+            const modal = document.getElementById('validation-alert-modal');
+            const messageBox = document.getElementById('validation-alert-message');
+            if (!modal || !messageBox) { showToast(message, 'warning'); return; }
+            messageBox.textContent = String(message || 'The entered date does not match the official COE datesheet.');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            const closeButton = modal.querySelector('button');
+            if (closeButton) closeButton.focus();
+        }
+        function closeValidationAlert() {
+            const modal = document.getElementById('validation-alert-modal');
+            if (!modal) return;
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
         // Toast Notification System
         function showToast(message, type = 'info') {
             const container = document.getElementById('toast-container');
@@ -1529,7 +1561,9 @@ window.onload = function() {
                 renderDashboard();
             } catch (err) {
                 console.error(err);
-                showToast(err.message || 'Could not save schedule. Check the database connection.', 'warning');
+                const message = err.message || 'Could not save schedule. Check the database connection.';
+                if (/date|timestamp|time zone|timezone|invalid input syntax/i.test(message)) showValidationAlert(message);
+                else showToast(message, 'warning');
             }
         }
 
@@ -1757,7 +1791,9 @@ window.onload = function() {
                 renderDashboard();
             } catch (err) {
                 console.error(err);
-                showToast(err.message || 'Upload failed. Please try again.', 'warning');
+                const message = err.message || 'Upload failed. Please try again.';
+                if (/date|datesheet|scheduled|course code|exam/i.test(message)) showValidationAlert(message);
+                else showToast(message, 'warning');
             } finally {
                 document.getElementById('btn-submit-paper').disabled = false;
             }
