@@ -228,12 +228,28 @@ async function backfillDatesheetSchedulesFromExistingNotices() {
   await pool.query(`DELETE FROM datesheet_schedule
     WHERE course_code ~ '^[0-9][A-Z]{2,4}[0-9]{2}[A-Z][0-9]{3}$'
        OR course_name ~* '[0-9]{2}[.][0-9]{2}[.][0-9]{4}|DATETimingsCourse Name|CONTROLLER OF EXAMINATION|T[[:space:]]*-?[[:space:]]*T WIRELESS SENSOR NETWORK OPERATION RESEARCH'`);
-  const result = await pool.query(`SELECT extracted_text, uploaded_by FROM coe_notices
+  const result = await pool.query(`SELECT id::text AS id, extracted_text, file_data, file_mimetype, original_filename, uploaded_by
+    FROM coe_notices
     WHERE (LOWER(type) LIKE '%datesheet%' OR LOWER(title) LIKE '%datesheet%' OR LOWER(original_filename) LIKE '%datesheet%')
-      AND COALESCE(extracted_text, '') <> '' ORDER BY created_at ASC`);
+    ORDER BY created_at ASC`);
   let total = 0;
   for (const notice of result.rows) {
-    const synced = await syncDatesheetScheduleFromPdf(notice.extracted_text, notice.uploaded_by || 'COE');
+    let sourceText = notice.extracted_text || '';
+    let synced = sourceText.trim() ? await syncDatesheetScheduleFromPdf(sourceText, notice.uploaded_by || 'COE') : {count:0};
+    // Existing extracted_text can be stale/poorly extracted. Re-read the stored original PDF if it yields no rows.
+    if (!(synced.count > 0) && notice.file_data &&
+        (String(notice.file_mimetype || '').includes('pdf') || String(notice.original_filename || '').toLowerCase().endsWith('.pdf'))) {
+      try {
+        const parsedPdf = await pdfParse(notice.file_data);
+        sourceText = parsedPdf.text || '';
+        if (sourceText.trim()) {
+          await pool.query('UPDATE coe_notices SET extracted_text=$2 WHERE id=$1', [notice.id, sourceText]);
+          synced = await syncDatesheetScheduleFromPdf(sourceText, notice.uploaded_by || 'COE');
+        }
+      } catch (e) {
+        console.warn('Could not re-extract datesheet PDF ' + notice.id + ':', e.message);
+      }
+    }
     total += synced.count || 0;
   }
   console.log('Datesheet startup sync complete; parsed course/date rows:', total);
@@ -373,12 +389,26 @@ app.get("/api/papers", async (_req, res) => {
 app.get('/api/datesheet-schedule', async (_req, res) => {
   try {
     // Self-heal schedule on read: re-process stored PDFs uploaded before parser fixes.
-    const noticeResult = await pool.query(`SELECT extracted_text, uploaded_by FROM coe_notices
-      WHERE (LOWER(type) LIKE '%datesheet%' OR LOWER(title) LIKE '%datesheet%' OR LOWER(original_filename) LIKE '%datesheet%')
-      AND COALESCE(extracted_text, '') <> '' ORDER BY created_at ASC`);
+    const noticeResult = await pool.query(`SELECT id::text AS id, extracted_text, file_data, file_mimetype, original_filename, uploaded_by FROM coe_notices
+      WHERE LOWER(type) LIKE '%datesheet%' OR LOWER(title) LIKE '%datesheet%' OR LOWER(original_filename) LIKE '%datesheet%'
+      ORDER BY created_at ASC`);
     let parsedFromNotices = 0;
     for (const notice of noticeResult.rows) {
-      const sync = await syncDatesheetScheduleFromPdf(notice.extracted_text, notice.uploaded_by || 'COE');
+      let sourceText = notice.extracted_text || '';
+      let sync = sourceText.trim() ? await syncDatesheetScheduleFromPdf(sourceText, notice.uploaded_by || 'COE') : {count:0};
+      if (!(sync.count > 0) && notice.file_data &&
+          (String(notice.file_mimetype || '').includes('pdf') || String(notice.original_filename || '').toLowerCase().endsWith('.pdf'))) {
+        try {
+          const parsedPdf = await pdfParse(notice.file_data);
+          sourceText = parsedPdf.text || '';
+          if (sourceText.trim()) {
+            await pool.query('UPDATE coe_notices SET extracted_text=$2 WHERE id=$1', [notice.id, sourceText]);
+            sync = await syncDatesheetScheduleFromPdf(sourceText, notice.uploaded_by || 'COE');
+          }
+        } catch (e) {
+          console.warn('Could not re-extract datesheet PDF ' + notice.id + ':', e.message);
+        }
+      }
       parsedFromNotices += sync.count || 0;
     }
     const { rows } = await pool.query(`SELECT id::text AS id, course_name AS "courseName", course_code AS "courseCode",
