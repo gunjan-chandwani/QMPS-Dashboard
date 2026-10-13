@@ -118,7 +118,7 @@ function parseDatesheetScheduleRows(pdfText) {
   let currentProgram = '';
   let currentSemester = '';
   let currentExam = 'Mid Semester';
-  const dateRe = /\b(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})\b/;
+  const dateRe = /\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b/;
   // Match the full decimal-prefixed codes first; prevent matching only the digit after the decimal point.
   const codeRe = /(?<![\w.])(?:\d+\.\d+[A-Z]{2,4}\d{2}[A-Z]\d{3}|[A-Z]{2,4}\d{3,4}[A-Z]?)(?!\w)/i;
   const isHeader = x => /^(?:date\s+timings?|timings?|course code|course name|manav rachna|schedule for|controller of examination|semester\s*[-:])/i.test(x);
@@ -229,6 +229,10 @@ async function syncDatesheetScheduleFromPdf(pdfText, uploadedBy) {
 }
 
 async function backfillDatesheetSchedulesFromExistingNotices() {
+  // Remove obviously malformed rows left by the previous parser (truncated codes, mixed subject rows, footer dates).
+  await pool.query(`DELETE FROM datesheet_schedule
+    WHERE course_code ~ '^[0-9][A-Z]{2,4}[0-9]{2}[A-Z][0-9]{3}$'
+       OR course_name ~* '[0-9]{2}[.][0-9]{2}[.][0-9]{4}|DATETimingsCourse Name|CONTROLLER OF EXAMINATION'`);
   const result = await pool.query(`SELECT extracted_text, uploaded_by FROM coe_notices
     WHERE (LOWER(type) LIKE '%datesheet%' OR LOWER(title) LIKE '%datesheet%' OR LOWER(original_filename) LIKE '%datesheet%')
       AND COALESCE(extracted_text, '') <> '' ORDER BY created_at ASC`);
