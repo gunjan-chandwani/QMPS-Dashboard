@@ -1132,9 +1132,30 @@ window.onload = function() {
                 const type = escapeText(n.type || 'Document');
                 const filename = escapeText(n.filename || 'Uploaded file');
                 const date = n.created_at ? new Date(n.created_at).toLocaleDateString() : (n.uploadDate || '');
-                return `<div class="bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-center justify-between gap-3"><div class="min-w-0 space-y-1"><span class="px-1.5 py-0.5 bg-amber-100 text-amber-900 rounded font-bold text-[10px] uppercase">${type}</span><div class="font-semibold text-slate-800">${title}</div><div class="text-[10px] text-slate-500 break-all">${filename} · ${escapeText(date)}</div></div><div class="flex shrink-0 gap-2"><a target="_blank" rel="noopener" href="/api/notices/${id}/view" class="px-2.5 py-1.5 bg-brand-700 hover:bg-brand-800 text-white rounded-lg text-xs font-semibold">View</a><a href="/api/notices/${id}/download" class="px-2.5 py-1.5 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold">Download</a></div></div>`;
+                return `<div class="bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-center justify-between gap-3"><div class="min-w-0 space-y-1"><span class="px-1.5 py-0.5 bg-amber-100 text-amber-900 rounded font-bold text-[10px] uppercase">${type}</span><div class="font-semibold text-slate-800">${title}</div><div class="text-[10px] text-slate-500 break-all">${filename} · ${escapeText(date)}</div></div><div class="flex shrink-0 flex-wrap gap-2"><a target="_blank" rel="noopener" href="/api/notices/${id}/view" class="px-2.5 py-1.5 bg-brand-700 hover:bg-brand-800 text-white rounded-lg text-xs font-semibold">View</a><a href="/api/notices/${id}/download" class="px-2.5 py-1.5 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold">Download</a>${currentSession?.role === 'COE' ? `<button type="button" onclick="deleteCoeNotice('${String(n.id).replace(/'/g, '')}')" class="px-2.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold"><i class="fa-solid fa-trash mr-1"></i>Delete</button>` : ''}</div></div>`;
             }).join('') : '<p class="text-xs text-slate-400">No official datesheets or formats have been published yet.</p>';
             containers.forEach(c => { c.innerHTML = html; });
+        }
+
+        async function deleteCoeNotice(noticeId) {
+            if (currentSession?.role !== 'COE') {
+                showToast('Only COE can delete a published datesheet/document.', 'warning');
+                return;
+            }
+            const notice = coeNotices.find(n => String(n.id) === String(noticeId));
+            const label = notice?.title || 'this published document';
+            if (!confirm(`Delete "${label}"? This will remove the published file from the portal and cannot be undone.`)) return;
+            try {
+                const response = await fetch(`/api/notices/${encodeURIComponent(noticeId)}`, { method: 'DELETE' });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'Could not delete the document.');
+                coeNotices = coeNotices.filter(n => String(n.id) !== String(noticeId));
+                renderNoticesForRole();
+                showToast('Published datesheet/document deleted.', 'success');
+            } catch (err) {
+                console.error('COE document deletion failed:', err);
+                showToast(err.message || 'Could not delete the document.', 'warning');
+            }
         }
 
         async function loadCoeNotices() {
