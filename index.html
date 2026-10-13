@@ -953,12 +953,11 @@
         }
         function qpmsScheduleMatchesPaper(sch, p) {
             const same = (a,b) => qpmsNorm(a) === qpmsNorm(b);
-            const hasMapping = value => String(value || '').trim() && !['not specified','unmapped from pdf','examination'].includes(qpmsNorm(value));
             return same(p.courseCode, sch.courseCode) &&
-                (!hasMapping(sch.department) || same(qpmsDepartmentFor(p), qpmsDepartmentFor(sch))) &&
-                (!hasMapping(sch.semester) || same(p.semester, sch.semester)) &&
-                (!hasMapping(sch.examType) || qpmsExamNorm(p.examType) === qpmsExamNorm(sch.examType)) &&
-                (!hasMapping(sch.program) || !p.program || same(p.program, sch.program));
+                same(qpmsDepartmentFor(p), qpmsDepartmentFor(sch)) &&
+                same(p.semester, sch.semester) &&
+                qpmsExamNorm(p.examType) === qpmsExamNorm(sch.examType) &&
+                (!sch.program || !p.program || same(p.program, sch.program));
         }
         function getUnuploadedPapers() {
             // A paper with Changes Required has still been uploaded; it is pending revision,
@@ -1148,7 +1147,7 @@ window.onload = function() {
         function renderFacultyPendingAlert() {
             const unuploaded = getUnuploadedPapers();
             // Filter unuploaded papers for current faculty member
-            const myPending = unuploaded.filter(item => String(item.facultyName || '').trim() && String(item.facultyName).toLowerCase() === currentSession.name.toLowerCase());
+            const myPending = unuploaded.filter(item => item.facultyName.toLowerCase() === currentSession.name.toLowerCase());
             const alertBox = document.getElementById('faculty-pending-datesheet-alert');
             const listContainer = document.getElementById('faculty-pending-courses-list');
             const countBadge = document.getElementById('faculty-pending-count');
@@ -1874,15 +1873,8 @@ window.onload = function() {
                 closeModal('modal-coe-notice');
                 document.getElementById('form-coe-notice').reset();
                 await loadCoeNotices();
-                // Refresh the structured schedule immediately after PDF import so the pending count updates without a manual reload.
-                if (result.datesheetImport) await loadDatesheetSchedule();
                 renderDashboard();
-                const importInfo = result.datesheetImport ? ` Detected ${result.datesheetImport.detected} course/date row(s); synced ${result.datesheetImport.imported} schedule row(s).` : '';
-                if (result.datesheetImport && result.datesheetImport.detected === 0) {
-                    showToast('PDF uploaded, but no course/date rows could be extracted. Check that the datesheet is searchable and its course codes and exam dates are readable.', 'warning');
-                } else {
-                    showToast('Datesheet / format uploaded and saved. It is now available to Faculty, COE and Moderators.' + importInfo, 'success');
-                }
+                showToast('Datesheet / format uploaded and saved. It is now available to Faculty, COE and Moderators.', 'success');
             } catch (err) {
                 showToast(err.message || 'Document upload failed. Please try again.', 'warning');
             } finally { button.disabled = false; }
