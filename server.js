@@ -480,6 +480,19 @@ app.post('/api/question-papers/generate', async (req,res) => {
     res.json({ok:true,paper:{...result.rows[0],courseCode,courseName:courseName||solution[0].courseName||'',examType,totalMarks,questionCount,questions:solution},checks:{historicalQuestions:history.length,blockedCandidates:blocked.length,eligibleQuestions:eligible.length,archiveCoverage:history.length?'Historical archive loaded for the last five calendar years':'NO HISTORICAL QUESTIONS IMPORTED — non-repetition cannot be verified'},status:'Draft'});
   }catch(e){res.status(500).json({ok:false,error:e.message});}
 });
+app.patch('/api/question-papers/:id/status',async(req,res)=>{
+  const id=String(req.params.id||'').trim();
+  const status=String(req.body?.status||'').trim();
+  if(!/^\\d+$/.test(id)) return res.status(400).json({ok:false,error:'Invalid generated paper ID.'});
+  if(!['Draft','Approved','Rejected'].includes(status)) return res.status(400).json({ok:false,error:'Status must be Draft, Approved, or Rejected.'});
+  try{
+    const result=await pool.query(`UPDATE generated_question_papers SET status=$2 WHERE id=$1
+      RETURNING id::text AS id,status,course_code AS "courseCode",course_name AS "courseName",exam_type AS "examType",
+      total_marks AS "totalMarks",question_count AS "questionCount",created_at AS "createdAt"`,[id,status]);
+    if(!result.rowCount)return res.status(404).json({ok:false,error:'Generated paper not found.'});
+    res.json({ok:true,paper:result.rows[0]});
+  }catch(e){res.status(500).json({ok:false,error:e.message});}
+});
 app.get('/api/question-papers',async(req,res)=>{
   try{
     const code=String(req.query.courseCode||'').trim();
