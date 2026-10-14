@@ -88,6 +88,27 @@ async function initDb() {
     created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()
   )`);
   await pool.query(`ALTER TABLE datesheet_schedule ADD COLUMN IF NOT EXISTS faculty_email TEXT`);
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS question_bank (
+    id BIGSERIAL PRIMARY KEY, course_code TEXT NOT NULL, course_name TEXT,
+    question_text TEXT NOT NULL, unit TEXT, topic TEXT, marks INTEGER NOT NULL CHECK (marks > 0),
+    difficulty TEXT DEFAULT 'Medium', bloom_level TEXT, question_type TEXT DEFAULT 'Descriptive',
+    uploaded_by TEXT, created_at TIMESTAMPTZ DEFAULT NOW()
+  )`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_question_bank_course ON question_bank (UPPER(course_code))`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS question_history (
+    id BIGSERIAL PRIMARY KEY, course_code TEXT NOT NULL, course_name TEXT,
+    question_text TEXT NOT NULL, exam_year INTEGER NOT NULL, exam_type TEXT,
+    source_label TEXT, imported_by TEXT, created_at TIMESTAMPTZ DEFAULT NOW()
+  )`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_question_history_course_year ON question_history (UPPER(course_code), exam_year)`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS generated_question_papers (
+    id BIGSERIAL PRIMARY KEY, course_code TEXT NOT NULL, course_name TEXT,
+    exam_type TEXT NOT NULL, total_marks INTEGER NOT NULL, question_count INTEGER NOT NULL,
+    questions JSONB NOT NULL, status TEXT DEFAULT 'Draft', generated_by TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  )`);
+
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_datesheet_schedule_lookup ON datesheet_schedule (UPPER(course_code), LOWER(department), LOWER(semester), LOWER(exam_type))`);
 }
 
@@ -297,6 +318,178 @@ app.get("/health", async (_req, res) => {
 
 app.get("/api/config", (_req, res) => {
   res.json({ ok: true });
+});
+
+
+function normalizeQuestionText(value) {
+  return String(value || '').toLowerCase().normalize('NFKD')
+    .replace(/[^a-z0-9\\s]/g, ' ').replace(/\\s+/g, ' ').trim();
+}
+function questionSimilarity(a, b) {
+  const aa = new Set(normalizeQuestionText(a).split(' ').filter(t => t.length > 2));
+  const bb = new Set(normalizeQuestionText(b).split(' ').filter(t => t.length > 2));
+  if (!aa.size || !bb.size) return 0;
+  let intersection = 0;
+  for (const t of aa) if (bb.has(t)) intersection++;
+  return intersection / (aa.size + bb.size - intersection);
+}
+app.get('/api/question-bank', async (req, res) => {
+  try {
+    const code = String(req.query.courseCode || '').trim();
+    const params = code ? [code] : [];
+    const result = await pool.query(`SELECT id::text AS id, course_code AS "courseCode", course_name AS "courseName",
+      question_text AS "questionText", unit, topic, marks, difficulty, bloom_level AS "bloomLevel",
+      question_type AS "questionType", uploaded_by AS "uploadedBy", created_at AS "createdAt"
+      FROM question_bank ${code ? 'WHERE UPPER(TRIM(course_code))=UPPER(TRIM($1))' : ''}
+      ORDER BY course_code, unit, id`, params);
+    res.json({ok:true,questions:result.rows});
+  } catch(e) { res.status(500).json({ok:false,error:e.message}); }
+});
+app.post('/api/question-bank/bulk', async (req, res) => {
+  const rows = Array.isArray(req.body?.questions) ? req.body.questions : [];
+  const courseCode = String(req.body?.courseCode || '').trim().toUpperCase();
+  const courseName = String(req.body?.courseName || '').trim();
+  const uploadedBy = String(req.body?.uploadedBy || 'Faculty').slice(0,200);
+  if (!courseCode) return res.status(400).json({ok:false,error:'Course code is required.'});
+  if (!rows.length || rows.length > 2000) return res.status(400).json({ok:false,error:'Upload between 1 and 2000 questions per batch.'});
+  const prepared = [];
+  const seen = new Set();
+  for (let i=0;i<rows.length;i++) {
+    const row = rows[i] || {};
+    const text = String(row.questionText ?? row.question ?? row.question_text ?? row['Question Text'] ?? row['Question'] ?? '').trim();
+    const marks = Number(row.marks ?? row.Marks ?? row['Marks']);
+    if (!text || !Number.isInteger(marks) || marks < 1 || marks > 100) {
+      return res.status(400).json({ok:false,error:`Row ${i+2}: question text and positive whole-number marks are required.`});
+    }
+    const norm = normalizeQuestionText(text);
+    if (seen.has(norm)) continue;
+    seen.add(norm);
+    prepared.push({text,marks,unit:String(row.unit ?? row.Unit ?? '').trim(),topic:String(row.topic ?? row.Topic ?? '').trim(),
+      difficulty:String(row.difficulty ?? row.Difficulty ?? 'Medium').trim() || 'Medium',
+      bloom:String(row.bloomLevel ?? row.bloom_level ?? row['Bloom Level'] ?? '').trim(),
+      type:String(row.questionType ?? row.question_type ?? row['Question Type'] ?? 'Descriptive').trim() || 'Descriptive'});
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    let inserted = 0, skipped = rows.length-prepared.length;
+    for (const q of prepared) {
+      const exists = await client.query('SELECT id FROM question_bank WHERE UPPER(TRIM(course_code))=UPPER($1) AND LOWER(REGEXP_REPLACE(TRIM(question_text), \'\\s+\', \' \', \'g\'))=LOWER(REGEXP_REPLACE(TRIM($2), \'\\s+\', \' \', \'g\')) LIMIT 1',[courseCode,q.text]);
+      if (exists.rowCount) { skipped++; continue; }
+      await client.query(`INSERT INTO question_bank (course_code,course_name,question_text,unit,topic,marks,difficulty,bloom_level,question_type,uploaded_by)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,[courseCode,courseName||null,q.text,q.unit||null,q.topic||null,q.marks,q.difficulty,q.bloom||null,q.type,uploadedBy]);
+      inserted++;
+    }
+    await client.query('COMMIT');
+    const count = await pool.query('SELECT COUNT(*)::int AS count FROM question_bank WHERE UPPER(TRIM(course_code))=UPPER($1)',[courseCode]);
+    res.json({ok:true,inserted,skipped,totalForCourse:count.rows[0].count});
+  } catch(e) { await client.query('ROLLBACK'); res.status(500).json({ok:false,error:e.message}); }
+  finally { client.release(); }
+});
+app.get('/api/question-history', async (req,res) => {
+  try {
+    const code=String(req.query.courseCode||'').trim();
+    const params=code?[code]:[];
+    const result=await pool.query(`SELECT id::text AS id,course_code AS "courseCode",course_name AS "courseName",
+      question_text AS "questionText",exam_year AS "examYear",exam_type AS "examType",source_label AS "sourceLabel"
+      FROM question_history ${code?'WHERE UPPER(TRIM(course_code))=UPPER(TRIM($1))':''} ORDER BY exam_year DESC,id`,params);
+    res.json({ok:true,questions:result.rows});
+  } catch(e) { res.status(500).json({ok:false,error:e.message}); }
+});
+app.post('/api/question-history/bulk', async (req,res) => {
+  const rows=Array.isArray(req.body?.questions)?req.body.questions:[];
+  const courseCode=String(req.body?.courseCode||'').trim().toUpperCase();
+  const courseName=String(req.body?.courseName||'').trim();
+  const sourceLabel=String(req.body?.sourceLabel||'Historical question-paper archive').slice(0,250);
+  const importedBy=String(req.body?.importedBy||'COE').slice(0,200);
+  if(!courseCode) return res.status(400).json({ok:false,error:'Course code is required.'});
+  if(!rows.length||rows.length>5000) return res.status(400).json({ok:false,error:'Upload between 1 and 5000 historical questions.'});
+  const client=await pool.connect();
+  try {
+    await client.query('BEGIN');
+    let inserted=0,skipped=0;
+    for(let i=0;i<rows.length;i++){
+      const r=rows[i]||{};
+      const text=String(r.questionText??r.question??r.question_text??r['Question Text']??r['Question']??'').trim();
+      const year=Number(r.examYear??r.year??r.exam_year??r['Exam Year']??r['Year']);
+      const type=String(r.examType??r.exam_type??r['Exam Type']??'').trim();
+      if(!text||!Number.isInteger(year)||year<2000||year>new Date().getFullYear()){
+        throw new Error(`Historical row ${i+2}: question text and valid exam year are required.`);
+      }
+      const exists=await client.query(`SELECT id FROM question_history WHERE UPPER(TRIM(course_code))=UPPER($1)
+        AND exam_year=$2 AND LOWER(REGEXP_REPLACE(TRIM(question_text), '\\s+', ' ', 'g'))=LOWER(REGEXP_REPLACE(TRIM($3), '\\s+', ' ', 'g')) LIMIT 1`,[courseCode,year,text]);
+      if(exists.rowCount){skipped++;continue;}
+      await client.query(`INSERT INTO question_history (course_code,course_name,question_text,exam_year,exam_type,source_label,imported_by)
+        VALUES ($1,$2,$3,$4,$5,$6,$7)`,[courseCode,courseName||null,text,year,type||null,sourceLabel,importedBy]);
+      inserted++;
+    }
+    await client.query('COMMIT');
+    const count=await pool.query('SELECT COUNT(*)::int AS count FROM question_history WHERE UPPER(TRIM(course_code))=UPPER($1) AND exam_year >= $2',[courseCode,new Date().getFullYear()-4]);
+    res.json({ok:true,inserted,skipped,recentFiveYearCount:count.rows[0].count});
+  } catch(e){await client.query('ROLLBACK');res.status(400).json({ok:false,error:e.message});}
+  finally{client.release();}
+});
+app.post('/api/question-papers/generate', async (req,res) => {
+  const courseCode=String(req.body?.courseCode||'').trim().toUpperCase();
+  const courseName=String(req.body?.courseName||'').trim();
+  const examType=String(req.body?.examType||'Mid Semester').trim();
+  const totalMarks=Number(req.body?.totalMarks||40);
+  const questionCount=Number(req.body?.questionCount||10);
+  const generatedBy=String(req.body?.generatedBy||'COE').slice(0,200);
+  if(!courseCode) return res.status(400).json({ok:false,error:'Course code is required.'});
+  if(!Number.isInteger(totalMarks)||totalMarks<1||totalMarks>500||!Number.isInteger(questionCount)||questionCount<1||questionCount>100||questionCount>totalMarks){
+    return res.status(400).json({ok:false,error:'Enter valid total marks and question count.'});
+  }
+  try{
+    const bank=(await pool.query(`SELECT id::text AS id,course_code AS "courseCode",course_name AS "courseName",
+      question_text AS "questionText",unit,topic,marks,difficulty,bloom_level AS "bloomLevel",question_type AS "questionType"
+      FROM question_bank WHERE UPPER(TRIM(course_code))=UPPER($1) ORDER BY RANDOM()`,[courseCode])).rows;
+    if(bank.length<questionCount) return res.status(400).json({ok:false,error:`Question bank has only ${bank.length} questions; ${questionCount} are required.`});
+    const history=(await pool.query(`SELECT question_text AS "questionText" FROM question_history
+      WHERE UPPER(TRIM(course_code))=UPPER($1) AND exam_year >= $2`,[courseCode,new Date().getFullYear()-4])).rows;
+    const eligible=[],blocked=[];
+    for(const q of bank){
+      const match=history.map(h=>({text:h.questionText,score:questionSimilarity(q.questionText,h.questionText)}))
+        .sort((a,b)=>b.score-a.score)[0];
+      if(match&&(normalizeQuestionText(q.questionText)===normalizeQuestionText(match.text)||match.score>=0.72)){
+        blocked.push({id:q.id,questionText:q.questionText,similarity:Math.round(match.score*100),matchedQuestion:match.text});continue;
+      }
+      if(eligible.some(e=>questionSimilarity(e.questionText,q.questionText)>=0.86)) {blocked.push({id:q.id,questionText:q.questionText,similarity:86,matchedQuestion:'Another selected/eligible duplicate variant'});continue;}
+      eligible.push(q);
+    }
+    if(eligible.length<questionCount) return res.status(409).json({ok:false,error:`Only ${eligible.length} questions remain after five-year duplicate checks; ${questionCount} are required. Import the complete archive or add more distinct questions.`,eligibleCount:eligible.length,blockedCount:blocked.length,historyRows:history.length});
+    let nodes=0,solution=null;
+    const candidates=eligible.slice().sort(()=>Math.random()-0.5);
+    const suffix=new Array(candidates.length+1).fill(0);
+    for(let i=candidates.length-1;i>=0;i--) suffix[i]=suffix[i+1]+candidates[i].marks;
+    function search(start,remaining,sum,chosen){
+      if(++nodes>80000)return false;
+      if(remaining===0){if(sum===totalMarks){solution=chosen.slice();return true;}return false;}
+      if(start>=candidates.length||candidates.length-start<remaining||sum>=totalMarks||sum+suffix[start]<totalMarks)return false;
+      for(let i=start;i<=candidates.length-remaining;i++){
+        const q=candidates[i]; if(sum+q.marks>totalMarks)continue;
+        chosen.push(q);if(search(i+1,remaining-1,sum+q.marks,chosen))return true;chosen.pop();
+      }
+      return false;
+    }
+    search(0,questionCount,0,[]);
+    if(!solution)return res.status(409).json({ok:false,error:`Could not find ${questionCount} unique questions adding exactly to ${totalMarks} marks. Adjust the marks/question count or update the bank.`,eligibleCount:eligible.length,blockedCount:blocked.length,historyRows:history.length});
+    const result=await pool.query(`INSERT INTO generated_question_papers (course_code,course_name,exam_type,total_marks,question_count,questions,generated_by)
+      VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7) RETURNING id::text AS id,created_at AS "createdAt"`,
+      [courseCode,courseName||solution[0].courseName||null,examType,totalMarks,questionCount,JSON.stringify(solution),generatedBy]);
+    res.json({ok:true,paper:{...result.rows[0],courseCode,courseName:courseName||solution[0].courseName||'',examType,totalMarks,questionCount,questions:solution},checks:{historicalQuestions:history.length,blockedCandidates:blocked.length,eligibleQuestions:eligible.length,archiveCoverage:history.length?'Historical archive loaded for the last five calendar years':'NO HISTORICAL QUESTIONS IMPORTED — non-repetition cannot be verified'},status:'Draft'});
+  }catch(e){res.status(500).json({ok:false,error:e.message});}
+});
+app.get('/api/question-papers',async(req,res)=>{
+  try{
+    const code=String(req.query.courseCode||'').trim();
+    const params=code?[code]:[];
+    const result=await pool.query(`SELECT id::text AS id,course_code AS "courseCode",course_name AS "courseName",
+      exam_type AS "examType",total_marks AS "totalMarks",question_count AS "questionCount",questions,status,
+      generated_by AS "generatedBy",created_at AS "createdAt" FROM generated_question_papers
+      ${code?'WHERE UPPER(TRIM(course_code))=UPPER(TRIM($1))':''} ORDER BY created_at DESC LIMIT 100`,params);
+    res.json({ok:true,papers:result.rows});
+  }catch(e){res.status(500).json({ok:false,error:e.message});}
 });
 
 app.get("/api/papers", async (_req, res) => {
