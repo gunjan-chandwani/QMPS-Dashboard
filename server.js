@@ -339,8 +339,8 @@ app.post('/api/datesheet-schedule/assign-faculty', async (req, res) => {
       const id = String(item?.scheduleId || '').trim();
       const facultyName = String(item?.facultyName || '').trim();
       const facultyEmail = String(item?.facultyEmail || '').trim();
-      if (!/^\\d+$/.test(id) || !facultyName) continue;
-      if (facultyEmail && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(facultyEmail)) {
+      if (!/^\d+$/.test(id) || !facultyName) continue;
+      if (facultyEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(facultyEmail)) {
         throw new Error('Invalid faculty email for ' + facultyName + '. Correct the email and try again.');
       }
       const result = await client.query(`UPDATE datesheet_schedule
