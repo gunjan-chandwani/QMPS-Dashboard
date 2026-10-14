@@ -87,6 +87,7 @@ async function initDb() {
     paper_date DATE NOT NULL, faculty_name TEXT, updated_by TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()
   )`);
+  await pool.query(`ALTER TABLE datesheet_schedule ADD COLUMN IF NOT EXISTS faculty_email TEXT`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_datesheet_schedule_lookup ON datesheet_schedule (UPPER(course_code), LOWER(department), LOWER(semester), LOWER(exam_type))`);
 }
 
@@ -320,9 +321,41 @@ app.get('/api/datesheet-schedule', async (_req, res) => {
   try {
     const { rows } = await pool.query(`SELECT id::text AS id, course_name AS "courseName", course_code AS "courseCode",
       school, department, program, semester, exam_type AS "examType", TO_CHAR(paper_date,'YYYY-MM-DD') AS "paperDate",
-      faculty_name AS "facultyName", updated_at FROM datesheet_schedule ORDER BY paper_date, course_code`);
+      faculty_name AS "facultyName", faculty_email AS "facultyEmail", updated_at FROM datesheet_schedule ORDER BY paper_date, course_code`);
     res.json({ok:true,schedules:rows});
   } catch (e) { res.status(500).json({ok:false,error:e.message}); }
+});
+
+app.post('/api/datesheet-schedule/assign-faculty', async (req, res) => {
+  const assignments = Array.isArray(req.body?.assignments) ? req.body.assignments : [];
+  const updatedBy = String(req.body?.updatedBy || 'Moderator').slice(0, 200);
+  if (!assignments.length) return res.status(400).json({ok:false,error:'No assignments were supplied.'});
+  if (assignments.length > 2000) return res.status(400).json({ok:false,error:'Please save no more than 2000 assignments at a time.'});
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    let updatedCount = 0;
+    for (const item of assignments) {
+      const id = String(item?.scheduleId || '').trim();
+      const facultyName = String(item?.facultyName || '').trim();
+      const facultyEmail = String(item?.facultyEmail || '').trim();
+      if (!/^\\d+$/.test(id) || !facultyName) continue;
+      if (facultyEmail && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(facultyEmail)) {
+        throw new Error('Invalid faculty email for ' + facultyName + '. Correct the email and try again.');
+      }
+      const result = await client.query(`UPDATE datesheet_schedule
+        SET faculty_name=$2, faculty_email=$3, updated_by=$4, updated_at=NOW()
+        WHERE id=$1 RETURNING id`, [id, facultyName, facultyEmail || null, updatedBy]);
+      if (result.rowCount) updatedCount++;
+    }
+    await client.query('COMMIT');
+    res.json({ok:true,updatedCount});
+  } catch (e) {
+    await client.query('ROLLBACK');
+    res.status(400).json({ok:false,error:e.message});
+  } finally {
+    client.release();
+  }
 });
 
 app.post('/api/datesheet-schedule', async (req, res) => {
@@ -345,7 +378,7 @@ app.post('/api/datesheet-schedule', async (req, res) => {
       ({rows} = await pool.query(`UPDATE datesheet_schedule SET course_name=$2, school=$3, paper_date=$4::date,
         faculty_name=$5, updated_by=$6, updated_at=NOW() WHERE id=$1
         RETURNING id::text AS id, course_name AS "courseName", course_code AS "courseCode", school, department, program,
-        semester, exam_type AS "examType", TO_CHAR(paper_date,'YYYY-MM-DD') AS "paperDate", faculty_name AS "facultyName", updated_at`,
+        semester, exam_type AS "examType", TO_CHAR(paper_date,'YYYY-MM-DD') AS "paperDate", faculty_name AS "facultyName", faculty_email AS "facultyEmail", updated_at`,
         [found.rows[0].id,b.courseName,b.school || null,b.paperDate,b.facultyName,b.updated_by || 'COE']));
     } else {
       ({rows} = await pool.query(`INSERT INTO datesheet_schedule
