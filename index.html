@@ -41,6 +41,7 @@
             background: #94a3b8;
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
 
@@ -412,6 +413,44 @@
                     <section class="bg-white border border-amber-200 rounded-2xl p-4 shadow-sm space-y-3">
                         <div><h3 class="font-extrabold text-slate-900">COE Published Datesheets & Paper Formats</h3><p class="text-xs text-slate-500">Official documents are available here for moderator reference.</p></div>
                         <div id="moderator-notices-container" class="grid grid-cols-1 md:grid-cols-2 gap-3"><p class="text-xs text-slate-400">Loading published documents…</p></div>
+                    </section>
+
+                    <!-- COURSE COORDINATOR ASSIGNMENT -->
+                    <section class="bg-white border border-indigo-200 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4">
+                        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                            <div>
+                                <h3 class="text-base font-extrabold text-slate-900"><i class="fa-solid fa-user-check text-indigo-600 mr-2"></i>Course Coordinator & Faculty Assignment</h3>
+                                <p class="text-xs text-slate-500 mt-1">Upload the course coordinator Excel/CSV sheet. QMPS matches courses in your assigned school/department with the examination datesheet, then lets you verify or manually assign unmatched courses.</p>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <a href="#" onclick="downloadCoordinatorTemplate(event)" class="px-3 py-2 rounded-lg border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50"><i class="fa-solid fa-download mr-1"></i>Download Template</a>
+                                <label class="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 cursor-pointer">
+                                    <i class="fa-solid fa-file-arrow-up mr-1"></i>Upload Coordinator Sheet
+                                    <input id="coordinator-sheet-file" type="file" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleCoordinatorSheetUpload(event)">
+                                </label>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                            <div class="rounded-lg bg-slate-50 border border-slate-200 p-3"><div class="text-slate-500">Courses in Your Scope</div><div id="coord-count-total" class="text-lg font-extrabold text-slate-900">0</div></div>
+                            <div class="rounded-lg bg-emerald-50 border border-emerald-100 p-3"><div class="text-emerald-700">Matched from Sheet</div><div id="coord-count-matched" class="text-lg font-extrabold text-emerald-800">0</div></div>
+                            <div class="rounded-lg bg-amber-50 border border-amber-100 p-3"><div class="text-amber-700">Need Manual Review</div><div id="coord-count-review" class="text-lg font-extrabold text-amber-800">0</div></div>
+                            <div class="rounded-lg bg-blue-50 border border-blue-100 p-3"><div class="text-blue-700">Already Assigned</div><div id="coord-count-assigned" class="text-lg font-extrabold text-blue-800">0</div></div>
+                        </div>
+                        <div id="coordinator-sheet-message" class="hidden rounded-lg p-3 text-xs" role="status"></div>
+                        <div id="coordinator-assignment-preview-wrap" class="hidden border border-slate-200 rounded-xl overflow-hidden">
+                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-slate-50 px-3 py-3 border-b border-slate-200">
+                                <div><div class="text-sm font-bold text-slate-800">Assignment Preview</div><div class="text-[11px] text-slate-500">Check every suggested match before saving. Only courses in your assigned scope are shown.</div></div>
+                                <button id="coordinator-save-button" type="button" onclick="saveCoordinatorAssignments()" class="px-4 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700"><i class="fa-solid fa-floppy-disk mr-1"></i>Confirm & Save Assignments</button>
+                            </div>
+                            <div class="overflow-x-auto max-h-[520px] custom-scrollbar">
+                                <table class="w-full text-left text-xs">
+                                    <thead class="sticky top-0 bg-white border-b border-slate-200 text-slate-500 uppercase">
+                                        <tr><th class="p-3">Scheduled Course / Code</th><th class="p-3">Exam Details</th><th class="p-3">Match Status</th><th class="p-3 min-w-[190px]">Assigned Faculty / Coordinator</th><th class="p-3 min-w-[200px]">Faculty Email (optional)</th></tr>
+                                    </thead>
+                                    <tbody id="coordinator-assignment-preview" class="divide-y divide-slate-100"></tbody>
+                                </table>
+                            </div>
+                        </div>
                     </section>
 
                     <!-- MODERATOR WORKFLOW REPORT: live counts from persisted paper records -->
@@ -884,6 +923,8 @@
     <script>
         // Global System State
         let currentSession = null; // Active user object
+        let coordinatorSheetRows = [];
+        let coordinatorAssignmentRows = [];
         let coeTabFilter = 'PENDING'; // Default active COE tab
 
         // Pre-configured User Accounts
@@ -1730,9 +1771,171 @@ window.onload = function() {
         const uploadCodeInput = document.getElementById('upload-course-code');
         if (uploadCodeInput) uploadCodeInput.addEventListener('blur', refreshUploadPrograms);
 
+
+        // Course Coordinator Sheet -> Datesheet assignment workflow
+        function coordNorm(value) {
+            return String(value ?? '').toLowerCase().normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '')
+                .replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim().replace(/\\s+/g, ' ');
+        }
+        function coordHeader(row, aliases) {
+            const keys = Object.keys(row || {});
+            for (const alias of aliases) {
+                const wanted = coordNorm(alias).replace(/ /g, '');
+                const found = keys.find(k => coordNorm(k).replace(/ /g, '') === wanted);
+                if (found !== undefined && String(row[found] ?? '').trim()) return String(row[found]).trim();
+            }
+            return '';
+        }
+        function coordScopeSchedules() {
+            return (datesheetSchedule || []).filter(s => qpmsReportInScope(s, 'MODERATOR'));
+        }
+        function coordMatchSchedule(schedule, rows) {
+            const code = coordNorm(schedule.courseCode).replace(/ /g, '');
+            const name = coordNorm(schedule.courseName);
+            let matches = rows.filter(r => r.courseCode && coordNorm(r.courseCode).replace(/ /g, '') === code);
+            let matchType = 'Course code';
+            if (!matches.length && name) {
+                matches = rows.filter(r => r.courseName && coordNorm(r.courseName) === name);
+                matchType = 'Course name';
+            }
+            const unique = new Map();
+            matches.forEach(r => {
+                const key = coordNorm(r.facultyName) + '|' + coordNorm(r.facultyEmail);
+                if (r.facultyName) unique.set(key, r);
+            });
+            const uniqueMatches = [...unique.values()];
+            if (uniqueMatches.length > 1) return {status:'Conflict — review', facultyName:'', facultyEmail:'', matchType, matched:false};
+            if (uniqueMatches.length === 1) return {status:'Matched by ' + matchType, facultyName:uniqueMatches[0].facultyName, facultyEmail:uniqueMatches[0].facultyEmail || '', matchType, matched:true};
+            if (matches.length > 1) return {status:'Multiple sheet rows — review', facultyName:'', facultyEmail:'', matchType, matched:false};
+            return {status:'Not found — assign manually', facultyName:schedule.facultyName || '', facultyEmail:schedule.facultyEmail || '', matchType:'', matched:false};
+        }
+        function renderCoordinatorAssignmentSummary() {
+            const schedules = coordScopeSchedules();
+            const total = document.getElementById('coord-count-total');
+            if (!total) return;
+            if (!coordinatorAssignmentRows.length || !coordinatorAssignmentRows.some(r => r.scheduleId)) {
+                coordinatorAssignmentRows = schedules.map(s => ({
+                    scheduleId:String(s.id), courseName:s.courseName || '', courseCode:s.courseCode || '', school:s.school || '',
+                    department:s.department || '', program:s.program || '', semester:s.semester || '', examType:s.examType || '',
+                    paperDate:s.paperDate || '', facultyName:s.facultyName || '', facultyEmail:s.facultyEmail || '',
+                    status:s.facultyName ? 'Already assigned' : 'Coordinator sheet not uploaded', matched:false, originalFacultyName:s.facultyName || ''
+                }));
+            } else {
+                const validIds = new Set(schedules.map(s => String(s.id)));
+                coordinatorAssignmentRows = coordinatorAssignmentRows.filter(r => validIds.has(String(r.scheduleId)));
+            }
+            total.textContent = schedules.length;
+            document.getElementById('coord-count-matched').textContent = coordinatorAssignmentRows.filter(r => /^Matched by/.test(r.status)).length;
+            document.getElementById('coord-count-review').textContent = coordinatorAssignmentRows.filter(r => /review|not found|not uploaded/i.test(r.status)).length;
+            document.getElementById('coord-count-assigned').textContent = coordinatorAssignmentRows.filter(r => String(r.facultyName || '').trim()).length;
+            const wrap = document.getElementById('coordinator-assignment-preview-wrap');
+            const body = document.getElementById('coordinator-assignment-preview');
+            if (!wrap || !body) return;
+            if (!schedules.length) {
+                wrap.classList.remove('hidden');
+                body.innerHTML = '<tr><td colspan="5" class="p-4 text-amber-800">No structured datesheet courses are available in your moderator scope. Upload/import the COE datesheet schedule first.</td></tr>';
+                return;
+            }
+            if (!coordinatorSheetRows.length && !coordinatorAssignmentRows.some(r => r.facultyName)) {
+                wrap.classList.add('hidden');
+                return;
+            }
+            wrap.classList.remove('hidden');
+            body.innerHTML = coordinatorAssignmentRows.map((r, i) => {
+                const statusClass = /^Matched by/.test(r.status) || r.status === 'Already assigned' ? 'bg-emerald-50 text-emerald-700' : /review|not found|not uploaded/i.test(r.status) ? 'bg-amber-50 text-amber-800' : 'bg-slate-100 text-slate-600';
+                return '<tr>' +
+                    '<td class="p-3"><div class="font-bold text-slate-800">' + escapeHtml(r.courseName) + '</div><div class="text-[10px] text-slate-500">' + escapeHtml(r.courseCode) + '</div></td>' +
+                    '<td class="p-3 text-slate-600">' + escapeHtml(r.examType || '') + '<div class="text-[10px]">' + escapeHtml(r.paperDate || '') + ' · ' + escapeHtml(r.department || '') + '</div></td>' +
+                    '<td class="p-3"><span class="inline-block rounded-full px-2 py-1 ' + statusClass + '">' + escapeHtml(r.status) + '</span></td>' +
+                    '<td class="p-3"><input data-coord-index="' + i + '" data-coord-field="facultyName" value="' + escapeHtml(r.facultyName || '') + '" placeholder="Enter faculty / coordinator name" class="w-full rounded-lg border border-slate-200 px-2.5 py-2 outline-none focus:ring-2 focus:ring-indigo-300"><div class="text-[10px] text-slate-400 mt-1">' + (r.matched ? 'Suggested from uploaded sheet' : 'Editable by moderator') + '</div></td>' +
+                    '<td class="p-3"><input data-coord-index="' + i + '" data-coord-field="facultyEmail" value="' + escapeHtml(r.facultyEmail || '') + '" placeholder="faculty@mru.edu.in" type="email" class="w-full rounded-lg border border-slate-200 px-2.5 py-2 outline-none focus:ring-2 focus:ring-indigo-300"></td>' +
+                    '</tr>';
+            }).join('');
+            body.querySelectorAll('input[data-coord-index]').forEach(input => input.addEventListener('input', e => {
+                const idx = Number(e.target.dataset.coordIndex), field = e.target.dataset.coordField;
+                if (coordinatorAssignmentRows[idx]) coordinatorAssignmentRows[idx][field] = e.target.value;
+            }));
+        }
+        function showCoordinatorMessage(message, isError=false) {
+            const el = document.getElementById('coordinator-sheet-message');
+            if (!el) return;
+            el.textContent = message;
+            el.className = 'rounded-lg p-3 text-xs ' + (isError ? 'bg-rose-50 border border-rose-200 text-rose-800' : 'bg-emerald-50 border border-emerald-200 text-emerald-800');
+            el.classList.remove('hidden');
+        }
+        async function handleCoordinatorSheetUpload(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+            if (!window.XLSX) { showCoordinatorMessage('Spreadsheet reader could not load. Refresh the page and try again.', true); return; }
+            try {
+                const data = await file.arrayBuffer();
+                const workbook = XLSX.read(data, {type:'array', cellDates:true});
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rawRows = XLSX.utils.sheet_to_json(sheet, {defval:'', raw:false});
+                if (!rawRows.length) throw new Error('The selected sheet has no data rows.');
+                coordinatorSheetRows = rawRows.map(row => ({
+                    courseCode:coordHeader(row,['Course Code','Subject Code','Course ID','Subject ID','Code','Paper Code']),
+                    courseName:coordHeader(row,['Course Name','Subject Name','Course Title','Subject','Course','Title']),
+                    facultyName:coordHeader(row,['Course Coordinator Name','Course Coordinator','Coordinator Name','Coordinator','Assigned Faculty','Faculty Name','Faculty','Teacher Name','Faculty Incharge']),
+                    facultyEmail:coordHeader(row,['Coordinator Email','Course Coordinator Email','Faculty Email','Email ID','Email','E-mail']),
+                    department:coordHeader(row,['Department','Department Name','Dept']),
+                    school:coordHeader(row,['School','School Name'])
+                })).filter(r => r.courseCode || r.courseName);
+                if (!coordinatorSheetRows.length) throw new Error('No Course Code or Course Name column was detected. Use the template headers or rename the sheet columns.');
+                const schedules = coordScopeSchedules();
+                coordinatorAssignmentRows = schedules.map(s => {
+                    const match = coordMatchSchedule(s, coordinatorSheetRows);
+                    return {scheduleId:String(s.id), courseName:s.courseName || '', courseCode:s.courseCode || '', school:s.school || '',
+                        department:s.department || '', program:s.program || '', semester:s.semester || '', examType:s.examType || '',
+                        paperDate:s.paperDate || '', facultyName:match.facultyName || '', facultyEmail:match.facultyEmail || '',
+                        status:match.status, matched:match.matched, originalFacultyName:s.facultyName || ''};
+                });
+                renderCoordinatorAssignmentSummary();
+                const matched = coordinatorAssignmentRows.filter(r => /^Matched by/.test(r.status)).length;
+                const unresolved = coordinatorAssignmentRows.filter(r => !String(r.facultyName || '').trim()).length;
+                showCoordinatorMessage('Sheet loaded: ' + coordinatorSheetRows.length + ' course rows read; ' + matched + ' datesheet courses matched; ' + unresolved + ' courses still need a faculty assignment or manual review. Nothing has been saved yet.');
+            } catch (err) {
+                showCoordinatorMessage(err.message || 'Could not read this coordinator sheet.', true);
+            }
+        }
+        async function saveCoordinatorAssignments() {
+            const rows = coordinatorAssignmentRows.filter(r => String(r.facultyName || '').trim()).map(r => ({
+                scheduleId:String(r.scheduleId), facultyName:String(r.facultyName).trim(), facultyEmail:String(r.facultyEmail || '').trim()
+            }));
+            if (!rows.length) { showCoordinatorMessage('No faculty assignments are ready to save. Fill in at least one faculty name.', true); return; }
+            const button = document.getElementById('coordinator-save-button');
+            if (button) { button.disabled = true; button.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Saving assignments…'; }
+            try {
+                const response = await fetch('/api/datesheet-schedule/assign-faculty', {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({assignments:rows, updatedBy:currentSession?.email || currentSession?.name || 'Moderator'})
+                });
+                const result = await response.json();
+                if (!response.ok || !result.ok) throw new Error(result.error || 'Could not save faculty assignments.');
+                await loadDatesheetSchedule();
+                coordinatorAssignmentRows = [];
+                renderCoordinatorAssignmentSummary();
+                showCoordinatorMessage('Saved ' + (result.updatedCount || rows.length) + ' faculty assignment(s) to the datesheet schedule. The assigned names will now appear in the pending-paper list.');
+                showToast('Course coordinator assignments saved successfully.', 'success');
+            } catch (err) {
+                showCoordinatorMessage('Assignments were not saved: ' + err.message, true);
+            } finally {
+                if (button) { button.disabled = false; button.innerHTML = '<i class="fa-solid fa-floppy-disk mr-1"></i>Confirm & Save Assignments'; }
+            }
+        }
+        function downloadCoordinatorTemplate(event) {
+            event.preventDefault();
+            const csv = 'Course Code,Course Name,Course Coordinator Name,Coordinator Email,Department,School\\nCST101,Example Course,Dr. Faculty Name,faculty@mru.edu.in,Computer Science & Technology,School of Engineering\\n';
+            const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = 'QPMS_Course_Coordinator_Template.csv'; a.click();
+            URL.revokeObjectURL(url);
+        }
+
         // 3. MODERATOR VIEW
         function renderModeratorView() {
             renderWorkflowReportSummary('MODERATOR');
+            try { renderCoordinatorAssignmentSummary(); } catch (err) { console.error('Coordinator assignment preview failed:', err); }
             const container = document.getElementById('moderator-papers-list');
             // Keep the moderator table consistent with the summary counts: show all papers in this scope that have entered moderation, including final-approved history.
             const visibleModeratorStatuses = ['FORWARDED_FOR_MODERATION', 'SENT_FOR_MODERATION', 'RESUBMITTED_TO_COE', 'APPROVED', 'APPROVED_BY_MODERATOR', 'MODERATION_APPROVED', 'CHANGES_REQUIRED', 'CHANGES_REQUIRED_BY_MODERATOR', 'FINAL_APPROVED', 'FINAL_APPROVED_AND_ARCHIVED'];
