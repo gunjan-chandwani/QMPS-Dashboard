@@ -118,3 +118,19 @@ The `/api/papers` and `/api/papers/:id/replace-file` endpoints validate submissi
 - Dashboard/workflow status counts are normalized across common legacy labels (for example, `Approved by Moderator`, `APPROVED_BY_MODERATOR`, and `Final Approved & Archived`). A moderator report is intentionally limited to that moderator's assigned school/department, while the COE report can include all records; their totals will differ when the moderator is scoped to only part of the university.
 - Scheduled-vs-uploaded comparisons use course code, mapped department, semester, exam type, and programme where both sides provide it. A paper marked `Changes Required` is still an uploaded paper; it should not be counted as a missing upload.
 - The uploaded PDF is used for validating submissions, but PDF upload alone does not create structured course schedule rows. COE must add/import the datesheet courses into the COE Datesheet Schedule for the portal to calculate a numeric pending count. When no structured schedule rows exist, the dashboard now shows `—` and an explanatory message rather than incorrectly showing `0`.
+
+
+## Question Bank & Automatic Question Paper Generator
+
+The faculty dashboard now includes a course-wise question-bank importer. Upload an Excel/CSV file with these columns:
+
+- **Required:** `Question Text`, `Marks`
+- **Optional:** `Unit`, `Topic`, `Difficulty`, `Bloom Level`, `Question Type`
+
+The COE dashboard includes a generator with Mid Semester defaults of 10 questions and 40 total marks, configurable end-semester marks/count, saved drafts, an approval action, and print / Save as PDF output.
+
+### Historical archive format
+
+To check the last five calendar years, import a question-level Excel/CSV archive for each course with **Question Text** and **Exam Year** columns. Optional columns are **Exam Type**. Scanned PDFs must be converted to text/question rows before import. The generator blocks exact matches and flags high token-overlap matches against the imported archive, and will refuse to generate if it cannot find enough questions matching the requested count and total marks.
+
+The archive check only covers historical questions that have been imported. Token-overlap similarity is a first-pass check, not a full semantic AI model. The current demo's role selection is UI-level; production use should add server-side authentication and role authorization to these new endpoints.
