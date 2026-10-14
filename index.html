@@ -263,6 +263,24 @@
                         </div>
                     </div>
 
+
+                    <!-- COURSE QUESTION BANK -->
+                    <section class="bg-white border border-emerald-200 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4">
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                            <div><h3 class="text-base font-extrabold text-slate-900"><i class="fa-solid fa-database text-emerald-600 mr-2"></i>Course Question Bank</h3><p class="text-xs text-slate-500 mt-1">Upload your course-wise question bank in Excel/CSV. Recommended: about 300 well-tagged questions per course.</p></div>
+                            <a href="#" onclick="downloadQuestionBankTemplate(event)" class="text-xs font-semibold text-emerald-700 hover:underline"><i class="fa-solid fa-download mr-1"></i>Download Excel Template</a>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <label class="text-xs font-semibold text-slate-600">Course Code<input id="qb-course-code" class="mt-1 w-full border border-slate-300 rounded-lg p-2.5 text-sm font-normal" placeholder="e.g. CST301" required></label>
+                            <label class="text-xs font-semibold text-slate-600">Course Name<input id="qb-course-name" class="mt-1 w-full border border-slate-300 rounded-lg p-2.5 text-sm font-normal" placeholder="e.g. Data Structures"></label>
+                            <label class="text-xs font-semibold text-slate-600">Question Bank File<input id="qb-file" type="file" accept=".xlsx,.xls,.csv" class="mt-1 block w-full text-xs border border-slate-300 rounded-lg p-2"></label>
+                        </div>
+                        <p class="text-[11px] text-slate-500">Required columns: Question Text, Marks. Optional: Unit, Topic, Difficulty, Bloom Level, Question Type. Duplicate questions are skipped.</p>
+                        <div class="flex flex-wrap gap-2"><button onclick="uploadQuestionBank()" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold"><i class="fa-solid fa-cloud-arrow-up mr-1"></i>Validate & Upload Bank</button><button onclick="loadQuestionBankSummary()" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold">View Bank Summary</button></div>
+                        <div id="qb-upload-message" class="hidden rounded-lg p-3 text-xs" role="status"></div>
+                        <div id="qb-summary" class="text-xs text-slate-600"></div>
+                    </section>
+
                     <!-- COE Official Notices Banner (Datesheet & Sample Format Uploaded by COE) -->
                     <div class="bg-gradient-to-r from-brand-900 to-slate-900 text-white rounded-2xl p-5 shadow-lg space-y-3">
                         <div class="flex items-center justify-between border-b border-brand-700/50 pb-2">
@@ -329,6 +347,34 @@
                             </button>
                         </div>
                     </div>
+
+
+                    <!-- AUTOMATIC QUESTION PAPER GENERATOR -->
+                    <section class="bg-white border border-violet-200 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4">
+                        <div><h3 class="text-base font-extrabold text-slate-900"><i class="fa-solid fa-wand-magic-sparkles text-violet-600 mr-2"></i>Automatic Question Paper Generator</h3><p class="text-xs text-slate-500 mt-1">Generate a draft from the approved course bank, then review and print/export it. Historical questions are excluded only for the archive actually imported.</p></div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+                            <label class="text-xs font-semibold text-slate-600">Course Code<input id="gen-course-code" class="mt-1 w-full border border-slate-300 rounded-lg p-2.5 text-sm font-normal" placeholder="e.g. CST301"></label>
+                            <label class="text-xs font-semibold text-slate-600">Course Name<input id="gen-course-name" class="mt-1 w-full border border-slate-300 rounded-lg p-2.5 text-sm font-normal" placeholder="Course name"></label>
+                            <label class="text-xs font-semibold text-slate-600">Exam Type<select id="gen-exam-type" onchange="setGeneratorDefaults()" class="mt-1 w-full border border-slate-300 rounded-lg p-2.5 text-sm font-normal"><option>Mid Semester</option><option>End Semester</option><option>Reappear</option><option>Supplementary</option></select></label>
+                            <label class="text-xs font-semibold text-slate-600">Total Marks<input id="gen-total-marks" type="number" min="1" max="500" value="40" class="mt-1 w-full border border-slate-300 rounded-lg p-2.5 text-sm font-normal"></label>
+                            <label class="text-xs font-semibold text-slate-600">Number of Questions<input id="gen-question-count" type="number" min="1" max="100" value="10" class="mt-1 w-full border border-slate-300 rounded-lg p-2.5 text-sm font-normal"></label>
+                        </div>
+                        <div class="rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900"><strong>Five-year uniqueness check:</strong> Import previous papers as question-level rows (course code, question text, exam year). Exact repeats and high-similarity questions are blocked. Scanned PDFs need OCR/extraction before import; an incomplete archive cannot prove non-repetition.</div>
+                        <div class="flex flex-wrap gap-2"><button onclick="generateQuestionPaper()" class="px-4 py-2 bg-violet-700 hover:bg-violet-800 text-white rounded-lg text-xs font-bold"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Generate Question Paper</button><button onclick="loadGeneratedPapers()" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold">View Generated Drafts</button></div>
+                        <div id="gen-message" class="hidden rounded-lg p-3 text-xs" role="status"></div>
+                        <div id="gen-paper-output" class="space-y-3"></div>
+                        <details class="border border-slate-200 rounded-xl p-3">
+                            <summary class="cursor-pointer text-sm font-bold text-slate-800">Import Previous 5-Year Question Archive</summary>
+                            <p class="text-xs text-slate-500 mt-2 mb-3">Upload an Excel/CSV sheet with Question Text and Exam Year columns. Include one row per question, for each course.</p>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <label class="text-xs font-semibold text-slate-600">Archive Course Code<input id="hist-course-code" class="mt-1 w-full border border-slate-300 rounded-lg p-2.5 text-sm font-normal" placeholder="e.g. CST301"></label>
+                                <label class="text-xs font-semibold text-slate-600">Course Name<input id="hist-course-name" class="mt-1 w-full border border-slate-300 rounded-lg p-2.5 text-sm font-normal" placeholder="Course name"></label>
+                                <label class="text-xs font-semibold text-slate-600">Historical File<input id="hist-file" type="file" accept=".xlsx,.xls,.csv" class="mt-1 block w-full text-xs border border-slate-300 rounded-lg p-2"></label>
+                            </div>
+                            <div class="mt-3"><button onclick="uploadHistoricalQuestions()" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold">Validate & Import Archive</button></div>
+                            <div id="hist-message" class="hidden rounded-lg p-3 text-xs mt-3" role="status"></div>
+                        </details>
+                    </section>
 
                     <section class="bg-white border border-amber-200 rounded-2xl p-4 shadow-sm space-y-3">
                         <div><h3 class="font-extrabold text-slate-900">Published Datesheets & Question Paper Formats</h3><p class="text-xs text-slate-500">COE documents saved in the database. View or download the original file.</p></div>
@@ -2381,5 +2427,108 @@ window.QPMS = {
 })();
 </script>
 
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const normKey = s => String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  function setMsg(id,msg,error=false){
+    const el=$(id); if(!el)return; el.textContent=msg; el.classList.remove('hidden','bg-rose-50','text-rose-800','bg-emerald-50','text-emerald-800','bg-amber-50','text-amber-900');
+    el.classList.add(error?'bg-rose-50':'bg-emerald-50',error?'text-rose-800':'text-emerald-800');
+  }
+  function parseSheet(file){
+    return new Promise((resolve,reject)=>{
+      if(!file)return reject(new Error('Please choose an Excel or CSV file.'));
+      if(!window.XLSX)return reject(new Error('Excel reader is not loaded. Refresh the page and try again.'));
+      const reader=new FileReader();
+      reader.onload=e=>{try{
+        const wb=XLSX.read(e.target.result,{type:'array'});
+        const sheet=wb.Sheets[wb.SheetNames[0]];
+        const rows=XLSX.utils.sheet_to_json(sheet,{defval:'',raw:false});
+        if(!rows.length)throw new Error('The selected sheet is empty.');
+        resolve(rows);
+      }catch(err){reject(err)}};
+      reader.onerror=()=>reject(new Error('Could not read the selected file.'));
+      reader.readAsArrayBuffer(file);
+    });
+  }
+  async function postJson(url,body){
+    const response=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const data=await response.json();if(!response.ok||!data.ok)throw new Error(data.error||'Request failed');return data;
+  }
+  async function getJson(url){
+    const response=await fetch(url);const data=await response.json();if(!response.ok||!data.ok)throw new Error(data.error||'Request failed');return data;
+  }
+  function currentActor(){return window.currentSession?.name||window.currentSession?.email||'QMPS User';}
+  window.downloadQuestionBankTemplate=function(ev){
+    ev?.preventDefault();
+    const rows=[{'Question Text':'Explain the concept with an example.','Marks':4,'Unit':'Unit 1','Topic':'Introduction','Difficulty':'Medium','Bloom Level':'Understand','Question Type':'Descriptive'}];
+    const ws=XLSX.utils.json_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Question Bank');XLSX.writeFile(wb,'QMPS_Question_Bank_Template.xlsx');
+  };
+  window.uploadQuestionBank=async function(){
+    try{
+      const code=$('qb-course-code').value.trim().toUpperCase(),name=$('qb-course-name').value.trim(),file=$('qb-file').files[0];
+      if(!code)throw new Error('Enter the course code first.');
+      const rows=await parseSheet(file);
+      const result=await postJson('/api/question-bank/bulk',{courseCode:code,courseName:name,uploadedBy:currentActor(),questions:rows});
+      setMsg('qb-upload-message',`Upload complete: ${result.inserted} added, ${result.skipped} duplicate rows skipped. Total questions for ${code}: ${result.totalForCourse}.`);
+      await window.loadQuestionBankSummary();
+    }catch(e){setMsg('qb-upload-message',e.message,true)}
+  };
+  window.loadQuestionBankSummary=async function(){
+    try{
+      const code=$('qb-course-code').value.trim()||$('gen-course-code')?.value.trim();
+      if(!code)throw new Error('Enter a course code to view its bank.');
+      const data=await getJson('/api/question-bank?courseCode='+encodeURIComponent(code));
+      const counts=data.questions.reduce((a,q)=>(a[q.marks]=(a[q.marks]||0)+1,a),{});
+      $('qb-summary').innerHTML='<div class="rounded-lg bg-slate-50 border border-slate-200 p-3"><strong>'+data.questions.length+'</strong> saved questions for <strong>'+escapeHtml(code)+'</strong><div class="mt-1 text-slate-500">Marks distribution: '+(Object.keys(counts).sort((a,b)=>Number(a)-Number(b)).map(k=>k+' mark(s): '+counts[k]).join(' • ')||'No questions yet')+'</div></div>';
+    }catch(e){$('qb-summary').textContent=e.message}
+  };
+  window.setGeneratorDefaults=function(){
+    const mid=$('gen-exam-type').value==='Mid Semester';
+    if(mid){$('gen-total-marks').value=40;$('gen-question-count').value=10;}
+  };
+  window.generateQuestionPaper=async function(){
+    try{
+      const code=$('gen-course-code').value.trim().toUpperCase(),name=$('gen-course-name').value.trim();
+      const examType=$('gen-exam-type').value,totalMarks=Number($('gen-total-marks').value),questionCount=Number($('gen-question-count').value);
+      if(!code)throw new Error('Enter the course code.');
+      setMsg('gen-message','Generating draft and checking the five-year archive…');
+      const data=await postJson('/api/question-papers/generate',{courseCode:code,courseName:name,examType,totalMarks,questionCount,generatedBy:currentActor()});
+      window.lastGeneratedQuestionPaper=data.paper;renderQuestionPaper(data.paper,data.checks);
+      setMsg('gen-message','Draft generated. Review every question before approving or printing.');
+    }catch(e){setMsg('gen-message',e.message,true)}
+  };
+  function renderQuestionPaper(paper,checks){
+    const questions=paper.questions||[];
+    $('gen-paper-output').innerHTML='<div class="rounded-xl border border-violet-200 overflow-hidden"><div class="bg-violet-50 p-4 flex flex-wrap items-start justify-between gap-3"><div><h4 class="font-extrabold text-slate-900">'+escapeHtml(paper.courseName||paper.courseCode)+' — '+escapeHtml(paper.examType)+'</h4><p class="text-xs text-slate-600 mt-1">Course Code: '+escapeHtml(paper.courseCode)+' • '+paper.questionCount+' Questions • '+paper.totalMarks+' Marks • Draft #'+escapeHtml(paper.id)+'</p></div><button onclick="printGeneratedQuestionPaper()" class="px-3 py-2 bg-slate-900 text-white rounded-lg text-xs font-bold"><i class="fa-solid fa-file-pdf mr-1"></i>Print / Save as PDF</button></div><div id="paper-print-area" class="p-4 space-y-4"><div class="text-center"><h2 class="text-lg font-bold">MANAV RACHNA UNIVERSITY</h2><p class="font-semibold">'+escapeHtml(paper.examType)+' Examination</p><p>'+escapeHtml(paper.courseName||paper.courseCode)+' ('+escapeHtml(paper.courseCode)+')</p><p class="text-sm">Maximum Marks: '+paper.totalMarks+' | Questions: '+paper.questionCount+'</p></div>'+questions.map((q,i)=>'<div class="flex gap-3 text-sm"><span class="font-bold">'+(i+1)+'.</span><div class="flex-1">'+escapeHtml(q.questionText)+'<div class="text-xs text-slate-500 mt-1">'+escapeHtml(q.unit||'')+(q.topic?' • '+escapeHtml(q.topic):'')+'</div></div><span class="font-semibold whitespace-nowrap">['+q.marks+' marks]</span></div>').join('')+'</div><div class="border-t border-slate-100 bg-slate-50 p-3 text-xs text-slate-600">Historical questions checked: '+(checks?.historicalQuestions||0)+' • Candidates blocked: '+(checks?.blockedCandidates||0)+' • Eligible candidates: '+(checks?.eligibleQuestions||0)+'<p class="mt-1 text-amber-800">'+escapeHtml(checks?.archiveCoverage||'')+'</p></div></div>';
+  }
+  window.printGeneratedQuestionPaper=function(){
+    const paper=window.lastGeneratedQuestionPaper;if(!paper)return;
+    const q=paper.questions||[];
+    const content='<html><head><title>Question Paper '+escapeHtml(paper.courseCode)+'</title><style>body{font-family:Arial,sans-serif;padding:36px;color:#111}h2,p{text-align:center;margin:6px} .meta{text-align:center;margin:16px 0 28px}.question{display:flex;gap:12px;margin:20px 0;line-height:1.5}.marks{margin-left:auto;white-space:nowrap}</style></head><body><h2>MANAV RACHNA UNIVERSITY</h2><p>'+escapeHtml(paper.examType)+' Examination</p><p>'+escapeHtml(paper.courseName||paper.courseCode)+' ('+escapeHtml(paper.courseCode)+')</p><div class="meta">Maximum Marks: '+paper.totalMarks+' | Questions: '+paper.questionCount+'</div>'+q.map((x,i)=>'<div class="question"><b>'+(i+1)+'.</b><div>'+escapeHtml(x.questionText)+(x.unit?'<p style="text-align:left;font-size:11px">Unit: '+escapeHtml(x.unit)+'</p>':'')+'</div><b class="marks">['+x.marks+' marks]</b></div>').join('')+'<script>window.onload=()=>window.print()<\/script></body></html>';
+    const w=window.open('','_blank');if(!w){setMsg('gen-message','Allow pop-ups to print or save the question paper as PDF.',true);return;}w.document.open();w.document.write(content);w.document.close();
+  };
+  window.uploadHistoricalQuestions=async function(){
+    try{
+      const code=$('hist-course-code').value.trim().toUpperCase(),name=$('hist-course-name').value.trim(),file=$('hist-file').files[0];
+      if(!code)throw new Error('Enter the historical course code.');
+      const rows=await parseSheet(file);
+      const result=await postJson('/api/question-history/bulk',{courseCode:code,courseName:name,sourceLabel:file.name,importedBy:currentActor(),questions:rows});
+      setMsg('hist-message',`Archive import complete: ${result.inserted} added, ${result.skipped} duplicates skipped. Questions in the last five calendar years: ${result.recentFiveYearCount}.`);
+    }catch(e){setMsg('hist-message',e.message,true)}
+  };
+  window.loadGeneratedPapers=async function(){
+    try{
+      const code=$('gen-course-code').value.trim();
+      if(!code)throw new Error('Enter a course code.');
+      const data=await getJson('/api/question-papers?courseCode='+encodeURIComponent(code));
+      if(!data.papers.length){setMsg('gen-message','No generated drafts found for this course.',true);return;}
+      $('gen-paper-output').innerHTML='<div class="border border-slate-200 rounded-xl p-3"><h4 class="font-bold mb-2">Saved Drafts</h4>'+data.papers.map(p=>'<div class="py-2 border-t border-slate-100 text-xs"><b>#'+escapeHtml(p.id)+' '+escapeHtml(p.examType)+'</b> — '+p.totalMarks+' marks • '+p.questionCount+' questions • '+escapeHtml(new Date(p.createdAt).toLocaleString())+'</div>').join('')+'</div>';
+    }catch(e){setMsg('gen-message',e.message,true)}
+  };
+  function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+})();
+</script>
 </body>
 </html>
