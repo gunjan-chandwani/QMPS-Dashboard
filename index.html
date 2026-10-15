@@ -1820,6 +1820,28 @@ window.onload = function() {
             openModal('modal-upload');
         }
 
+        // Identify an already-submitted paper for the same faculty and examination context.
+        // Revisions must use the existing paper's Revise/Resubmit action, not a new upload.
+        function findExistingFacultyPaper(candidate) {
+            const norm = value => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ').replace(/[._-]+/g, ' ');
+            const examNorm = value => {
+                const v = norm(value).replace(/\bexam\b/g, '').trim();
+                if (v.includes('mid')) return 'mid semester';
+                if (v.includes('end')) return 'end semester';
+                if (v.includes('supplement')) return 'supplementary';
+                return v;
+            };
+            return (papersDatabase || []).find(p => {
+                if (String(p.id) === String(candidate.paperId || '')) return false;
+                return norm(p.courseCode) === norm(candidate.courseCode) &&
+                    norm(p.facultyName) === norm(candidate.facultyName) &&
+                    norm(p.department) === norm(candidate.department) &&
+                    norm(p.program) === norm(candidate.program) &&
+                    norm(p.semester) === norm(candidate.semester) &&
+                    examNorm(p.examType) === examNorm(candidate.examType);
+            }) || null;
+        }
+
         // Handle Paper Form Submit (Create or Revise)
         async function handlePaperSubmit(e) {
             if (e && e.preventDefault) e.preventDefault();
@@ -1836,6 +1858,32 @@ window.onload = function() {
             if (!file) { showToast('Please select the question paper PDF.', 'warning'); return false; }
             if (file.type && file.type !== 'application/pdf') { showToast('Only PDF files are allowed.', 'warning'); return false; }
             if (!window.QPMS) { showToast('Upload service is still loading. Please refresh once and try again.', 'warning'); return false; }
+
+            // Refresh the list before checking, so a paper uploaded in another tab/session is detected.
+            if (!paperId) {
+                try {
+                    const latestPapers = await window.QPMS.loadPapers();
+                    papersDatabase = latestPapers.map(window.QPMS.toUiPaper);
+                } catch (refreshError) {
+                    console.warn('Could not refresh papers before duplicate check:', refreshError);
+                }
+                const duplicate = findExistingFacultyPaper({
+                    paperId: '', courseCode,
+                    facultyName: currentSession?.name || 'Unknown Faculty',
+                    department: document.getElementById('upload-dept').value,
+                    program: document.getElementById('upload-program').value,
+                    semester: document.getElementById('upload-semester').value,
+                    examType: document.getElementById('upload-exam').value
+                });
+                if (duplicate) {
+                    const status = String(duplicate.status || '').toUpperCase().replace(/[ -]+/g, '_');
+                    const message = status === 'CHANGES_REQUIRED'
+                        ? `This paper (${duplicate.courseCode} — ${duplicate.courseName}) has already been uploaded and COE has requested changes. Please use the Revise / Resubmit option in your uploaded papers list instead of uploading it as a new paper.`
+                        : `This paper (${duplicate.courseCode} — ${duplicate.courseName}) has already been uploaded for this examination. Duplicate submission was stopped. Please check your uploaded papers list.`;
+                    showToast(message, 'warning');
+                    return false;
+                }
+            }
 
             const data = {
                 paper_no: paperId || undefined,
