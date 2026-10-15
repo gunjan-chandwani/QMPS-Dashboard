@@ -6,6 +6,7 @@ const fs = require("fs");
 const { Pool } = require("pg");
 const pdfParse = require("pdf-parse");
 const zlib = require("zlib");
+const crypto = require("crypto");
 require("dotenv").config();
 
 const app = express();
@@ -36,6 +37,47 @@ async function initDb() {
   if (!process.env.DATABASE_URL) {
     console.warn("DATABASE_URL is not set. Persistent database features will not work.");
     return;
+  }
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS faculty_accounts (
+      id BIGSERIAL PRIMARY KEY,
+      email TEXT UNIQUE NOT NULL,
+      full_name TEXT NOT NULL,
+      department_code TEXT,
+      department TEXT NOT NULL,
+      school TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'FACULTY',
+      password_salt TEXT NOT NULL,
+      password_hash TEXT NOT NULL,
+      must_change_password BOOLEAN NOT NULL DEFAULT TRUE,
+      active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`ALTER TABLE faculty_accounts ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT TRUE`);
+
+  // Seed/update accounts from the HR-provided faculty list. Password hashes only
+  // are stored in PostgreSQL; temporary passwords are distributed separately.
+  const facultySeedPath = path.join(__dirname, "faculty-users.json");
+  if (fs.existsSync(facultySeedPath)) {
+    const seedUsers = JSON.parse(fs.readFileSync(facultySeedPath, "utf8"));
+    for (const user of seedUsers) {
+      await pool.query(`
+        INSERT INTO faculty_accounts
+          (email, full_name, department_code, department, school, role, password_salt, password_hash, must_change_password, active)
+        VALUES ($1,$2,$3,$4,$5,'FACULTY',$6,$7,TRUE,TRUE)
+        ON CONFLICT (email) DO UPDATE SET
+          full_name=EXCLUDED.full_name,
+          department_code=EXCLUDED.department_code,
+          department=EXCLUDED.department,
+          school=EXCLUDED.school,
+          updated_at=NOW()
+      `, [user.email, user.name, user.departmentCode, user.department, user.school, user.salt, user.passwordHash]);
+    }
+    console.log(`Faculty accounts provisioned: ${seedUsers.length} (existing passwords preserved for existing accounts).`);
   }
 
   await pool.query(`
@@ -88,25 +130,6 @@ async function initDb() {
     created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()
   )`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_datesheet_schedule_lookup ON datesheet_schedule (UPPER(course_code), LOWER(department), LOWER(semester), LOWER(exam_type))`);
-
-  // One-time-safe account consolidation: preserve every paper and its workflow status
-  // while moving legacy demo-account ownership to Gunjan's official faculty ID.
-  await pool.query(`
-    UPDATE papers
-       SET faculty = 'gunjan@mru.edu.in', updated_at = NOW()
-     WHERE LOWER(TRIM(COALESCE(faculty, ''))) = 'faculty@mru.edu.in'
-  `);
-  await pool.query(`
-    UPDATE papers
-       SET moderation_details = REPLACE(moderation_details::text, 'faculty@mru.edu.in', 'gunjan@mru.edu.in')::jsonb,
-           updated_at = NOW()
-     WHERE moderation_details IS NOT NULL
-       AND moderation_details::text ILIKE '%faculty@mru.edu.in%'
-  `);
-  await pool.query(`
-    UPDATE coe_notices SET uploaded_by = 'gunjan@mru.edu.in'
-     WHERE LOWER(TRIM(COALESCE(uploaded_by, ''))) = 'faculty@mru.edu.in'
-  `);
 }
 
 function dateVariants(isoDate) {
@@ -300,6 +323,68 @@ async function validatePaperDateAgainstSchedule(data) {
   }
   return { matched: true, dates: scheduledDates.length ? scheduledDates : [submittedDate], pdfVerified: true, documents: [...new Set(evidence.map(d => d.title || d.filename))] };
 }
+
+app.post("/api/auth/login", async (req, res) => {
+  try {
+    const email = String(req.body?.email || "").trim().toLowerCase();
+    const password = String(req.body?.password || "");
+    if (!email || !password) return res.status(400).json({ok:false,error:"Enter your university email and password."});
+    const result = await pool.query(`
+      SELECT email, full_name, department_code, department, school, role, password_salt, password_hash, must_change_password, active
+      FROM faculty_accounts WHERE email=$1 LIMIT 1
+    `, [email]);
+    const user = result.rows[0];
+    if (!user || !user.active || user.role !== "FACULTY") {
+      return res.status(401).json({ok:false,error:"Faculty account not found or inactive. Please contact QPMS administrator."});
+    }
+    const actual = crypto.scryptSync(password, Buffer.from(user.password_salt, "hex"), 64);
+    const expected = Buffer.from(user.password_hash, "hex");
+    if (actual.length !== expected.length || !crypto.timingSafeEqual(actual, expected)) {
+      return res.status(401).json({ok:false,error:"Incorrect email or password."});
+    }
+    return res.json({ok:true,user:{
+      name:user.full_name, email:user.email, role:user.role, avatar:(user.full_name || "F").trim().charAt(0).toUpperCase(),
+      dept:`${user.school} • ${user.department}`, schoolScope:user.school, departmentScope:user.department,
+      departmentCode:user.department_code, mustChangePassword: user.must_change_password
+    }});
+  } catch (e) {
+    console.error("Faculty login failed:", e.message);
+    return res.status(500).json({ok:false,error:"Login service is temporarily unavailable. Please try again."});
+  }
+});
+
+app.post("/api/auth/change-password", async (req, res) => {
+  try {
+    const email = String(req.body?.email || "").trim().toLowerCase();
+    const currentPassword = String(req.body?.currentPassword || "");
+    const newPassword = String(req.body?.newPassword || "");
+    if (newPassword.length < 12) return res.status(400).json({ok:false,error:"Choose a password with at least 12 characters."});
+    const result = await pool.query(`SELECT email, password_salt, password_hash FROM faculty_accounts WHERE email=$1 AND active=TRUE LIMIT 1`, [email]);
+    const user = result.rows[0];
+    if (!user) return res.status(401).json({ok:false,error:"Account not found."});
+    const actual = crypto.scryptSync(currentPassword, Buffer.from(user.password_salt, "hex"), 64);
+    const expected = Buffer.from(user.password_hash, "hex");
+    if (actual.length !== expected.length || !crypto.timingSafeEqual(actual, expected)) {
+      return res.status(401).json({ok:false,error:"Current password is incorrect."});
+    }
+    const salt = crypto.randomBytes(16);
+    const hash = crypto.scryptSync(newPassword, salt, 64);
+    await pool.query(`UPDATE faculty_accounts SET password_salt=$2, password_hash=$3, must_change_password=FALSE, updated_at=NOW() WHERE email=$1`,
+      [email, salt.toString("hex"), hash.toString("hex")]);
+    return res.json({ok:true,message:"Password changed successfully."});
+  } catch (e) {
+    console.error("Password change failed:", e.message);
+    return res.status(500).json({ok:false,error:"Could not change password. Please try again."});
+  }
+});
+
+app.get("/api/faculty-accounts/counts", async (_req, res) => {
+  try {
+    const { rows } = await pool.query(`SELECT school, department, COUNT(*)::int AS accounts
+      FROM faculty_accounts WHERE active=TRUE GROUP BY school, department ORDER BY school, department`);
+    res.json({ok:true, total:rows.reduce((n,r)=>n+r.accounts,0), groups:rows});
+  } catch (e) { res.status(500).json({ok:false,error:e.message}); }
+});
 
 app.get("/health", async (_req, res) => {
   try {

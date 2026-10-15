@@ -1,0 +1,1672 @@
+[
+  {
+    "email": "deanengg@mru.edu.in",
+    "name": "Dr. Dipali Bansal",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "74af090d8f60286958f8b539c2703257",
+    "passwordHash": "5af1a988c62293eeb224055d40fce8a9836fcced6054ca3cc4986fa2fd689dc8c9ad41b5a628cce0470c93901103b89e86665171cab85280e97f8d009f1895b9",
+    "role": "FACULTY"
+  },
+  {
+    "email": "hodcst@mru.edu.in",
+    "name": "Dr. Vivek Sharma",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "e6f05df47dd4620ddd6972354b2676dc",
+    "passwordHash": "07e9b8270cdac54fc8583fea4b901d0b13544815352407c75e4cd789485723eadf70b538968d26a008f8125377f43388c4dcbdbc09aec048a0ff3cd81eda8c12",
+    "role": "FACULTY"
+  },
+  {
+    "email": "chandnimagoo@mru.edu.in",
+    "name": "Ms. Chandni Magoo",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "4da36ef908a4f627e8a4b762e500b10e",
+    "passwordHash": "4930ac116052db180c5d3525841c2149bb811a6cee88093082e3932ecfbab84b5df3d65a01f09f2075eb476452921a18844c0bfc7ba4b7c9e1fd28e38890e0d8",
+    "role": "FACULTY"
+  },
+  {
+    "email": "manpreet@mru.edu.in",
+    "name": "Dr. Manpreet Kaur",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "851d2a417452e99e419c24f36deb5c38",
+    "passwordHash": "b70c170b80533b2f2524d574a6a80155e845c7511ce5c77de379d6a5c15a9e7f0ee81cc4d6e8e67a159f7a2c320f22322468d9dc15ba13dfc93f5253c5e65914",
+    "role": "FACULTY"
+  },
+  {
+    "email": "sachin@mru.edu.in",
+    "name": "Dr. Sachin Lakra",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "97a7d89f131bad593fc15eb3834ef929",
+    "passwordHash": "47d87f4f8a87622217a4437676466e65f1c8fdf84f9f572a201c74506bd89a13dd97202db4a02b9809ca6af5b7c30128f48166cbe73d1aa51b9ca7f8ee0ce8b8",
+    "role": "FACULTY"
+  },
+  {
+    "email": "parneeta.cst@mru.edu.in",
+    "name": "Dr. Parneeta Dhaliwal",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "3ba2518b9801a993debe325a1db54d92",
+    "passwordHash": "e15ea849c656d7379d2ab40e5fe58a642c58a4e6d916e7f3aae6db9ae02e31b39107833e28617950245500b824a24621826b1958cfe489782f7a2121dab3409f",
+    "role": "FACULTY"
+  },
+  {
+    "email": "prinima@mru.edu.in",
+    "name": "Dr. Prinima Gupta",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "1a3e5c3bd4d3be96793f4afa2468c334",
+    "passwordHash": "8b9aef6aea9365837d239f213eb3bcd25d23e16522ec81f839ff72ab02feda3a2fc2af91ee12e115ae55022abcf1d942815ac31400bd747296d926448a2a1c83",
+    "role": "FACULTY"
+  },
+  {
+    "email": "mrinalpandey@mru.edu.in",
+    "name": "Dr. Mrinal Pandey",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "e71ea9fe8ef9bc693c95c1d6a112b5e8",
+    "passwordHash": "5bce7bff98bcc986587555595d3cd8cbeb9bc57a187d41cdf90e33fa8ca6f7c81fd1620febdc725bea49e29c702eb9b552dc54aa2860633951f397c702c678c4",
+    "role": "FACULTY"
+  },
+  {
+    "email": "punamrattan@mru.edu.in",
+    "name": "Dr. Punam Rattan",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "7ba489b92355176ef405ab2695871190",
+    "passwordHash": "683da00a8e5aeda82ab6cfe964d1fde697502d4b5237348dd393cb1d4378a4d4798dd6ad600150f4875cd8d20dc67b3a1a4926ef3b02cc931a89a538cd73e8d5",
+    "role": "FACULTY"
+  },
+  {
+    "email": "poojaahuja.cst@mru.edu.in",
+    "name": "Ms. Pooja Sachdeva",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "5077ce1809699e14321de163870da57f",
+    "passwordHash": "dd204b7c7c066c94c004d4139fafd4fecc62b0b5d209c8f2a12915ace7894417a0933ab62fd2fcd1599b96c93b3290a379ddafca5d26335735ae7cfb6b04e7e5",
+    "role": "FACULTY"
+  },
+  {
+    "email": "deepikapahuja@mru.edu.in",
+    "name": "Dr. Deepika Pahuja",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "e6d23198ec3747d5bc64243d7a2b001e",
+    "passwordHash": "93681320a632c7ddd867724dbfd2a70067cc5ad57b08ec5590ec2a8a793e477593c746132a78220329fb6592e0c4b4710c258590ffb8d8ef08a3f058226bca4a",
+    "role": "FACULTY"
+  },
+  {
+    "email": "deeptithakral@mru.edu.in",
+    "name": "Dr. Deepti Thakral",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "a2f56669b71c894f783d3f2dca25c763",
+    "passwordHash": "8d593d969e67390c85048a72ea83ff9707302348b7c79c3434bbd8c88c689ba12ae42f53b983a5e02569125c38d47c312b11d2461943b3acd684a6977801c552",
+    "role": "FACULTY"
+  },
+  {
+    "email": "gangasharma@mru.edu.in",
+    "name": "Dr. Ganga Sharma",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "209219ab5af01eab1bfb7ff7d7a60823",
+    "passwordHash": "173ddaef4856d56d8d15608fe6e3ad7ff02ca832103ddc3bb358146a5718a6eae869a05a087faa873b557c6e7c4b23d81a2697525d77e59d454430d076a21efc",
+    "role": "FACULTY"
+  },
+  {
+    "email": "gunjanaggarwal@mru.edu.in",
+    "name": "Dr. Gunjan Aggarwal",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "cd46b9406f5df534148b9d6ceb6d45ea",
+    "passwordHash": "d3fca3fc8c53d23ad96e4ac0f73b9a62e3307967b164de248bbb4b1c0e68af4d9d19989347a59a0b522d3067554ee37cd0b4db47f29b8c8057c55c97ee2e8ae6",
+    "role": "FACULTY"
+  },
+  {
+    "email": "mamta@mru.edu.in",
+    "name": "Dr. Mamta Arora",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "e65e0c86ba3d0780f204e504a96fa2ee",
+    "passwordHash": "cc8e8abd0ee0dc9386c1d75d3a233cc3045d4f07db5d3b0262494e3078f80f371b9f9cc772d7008b174eb0d39b0d8f48ee7f4d93980184a05d3bd7112235c566",
+    "role": "FACULTY"
+  },
+  {
+    "email": "manoj@mru.edu.in",
+    "name": "Dr. Manoj Kumar",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "7d0b54b8f655ae77aa524ed276a36cf2",
+    "passwordHash": "e274048a4e556559491bce923edf066039a5f08394513c395d615511fe1e00ab417318cb5b47b2234bd7577fd97a76ce968037503ca4b02b7324dbc3c7759477",
+    "role": "FACULTY"
+  },
+  {
+    "email": "meena@mru.edu.in",
+    "name": "Dr. Meena Chaudhary",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "a7a309e1d0e184460f7ed1199e39c8e0",
+    "passwordHash": "53a3ac860c18b341f20b6dceb634f2f6fa1a22b50cca114d9f80fe0d111bfc8a25bad58d11ca31af2e7860d9ab9c43aae2cc64721f4d79e83171381e24048fde",
+    "role": "FACULTY"
+  },
+  {
+    "email": "narender@mru.edu.in",
+    "name": "Dr. Narender",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "9749ab9ebfa3dbb1bb788306c8d8da1f",
+    "passwordHash": "369d7625630d1d3d73dc11234e25228510f8931d4b84c5e7f12a170c62533457e9313e1e188189ec81ecfd3311e263c5be9976cd66f2a3c52fc93ae23cd4b510",
+    "role": "FACULTY"
+  },
+  {
+    "email": "neelu@mru.edu.in",
+    "name": "Dr. Neelu Chaudhary",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "912ace3390bb552269ea353aa634cb1f",
+    "passwordHash": "ee165453a68f86f9cd7268da33711fafb274ad47f5421f83f1c1ea724bc84dfea1a75cbd39da5215448e7a84e78dc2f201bf59a67de27996dfdd11b2ba677f60",
+    "role": "FACULTY"
+  },
+  {
+    "email": "nitika@mru.edu.in",
+    "name": "Dr. Nitika",
+    "departmentCode": "ECE",
+    "department": "Electronics & Communication",
+    "school": "School of Engineering",
+    "salt": "1e2ebe6cdd8fdbdc8e488211b191da99",
+    "passwordHash": "c28d861d1ac1ae8d4b4bd001cefa2839e0bb5177efe94ba8c8415d8ba8e1649e26310faf32ec9b8c16c9a21c61d98751a5a3e31608e5e6c99002c33e397aa16f",
+    "role": "FACULTY"
+  },
+  {
+    "email": "ranjnajain@mru.edu.in",
+    "name": "Dr. Ranjna Jain",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "087af1873d29b5ca5de192d027a59246",
+    "passwordHash": "6ce8b196269fa790a942d669863ae30ad1ab6e3cfd82991678fcbe0cb69f424b3c2e02831ab619c95ec92a428e2d03add8c446a51008377c0eb0a9ba9fc9071c",
+    "role": "FACULTY"
+  },
+  {
+    "email": "sanjaysingh@mru.edu.in",
+    "name": "Dr. Sanjay Singh",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "8d69f32a76f55c3b2dc8eb44c0536768",
+    "passwordHash": "4cf8e9d9a7197671dd9403df4a24ddbbcdfc8834d2af0528c4b543e804c07402d0b51fdec74797a0bbd95bb8c8f7eb6665495e561a7f3bd58c4fa1a3d70dad5e",
+    "role": "FACULTY"
+  },
+  {
+    "email": "simplesharma@mru.edu.in",
+    "name": "Dr. Simple Sharma",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "f01a54d84dce1751d57569aa8fac1562",
+    "passwordHash": "be52932c96984f9437b4dfd213ce03e99c2bb2a80974032b9ca810efca94b53a55d37ffadb787ccd96e879b887ebc9eef2b3fae4e7a627c415f3009aa1b9ab34",
+    "role": "FACULTY"
+  },
+  {
+    "email": "sujata@mru.edu.in",
+    "name": "Dr. Sujata",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "9855015c44bc65f6bbf314f9aa80f3de",
+    "passwordHash": "17d58c6b974571620793240a3dd363cd5607f3d69ee9de9bd9329bcd9387f35daca672569224b4c361caf67397033a9613bc3d5113f53be64fe880c29dfe613a",
+    "role": "FACULTY"
+  },
+  {
+    "email": "urmila@mru.edu.in",
+    "name": "Dr. Urmila",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "3848f22914e5ee044e400a9b8b5179c7",
+    "passwordHash": "381face05c6a577e9c7d849afb907833e37a524e67a90555f3c30404051a005ddfccf0bb1587f08b1faba19770c76998ba3cc0510f724de4a2b47ff9c57adcac",
+    "role": "FACULTY"
+  },
+  {
+    "email": "gunjan@mru.edu.in",
+    "name": "Ms. Gunjan Chandwani",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "67c7bca823dcb4eb445e549842a816be",
+    "passwordHash": "8fd37ebe4f0e73ac912b924b39d947cc21879e993168cad3b06fd782f8ff223d5090baad96a754cd2d96a9bfa3ba9427f3c75fac7d5c997f52049732faf5c932",
+    "role": "FACULTY"
+  },
+  {
+    "email": "dimplesaproo@mru.edu.in",
+    "name": "Dr. Dimple Saproo",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "645582f0e65b2aa6fad6573354c601bb",
+    "passwordHash": "dedc84547e6fc19f4a088f287598d55116ae6cb1b24447d785cb7d2a1b7a5f5fe9d24009698f37ce290db7d820e58944426113ae0ce8111b1b0b2fd1f532a53c",
+    "role": "FACULTY"
+  },
+  {
+    "email": "annumishra@mru.edu.in",
+    "name": "Dr. Annu Mishra",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "691948c912fb487c71af9a25d6b70394",
+    "passwordHash": "8778c1b2133ae4b15ef7d69effea965426548a9fea73540c215ec8ff3f8a61c9dd8ffc82a152c60db66485a293d28c22e3f43a295192db9fe977c1ad64c0b946",
+    "role": "FACULTY"
+  },
+  {
+    "email": "raviprakashchaturvedi@mru.edu.in",
+    "name": "Dr. Ravi Prakash Chaturvedi",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "8cd9d0f04a230e8df3a4fbb81d122f5e",
+    "passwordHash": "3a2867f684cec1e42145105074b9d91618cc9f6a921e4eaffe6c92bd823c66ab5d96bf338227bdfd3ded7183a780e735ecedad8c634c2d93670883f57835b6fa",
+    "role": "FACULTY"
+  },
+  {
+    "email": "pushpa@mru.edu.in",
+    "name": "Dr. Pushpa",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "6fcc94449dab5bbf86f6694ab95430b7",
+    "passwordHash": "44ba85f9b6ca3a668ebabed1d97db902fdb1ea8a8d52a77a92ae6a2b504f14e6f4eae7ccbe68c5e352664e84b9d7417e61c3f124b442a0c5e8bca10d236bc51f",
+    "role": "FACULTY"
+  },
+  {
+    "email": "shalu@mru.edu.in",
+    "name": "Dr. Shalu",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "b7562994be08f4aa49e72d965abbbddf",
+    "passwordHash": "d28cd607606179759f88f7117e4d8bd52c156d3fdab548f3d67bbaa6e6784482bed724d658068569ef0570ca4eba1cb8da971a46fb953e7bd396365f801d0bac",
+    "role": "FACULTY"
+  },
+  {
+    "email": "agha@mru.edu.in",
+    "name": "Mr. Agha Imran Hussain",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "480056c2aa72bdfebd997a8992f847ef",
+    "passwordHash": "fda4426a8749c448a375bf8fe16281e2331063583c3bb2665cfa3af1c342509b7ad3abf4634db565cd17f3a36b0fa8a3c371273a488704ee47ecc9eef811f32d",
+    "role": "FACULTY"
+  },
+  {
+    "email": "anup@mru.edu.in",
+    "name": "Mr. Anup Singh Kushwaha",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "6c113b8fa719bf440c86a0376e3283f3",
+    "passwordHash": "5b701a1d899b667671a30a76032ca4dab26915e1149a49b8999815f3a5428a93e9fcc6abae5c92ceacb58fd92b74b911e6b7521c80870f4c51b42fa0d62555c9",
+    "role": "FACULTY"
+  },
+  {
+    "email": "maheshswami@mru.edu.in",
+    "name": "Mr. Mahesh Swami",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "fada1ed66dac67bf30ac51f8161d33d2",
+    "passwordHash": "b8d995d1c59825198d1b970e68c5e374d31ea9c77590bcb18f5945f9fbb20b40fc335c5a9f882a1f097e897b922dac4311df7a6e72276817162f3e7b4b8849a5",
+    "role": "FACULTY"
+  },
+  {
+    "email": "ram@mru.edu.in",
+    "name": "Mr. Ram Chatterjee",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "23cb23e059a5d8d09a48072f63b19923",
+    "passwordHash": "22e8836311a0645633f6f7b236a5a9a25776bf3d497cf79d24787b6c5fb28d8a6cad8b1af7ea3e3e8dfd43f694973f729b34ad125089f8675aaa75acf96ffc4f",
+    "role": "FACULTY"
+  },
+  {
+    "email": "anjalimehta@mru.edu.in",
+    "name": "Ms. Anjali Mehta",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "1a866a6044a035f2ad7889efb694bf28",
+    "passwordHash": "da328015b3c1ac18e9f4aa57952b7d294be4a5aa663cddbcaf7ab00adb0ae41041d2a4d2c647e580550e584bd6d0c887c35d828a7487c405f9a86f7f54b4e47f",
+    "role": "FACULTY"
+  },
+  {
+    "email": "anupriya@mru.edu.in",
+    "name": "Dr. Anu Priya Sharma",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "e7a330f6730fc016a2061492dd53b8e1",
+    "passwordHash": "9bbb296abc9af633355e8344f4d61d6b8bf13abf81ac98f15a6331f4d3fc38e92ce9837484ebfecb8dca318ceb04b033fd901a4984e21a6e727beed6667278b2",
+    "role": "FACULTY"
+  },
+  {
+    "email": "ashimagarg.cst@mru.edu.in",
+    "name": "Ms. Ashima Garg",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "cb5ab4eb0c93abfc702e1f0092a056d2",
+    "passwordHash": "ae1e13a168f28ac23e1f0a9e7ecc9be315565fa0aaffcf8a62bb91586470ab3d5fe52efb85f760de09d3b08e4b0a3d4f9f16087a87d1744f0f816049098038da",
+    "role": "FACULTY"
+  },
+  {
+    "email": "babitayadav@mru.edu.in",
+    "name": "Ms. Babita Yadav",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "e0dd29b2fa5003a89a0d8a4a4ee3fa61",
+    "passwordHash": "ef3af6f70de5d3ce2755ce9b1fb173bb65a31f5c48f0c68488e815860da64ed66705db25597b8bafc81dcef3620ed10dbeea28f5146fb3abf4d3df08b1f25404",
+    "role": "FACULTY"
+  },
+  {
+    "email": "bhawanasrivastava@mru.edu.in",
+    "name": "Ms. Bhawana Srivastava",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "4ed4d86ffb738a1099a7423fefa257f4",
+    "passwordHash": "ec9d7cad545c88eea55133b15fdd66b50f69b93d435a22f76b70f6d687377cd2b63e947d1ae43e689e429f74daf26a33091293a271e4687867afffe5c5eae6e1",
+    "role": "FACULTY"
+  },
+  {
+    "email": "deepanshi@mru.edu.in",
+    "name": "Ms. Deepanshi Gupta",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "8b17ca8459cfbfa68dc6ea0b8989e009",
+    "passwordHash": "9e475cacb578ecc08576b720e95d69798fed3e59e1d2f90b5c7eef707c6f4501172f56c5b0acc6180a8d838cb86f95a0e5c5be1e7a5b4a6a25cdeca36e0da3cf",
+    "role": "FACULTY"
+  },
+  {
+    "email": "eshakhanna@mru.edu.in",
+    "name": "Ms. Esha Khanna",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "6c0a6a96ede5c297f3531834425804e1",
+    "passwordHash": "d8110e933a9ad1358030ba0b4609b1646b914d33de31f9be24a9d3b315d27b024d041428d99f3ce554cb4d722636be6e3189c7ec57de394f943b53642267c569",
+    "role": "FACULTY"
+  },
+  {
+    "email": "jyotinanwal@mru.edu.in",
+    "name": "Ms. Jyoti Nanwal",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "558a14298db14e89e6d8d18de5346d7f",
+    "passwordHash": "5ff4af26ba4994c672e351b3d0595715bf396091cd82f2a30497a02435dc5386e26db2e804ca59c8515356b7b9e1bc483007c68c89f903db939a0b3fb3e287d2",
+    "role": "FACULTY"
+  },
+  {
+    "email": "tamannasachdeva@mru.edu.in",
+    "name": "Dr. Tamanna Sachdeva",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "25d074118d8ab1a53340c6a0a7dbe014",
+    "passwordHash": "2d925fe6b9a2b6d821f5658dd77aef4eade5b00809fa71260039dd45b1ae62db22e763cb8118c598615774c9a3e0d956e855f38c9d3a725b761487b52bf8f98d",
+    "role": "FACULTY"
+  },
+  {
+    "email": "aartikaushik@mru.edu.in",
+    "name": "Ms. Aarti Kaushik",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "8840e08476460f5c7ce8c0eae59b1cbc",
+    "passwordHash": "974dbdf74ceb65de1e56182c332daa079295f7a2b2f5baf9fb3df0a158cd3dd315f47e065fa7859627ab5b9efdfa3ecf68db895b7ee3bcef7608c9aa53538a81",
+    "role": "FACULTY"
+  },
+  {
+    "email": "juhipruthi@mru.edu.in",
+    "name": "Ms. Juhi Pruthi",
+    "departmentCode": "CST",
+    "department": "Computer Science & Technology",
+    "school": "School of Engineering",
+    "salt": "0467f26324f12d7eecaabf096abe66bb",
+    "passwordHash": "8078b5cda6181f9554704b679d3f2a94b16b9e664e7eb98c535e09668a11facb4dbf6662c34838845f26fbd86903dd1ec82e63b3eb3646575dfde758321016dc",
+    "role": "FACULTY"
+  },
+  {
+    "email": "bhimsingh@mru.edu.in",
+    "name": "Dr. Bhim Singh",
+    "departmentCode": "ME",
+    "department": "Mechanical Engineering",
+    "school": "School of Engineering",
+    "salt": "9972806297f86d7116647468f448d341",
+    "passwordHash": "5c64b12eebcea513f26f68bf7721646d1552de7f2e460ca57e3e59e8f5ac2bf22ba01c32df61b49100aeda8595ae5123226b5a6646675e3fb15b024f99a63760",
+    "role": "FACULTY"
+  },
+  {
+    "email": "ajit@mru.edu.in",
+    "name": "Dr. Ajit",
+    "departmentCode": "ME",
+    "department": "Mechanical Engineering",
+    "school": "School of Engineering",
+    "salt": "3c37fdb13dbcb72b255b328d7c7343f1",
+    "passwordHash": "0dcca035d360a212179470ae80a9805b0a072df719a9f17f8d175bd1b2613aa71973a6ff33d854d47dbb6efa0a3b5ba2999adfb38e2b7c49391bc551e4670d6f",
+    "role": "FACULTY"
+  },
+  {
+    "email": "joginder@mru.edu.in",
+    "name": "Dr. Joginder Singh",
+    "departmentCode": "ME",
+    "department": "Mechanical Engineering",
+    "school": "School of Engineering",
+    "salt": "8ebfe5d7352c8e37642236a8dfccf9ad",
+    "passwordHash": "f72a9f6c9c385826861917683028c15d99927a5e6b3ae4e7889b825041f9c8ef6aa48464ffb303331d6c21548c878c2f00a851b5e646597ad9372272faccf445",
+    "role": "FACULTY"
+  },
+  {
+    "email": "prashant@mru.edu.in",
+    "name": "Dr. Prashant Bhardwaj",
+    "departmentCode": "ME",
+    "department": "Mechanical Engineering",
+    "school": "School of Engineering",
+    "salt": "edd6338610ca4c906561364086ef892c",
+    "passwordHash": "1bc32cda6b5c33b531dd08b166518b58ccb22f887bce57e07b73900b3d0cef724ca8de9285e7763fcd48e61442c6607aa03c89941c35473b10b73d4e7b700c57",
+    "role": "FACULTY"
+  },
+  {
+    "email": "gianender@mru.edu.in",
+    "name": "Dr. Gianender Kajal",
+    "departmentCode": "IDE",
+    "department": "Interdisciplinary Engineering",
+    "school": "School of Engineering",
+    "salt": "4381afa1c62be0e20523b97354f76996",
+    "passwordHash": "0fd8306408ca29f17d2b465df9bf27be91a9da2357839f300f87abe542e9cfd109ae3282336cfd7671efec92f5d438008b73ae609ca484c62a0084ccf32a6630",
+    "role": "FACULTY"
+  },
+  {
+    "email": "mandeep@mru.edu.in",
+    "name": "Mr. Mandeep Bhadana",
+    "departmentCode": "ME",
+    "department": "Mechanical Engineering",
+    "school": "School of Engineering",
+    "salt": "a97ae98ed203ed14a51c2f7e8dcea02b",
+    "passwordHash": "f41e80c5a3e120b1852252f40556f95e307dad1200db40ee3ae0d4a1d86169a19585af6864e673f5b177d432ca7b020c2c569c94271a60c8ba55b81849d41866",
+    "role": "FACULTY"
+  },
+  {
+    "email": "nazish@mru.edu.in",
+    "name": "Mr. Nazish Ahmad Shamsi",
+    "departmentCode": "ME",
+    "department": "Mechanical Engineering",
+    "school": "School of Engineering",
+    "salt": "6ca3cde9c2e5401ae189df609fd7a055",
+    "passwordHash": "b4a3d65303693962e2a442d1c5e1c6dc41ac8cdb8312ea7c7c75905d6a0dd98c885d5cacb59c9a62042e96f2f8f06ef78c592ff77bce29abff64ff9bfc0153d4",
+    "role": "FACULTY"
+  },
+  {
+    "email": "piyush@mru.edu.in",
+    "name": "Dr. Piyush Mahendru",
+    "departmentCode": "ME",
+    "department": "Mechanical Engineering",
+    "school": "School of Engineering",
+    "salt": "2f0b618424e2cfcc1c83724e267400b7",
+    "passwordHash": "544c3dbafadad6055543ab83f7239b8f11b8805f46333bb38f4a8285ffefd48ce1f031460fbeb75cc6dc38504f277bccb384791da6d9ab961f2aee65d7fd417f",
+    "role": "FACULTY"
+  },
+  {
+    "email": "pradeep@mru.edu.in",
+    "name": "Mr. Pradeep Kr. Mouria",
+    "departmentCode": "ME",
+    "department": "Mechanical Engineering",
+    "school": "School of Engineering",
+    "salt": "2f5b4480b3a1c5631c2350589b457419",
+    "passwordHash": "021f06f47441b021b08ca81bdcb4bea18be5dfa869519e4ab182efc2a6b7e82a84a44e5bcf41c048fba35dc0b70deb3dbae066ba8f726ddb8e6b7e30d6a56564",
+    "role": "FACULTY"
+  },
+  {
+    "email": "smritimishra@mru.edu.in",
+    "name": "Dr. Smriti Mishra",
+    "departmentCode": "ME",
+    "department": "Mechanical Engineering",
+    "school": "School of Engineering",
+    "salt": "5bab3535f2a32cb02f19b4aa73d8acb8",
+    "passwordHash": "cd288766f8d9be1d35d4dd8528a50492c4eb9c80942aa11e2f6ab1624bd01416c0c1432c504e2c4214d551545816b16c584b8f14b3f3cf9f5bf65d91c5e39b8e",
+    "role": "FACULTY"
+  },
+  {
+    "email": "zebanaaz@mru.edu.in",
+    "name": "Dr. Zeba Naaz",
+    "departmentCode": "ME",
+    "department": "Mechanical Engineering",
+    "school": "School of Engineering",
+    "salt": "884fb4d7437747f54b30669c63dca22b",
+    "passwordHash": "c90f2989271d830ce5bf76fc36b963a4c168dcb1d1e538e303d402d2c383fa63793da226d9b9bae0b64cc88fd3f865c7b884c6190c310303f4c04bba02b388b4",
+    "role": "FACULTY"
+  },
+  {
+    "email": "jimmymehta@mru.edu.in",
+    "name": "Dr. Jimmy Mehta",
+    "departmentCode": "ME",
+    "department": "Mechanical Engineering",
+    "school": "School of Engineering",
+    "salt": "2712649e222f0dede551041f55c01781",
+    "passwordHash": "b23e28311776d719ed3127e1b31cd316ba6b3fbf371439a49686f7cfd3b625b681135664e1b303fbbc79c5c5526e4eb583c500d04863f0e860a4efb63cac2123",
+    "role": "FACULTY"
+  },
+  {
+    "email": "dainthomas@mru.edu.in",
+    "name": "Mr. Dain D. Thomas",
+    "departmentCode": "ME",
+    "department": "Mechanical Engineering",
+    "school": "School of Engineering",
+    "salt": "6ad991262a9613aca14f9e402c411072",
+    "passwordHash": "8031db45829dc1aa73c34f693d27465eadc9902b4d1b7c64704c7564d207e2c8626d0940c65ca870dae9f7e9a208f1f43b33428b4b2eedba1f7a3742357051f2",
+    "role": "FACULTY"
+  },
+  {
+    "email": "deanacademics@mru.edu.in",
+    "name": "Dr. Shruti Vashist",
+    "departmentCode": "ECE",
+    "department": "Electronics & Communication",
+    "school": "School of Engineering",
+    "salt": "e5047f6c019024cf7f4257632d967127",
+    "passwordHash": "c339b7a7729778baaff59e9d40068c61d327635ef85a908f38e644239be0d38a4f7b39d5786949aff9ed5e4e8b07f1937837a064ece3e3df1bd4ecfa0d7f8997",
+    "role": "FACULTY"
+  },
+  {
+    "email": "kdeepa@mru.edu.in",
+    "name": "Dr. K. Deepa",
+    "departmentCode": "ECE",
+    "department": "Electronics & Communication",
+    "school": "School of Engineering",
+    "salt": "2372532e54054faf71bd0f86b3147b53",
+    "passwordHash": "e4608199e50f1415a74a65c56d4b10dc92a51b5b014df34afac38c7a16d080a4baf945681a2eedc869e885e38497ebfa729db2bab62327683ad0847ca1cb156b",
+    "role": "FACULTY"
+  },
+  {
+    "email": "charu@mru.edu.in",
+    "name": "Dr. Charu Pathak",
+    "departmentCode": "ECE",
+    "department": "Electronics & Communication",
+    "school": "School of Engineering",
+    "salt": "4d2e65277368dc5f72e232bd71a5df0f",
+    "passwordHash": "1f8f110c3bdb5daf54a2598eafa4ec8ece3e35e2682b85ea853917098dea4a289745811ffde945e4a9969162d825a8ad95e41e6f65a96cde5cac063a0e9cd052",
+    "role": "FACULTY"
+  },
+  {
+    "email": "kavitasingh@mru.edu.in",
+    "name": "Dr. Kavita Singh",
+    "departmentCode": "ECE",
+    "department": "Electronics & Communication",
+    "school": "School of Engineering",
+    "salt": "e5c790ce9d714a8638e281c2fcb42784",
+    "passwordHash": "d67984b33ff1ad3a74ecb6cdd0f36d2164e25d1bcc8cc7a36c118ecaf0379c3273772667843979378e413ac684b750f0957a890d9f2850652d4aa45c10809f82",
+    "role": "FACULTY"
+  },
+  {
+    "email": "meenakshigupta@mru.edu.in",
+    "name": "Dr. Meenakshi Gupta",
+    "departmentCode": "ECE",
+    "department": "Electronics & Communication",
+    "school": "School of Engineering",
+    "salt": "623f392099776fb69f42a43ddcbee520",
+    "passwordHash": "796d29fca22e81fd4d2c60a5c94acb5e5a1bcaa1377e32ea8a7ce2aba9a9b8f0dda16c61e73971e5d4519e236b411fa4a94c4fe9b382f307054cccde1bb5c9f5",
+    "role": "FACULTY"
+  },
+  {
+    "email": "niharika@mru.edu.in",
+    "name": "Dr. Niharika Thakur",
+    "departmentCode": "ECE",
+    "department": "Electronics & Communication",
+    "school": "School of Engineering",
+    "salt": "ca37815343c9be6496d5983436e2f451",
+    "passwordHash": "0fe88b4508157ee5446418584e70144c6d80b39f2e3b1764e9e845d7242b803ffd28edb2156c05ce1d73a59e4732682fa0e94af5912dc2d3d4c39bcdedb6d55e",
+    "role": "FACULTY"
+  },
+  {
+    "email": "richaadlakha@mru.edu.in",
+    "name": "Dr. Richa Adlakha",
+    "departmentCode": "ECE",
+    "department": "Electronics & Communication",
+    "school": "School of Engineering",
+    "salt": "a7a44cd6bc953fe61cf52d033af0eb60",
+    "passwordHash": "5278bc949fa07e2a7fe8587c2262f4270e652ef6817fea81e7887ec1678f9420e94ca1e8c52a3a0d4c01d3c1f5003e377807bd6f4b15779d8c4b0d67df97e24f",
+    "role": "FACULTY"
+  },
+  {
+    "email": "bhanu@mru.edu.in",
+    "name": "Mr. Bhanu Pratap Chaudhary",
+    "departmentCode": "ECE",
+    "department": "Electronics & Communication",
+    "school": "School of Engineering",
+    "salt": "4c6945c54e6a8f7c6fb224bbda68c3b1",
+    "passwordHash": "7af04fd7d4930b0b1222b1a7ec01c16d659b0268c154c7f1235f8a538720864114aefebf89401ec390b63d246f90a26b3a541f97fa977c191b2d095987cf1009",
+    "role": "FACULTY"
+  },
+  {
+    "email": "lokesh@mru.edu.in",
+    "name": "Mr. Lokesh Bhardwaj",
+    "departmentCode": "ECE",
+    "department": "Electronics & Communication",
+    "school": "School of Engineering",
+    "salt": "8df1d12358d8af2ab3c83de4dd8ddd76",
+    "passwordHash": "c90459fe60cf33dc14f1a2b9b75bb2ddce90b84329173c74134602204a382cdfe37bd7a3eeca9845022f4c5384c74a746dd3009b98557b98b1433310d416e496",
+    "role": "FACULTY"
+  },
+  {
+    "email": "mohitkumarsingh@mru.edu.in",
+    "name": "Dr. Mohit Kumar Singh",
+    "departmentCode": "ECE",
+    "department": "Electronics & Communication",
+    "school": "School of Engineering",
+    "salt": "91966076c1cdb744a9a98c9e189c8d61",
+    "passwordHash": "584f2a2969e62d6ab3ca8bc1001d6f6e73f486bcce7070d1987e532a8f49d083f5b19a40af4bea908f643a42a15891eabffecfb45288f66f22c70f994a12c975",
+    "role": "FACULTY"
+  },
+  {
+    "email": "nituchauhan@mru.edu.in",
+    "name": "Ms. Nitu Chauhan",
+    "departmentCode": "ECE",
+    "department": "Electronics & Communication",
+    "school": "School of Engineering",
+    "salt": "c13a0b16d4aedbba0be53791c9acbe06",
+    "passwordHash": "a2088af85df66e826442780fd5324dd2acb66bed9bc02af68721359dc1bd38ef4290e87cdbf73903f0e172020bce364bd6cd2ac975f3c4eaa11104e27a844cb4",
+    "role": "FACULTY"
+  },
+  {
+    "email": "vijay@mru.edu.in",
+    "name": "Mr. Vijay Kumar Gill",
+    "departmentCode": "ECE",
+    "department": "Electronics & Communication",
+    "school": "School of Engineering",
+    "salt": "7095ce9050ea39b85300fd30ebb7611b",
+    "passwordHash": "29e847956dd7ef49e6f9386bf3fbebfa139b05ccb7865beae028c6514052b6b5a73ca8a81e4bc8feeaf99d8faf681fdd02d1baa3343845d991768c0eb2b45f79",
+    "role": "FACULTY"
+  },
+  {
+    "email": "amitabhanath@mru.edu.in",
+    "name": "Dr. Amitabha Nath",
+    "departmentCode": "ECE",
+    "department": "Electronics & Communication",
+    "school": "School of Engineering",
+    "salt": "54ca19f222ad15e7209c9de4a23bdead",
+    "passwordHash": "6f162884d1c5624816163b6edace89d498528230032fae1719086fdc6da19413e63af7ac1eafc3afa29b270f6dc3eddd86a563b5ad662023e7cba46aa90da755",
+    "role": "FACULTY"
+  },
+  {
+    "email": "hodrobotics@mru.edu.in",
+    "name": "Dr. Priyanka Bansal",
+    "departmentCode": "IDE",
+    "department": "Interdisciplinary Engineering",
+    "school": "School of Engineering",
+    "salt": "990b10cf3212be6f879d5fec18c90790",
+    "passwordHash": "77474c7074f09e3e88139bc01987c084579a01de03a23d5de459084bce06869da50f874b96cdcd3c07e0597ea5e7a5f1bd7dccad91cb9304000c52b896a0c07c",
+    "role": "FACULTY"
+  },
+  {
+    "email": "piyushcharan@mru.edu.in",
+    "name": "Dr. Piyush Charan",
+    "departmentCode": "IDE",
+    "department": "Interdisciplinary Engineering",
+    "school": "School of Engineering",
+    "salt": "6d348c422d475ec11a27166c59fc03e0",
+    "passwordHash": "88242e0fde68011c4e452eca8b77ad194acd046c7ae324c47394612c8c504f6f43f5809c09fc48f093657020f41768ec831f727f39988cd46083e488a3d07db5",
+    "role": "FACULTY"
+  },
+  {
+    "email": "jpsharma@mru.edu.in",
+    "name": "Dr. J. P. Sharma",
+    "departmentCode": "IDE",
+    "department": "Interdisciplinary Engineering",
+    "school": "School of Engineering",
+    "salt": "f141d91709950227e186163d480e39e2",
+    "passwordHash": "1ee5e26024f514121d8fdfbab36f61ea8c62560b87629c1d72b8cdd471e0407b750cbfff9c8e0871170fa335ee9339a3ce81abf32c5e17008fb0a25fbfc0c680",
+    "role": "FACULTY"
+  },
+  {
+    "email": "gurpreetmatharou@mru.edu.in",
+    "name": "Dr. Gurpeet Singh Matharou",
+    "departmentCode": "IDE",
+    "department": "Interdisciplinary Engineering",
+    "school": "School of Engineering",
+    "salt": "96f3ac6926dc17b9a3da32a3542b31e9",
+    "passwordHash": "6b06ed5bda30d49260067174d4702e063b375ce4592d019715cd3ced567d33e8ff7a672f878ecb5ff31990d04f210e3e23e8759ff7d37c34feaf4a7142a97aab",
+    "role": "FACULTY"
+  },
+  {
+    "email": "rajneshsingh@mru.edu.in",
+    "name": "Dr. Rajnesh Kumar Singh",
+    "departmentCode": "IDE",
+    "department": "Interdisciplinary Engineering",
+    "school": "School of Engineering",
+    "salt": "f34b0290f63537f4aded7934a10b69b0",
+    "passwordHash": "c79c4c394d3cc22475997912ae5bcb2782173ee98bdebecd1fab5c5d2023446155670c66a177dfbd8687a72a6ce019e3a785f004fd9e82e7e269c76490f0c24a",
+    "role": "FACULTY"
+  },
+  {
+    "email": "monikagarg@mru.edu.in",
+    "name": "Dr. Monika Garg",
+    "departmentCode": "IDE",
+    "department": "Interdisciplinary Engineering",
+    "school": "School of Engineering",
+    "salt": "6a1ea819407d7ca3d9618aa8ca940370",
+    "passwordHash": "7ee9130f2775a87f9bce45512530cfba2cf37174d7bd4baffc6a77811b242cf9326f3c0855ea7d479d772e71b29ca251034aa836a5bb103da7caa85693326942",
+    "role": "FACULTY"
+  },
+  {
+    "email": "nehachaudhary@mru.edu.in",
+    "name": "Dr. Neha Chaudhary",
+    "departmentCode": "IDE",
+    "department": "Interdisciplinary Engineering",
+    "school": "School of Engineering",
+    "salt": "a54e95f54e7af6598ead2ab1c52c965f",
+    "passwordHash": "991739e69cb6fa504b7c43b7dff33a58dfa63c5732341ebbfe105f41bb020d8cc0f9be2cee2205bbada3642731e678bafd8a372e09fb1011d682837550414cb9",
+    "role": "FACULTY"
+  },
+  {
+    "email": "anmolalawadhi@mru.edu.in",
+    "name": "Dr. Anmol Alawadhi",
+    "departmentCode": "IDE",
+    "department": "Interdisciplinary Engineering",
+    "school": "School of Engineering",
+    "salt": "05990d2c9063e1605e7244460f773ac1",
+    "passwordHash": "974238b73dc65eb7d7c102f8ea874346191b7c551a7d7b299f52900b5cfd4d185e6390f7be3271daa3a6ff49b6e570f45190b187eed9b3dd30ef77690c038aa2",
+    "role": "FACULTY"
+  },
+  {
+    "email": "deansciences@mru.edu.in",
+    "name": "Dr. Jyotsna Pandit",
+    "departmentCode": "CHEMISTRY",
+    "department": "Chemistry",
+    "school": "School of Sciences",
+    "salt": "34ac589dd42dabd249eb4d0966acb336",
+    "passwordHash": "a43744e4b7423107d6a20b4e55ebd08b04d18bdf463583d535af83bc122f769acda302870feebdfafed4f44f0d1ae20807bd03be64bfc450e79ddf805a238bab",
+    "role": "FACULTY"
+  },
+  {
+    "email": "dksharma@mru.edu.in",
+    "name": "Dr. D. K. Sharma",
+    "departmentCode": "PHYSICS",
+    "department": "Physics",
+    "school": "School of Sciences",
+    "salt": "f8832cf0d3793045f8cfb8777648e126",
+    "passwordHash": "d45ffd389e02906dbbddfb2c97ed6741bbe60e44c807217e5433784ac844dc5fd93e9da691a56ed7d311e025190f9a8cfaceb4d53fabffc06d9138c9c1f998b7",
+    "role": "FACULTY"
+  },
+  {
+    "email": "sandeepkumar@mru.edu.in",
+    "name": "Dr. Sandeep Kumar",
+    "departmentCode": "PHYSICS",
+    "department": "Physics",
+    "school": "School of Sciences",
+    "salt": "87d167ca87609e598d3bdb0e9f4a9856",
+    "passwordHash": "b4cdf8ad575a4f461ac57a80f0364bb1ca442683dba635c33d43c5765c4fd467d994cebfc624d90ad667334730915f5187dc744f22f5f26ef0914c6e8f73a904",
+    "role": "FACULTY"
+  },
+  {
+    "email": "anshuman@mru.edu.in",
+    "name": "Dr. Anshuman Sahai",
+    "departmentCode": "PHYSICS",
+    "department": "Physics",
+    "school": "School of Sciences",
+    "salt": "14f990ebdf994084bd01885128f7a3a3",
+    "passwordHash": "95f9e83a3a891df33068f5043e3a2ecf0422b389e98b43e0e16fd45356de8c29f224fd8d65696d8f73427e723866976db902874ff064e43e9daa79db5781d409",
+    "role": "FACULTY"
+  },
+  {
+    "email": "ananna@mru.edu.in",
+    "name": "Dr. Ananna Bardhan",
+    "departmentCode": "PHYSICS",
+    "department": "Physics",
+    "school": "School of Sciences",
+    "salt": "55d78ef6717644bbd80c1fb59142b83d",
+    "passwordHash": "3340ebdbe33e8620edda5392a9c01a1709c9f24a93196f4ad45804b5909b0633459c6ebb936186ebc70391b06c8445442213d46142aa1b019f1411dd173c5b14",
+    "role": "FACULTY"
+  },
+  {
+    "email": "deepti@mru.edu.in",
+    "name": "Dr. Deepti Maikhuri",
+    "departmentCode": "PHYSICS",
+    "department": "Physics",
+    "school": "School of Sciences",
+    "salt": "a83f33534566f6521104513aee34f84c",
+    "passwordHash": "85e695bb5e94ed8f5777af72a2f823ca6e41d4b5bbfc0f5d1a41e4361ad4ac26957bc4bad042a8a1d173271bf84a6624a2b68ec7f66936b32f96d0f34d776219",
+    "role": "FACULTY"
+  },
+  {
+    "email": "moditma@mru.edu.in",
+    "name": "Dr. Moditma",
+    "departmentCode": "PHYSICS",
+    "department": "Physics",
+    "school": "School of Sciences",
+    "salt": "7c6db8b2ebdb195bbadb316875a50627",
+    "passwordHash": "71a426623f3725f441f81fc3eb8ad3bcd61b1784c0b6ee8c1a3bf68ebf9882cf2b3fef3c38980d75614895ddab1065d0691646deebd6d32649211a75cf71f645",
+    "role": "FACULTY"
+  },
+  {
+    "email": "shiv@mru.edu.in",
+    "name": "Dr. Shiv Kumar Dixit",
+    "departmentCode": "PHYSICS",
+    "department": "Physics",
+    "school": "School of Sciences",
+    "salt": "d3489615334f9c6752ec41b8bf2fc5bc",
+    "passwordHash": "ec82c803e60c1e417b0e162ff12d54bae99608e863d052ea32bddbb4a453838e715562e51a769aba0d1c12577a44dd78fbcfdc400543301565bef0d4726bbf2f",
+    "role": "FACULTY"
+  },
+  {
+    "email": "meenakapahi@mru.edu.in",
+    "name": "Dr. Meena Kapahi",
+    "departmentCode": "CHEMISTRY",
+    "department": "Chemistry",
+    "school": "School of Sciences",
+    "salt": "06d72665b10a652a11fd121d1d584dab",
+    "passwordHash": "9279d03d6e17779ff7a8b959dc4a320332e280ff4bb2bfc527d70e1d54b8654d2c501796639225637badfe12608dbe85cd1cdd404d9b4974e35f4b2e0805aa61",
+    "role": "FACULTY"
+  },
+  {
+    "email": "sudhish@mru.edu.in",
+    "name": "Dr. S. K. Shukla",
+    "departmentCode": "CHEMISTRY",
+    "department": "Chemistry",
+    "school": "School of Sciences",
+    "salt": "eb5d4566898c0c63db26180917cf0f5d",
+    "passwordHash": "3ec2f9804cbbb82b5697dc737152add67d8a4291702531cd169474474ffb8b21098d61ba6309ae31513527fce6210982394cbbfed3cbbf0e982fa81147303939",
+    "role": "FACULTY"
+  },
+  {
+    "email": "arpit@mru.edu.in",
+    "name": "Dr. Arpit Sand",
+    "departmentCode": "CHEMISTRY",
+    "department": "Chemistry",
+    "school": "School of Sciences",
+    "salt": "ff91f743a277194002f5c9b109c1a5d7",
+    "passwordHash": "b8da2719c40590da4ec5307f4d0bb51b0510bbc1118524fc71244090550e7381ed1a86bd92fe0096e104dabc4a1e9f8390d082581a7a3e0cfc1f4ae32eae2835",
+    "role": "FACULTY"
+  },
+  {
+    "email": "ekta@mru.edu.in",
+    "name": "Dr. Ekta Rawat",
+    "departmentCode": "CHEMISTRY",
+    "department": "Chemistry",
+    "school": "School of Sciences",
+    "salt": "7cd84beb19388f799f20979333e16cf4",
+    "passwordHash": "98576cb5789bd439260bbf2d2cafb2df7371957a8b57cf3dbc54daf5cb90d393d6242b3720e8e0c4795cf4024afccd88cf2e4e2fc7f17c7154adee8491032762",
+    "role": "FACULTY"
+  },
+  {
+    "email": "priti@mru.edu.in",
+    "name": "Dr. Priti Gupta",
+    "departmentCode": "CHEMISTRY",
+    "department": "Chemistry",
+    "school": "School of Sciences",
+    "salt": "c223d793a735d57cde4c104ec78b7648",
+    "passwordHash": "4b2c661a69ed1378db67ad1980654220f167de7f44cf1e616862b1fb1390664a07eea42b5403207973aea819a7ae7e4a556ad170c981eb8cee3b86f5a0c0d83c",
+    "role": "FACULTY"
+  },
+  {
+    "email": "rooparani@mru.edu.in",
+    "name": "Dr. Roopa Rani",
+    "departmentCode": "CHEMISTRY",
+    "department": "Chemistry",
+    "school": "School of Sciences",
+    "salt": "093075b70f50f16a65707bb294a475dc",
+    "passwordHash": "95bf45981b6d28cde68479c245a8e09b668fa4cc54915dcb2487bc672a31e68d3aa823a34dc8050a15a2956575b91c3d679910673ca287de725f8b3d3e16720b",
+    "role": "FACULTY"
+  },
+  {
+    "email": "vinayakpathak@mru.edu.in",
+    "name": "Dr. Vinayak V Pathak",
+    "departmentCode": "CHEMISTRY",
+    "department": "Chemistry",
+    "school": "School of Sciences",
+    "salt": "741d660aef5fb4fa825f4dddc1a4bb82",
+    "passwordHash": "5d7dc8a2b75b541fb9830f25fc406698c1f172668d4775176b384b81cbf3ea59ac555caf11fd9c7441ba7966ee873a35130939556210a375b86cade525ee2460",
+    "role": "FACULTY"
+  },
+  {
+    "email": "aparna@mru.edu.in",
+    "name": "Dr. Aparna Vyas",
+    "departmentCode": "MATHEMATICS",
+    "department": "Mathematics",
+    "school": "School of Sciences",
+    "salt": "00e39381d8bf0afe17e293f9fecf3a00",
+    "passwordHash": "d7cd1c6d44b401a9bd84445f658517b643ca98d2d8076fce11de3decc580c0064b19b24f9dac07976863d982fe410ca46f74151d68f89344dcabc79b20b8e0c8",
+    "role": "FACULTY"
+  },
+  {
+    "email": "deepa@mru.edu.in",
+    "name": "Dr. Deepa Arora",
+    "departmentCode": "MATHEMATICS",
+    "department": "Mathematics",
+    "school": "School of Sciences",
+    "salt": "beae5eae23db804f387843748612dc66",
+    "passwordHash": "20b303a89893f5de51be886f66350cf1258ecde5afe3119c994f98b51c0f6dd0afd0a5447d9a0aab1e509c425782ea0fa651da0e597cc5b014e853efeb3fa421",
+    "role": "FACULTY"
+  },
+  {
+    "email": "mohammadidrisi@mru.edu.in",
+    "name": "Dr. Mohd. Javed Idrisi",
+    "departmentCode": "MATHEMATICS",
+    "department": "Mathematics",
+    "school": "School of Sciences",
+    "salt": "5379d1b342d555262a24105c3e83abd9",
+    "passwordHash": "b3dbc043f5f96a01a26e2cf0cf175f31d78bd525efbaa43501380c9a1da401f12c326084b1efcc61ad41033a3e134117fb486709569130bb1c29f73c0ddb6f35",
+    "role": "FACULTY"
+  },
+  {
+    "email": "ruchigupta@mru.edu.in",
+    "name": "Dr. Ruchi Gupta",
+    "departmentCode": "MATHEMATICS",
+    "department": "Mathematics",
+    "school": "School of Sciences",
+    "salt": "7e72564162b832c3742a0b88908b4261",
+    "passwordHash": "07b21e8ecc3a9763f03c27b32266a3b70366fcde8aaf048e8192e628d643629f5d432e12fb1424c89501bed2737f7f97feaf331a98a333d79e942156cd475c95",
+    "role": "FACULTY"
+  },
+  {
+    "email": "dinesh@mru.edu.in",
+    "name": "Dr. Dinesh Tripathi",
+    "departmentCode": "MATHEMATICS",
+    "department": "Mathematics",
+    "school": "School of Sciences",
+    "salt": "9f572b596f4b391aa62be8ae519303b0",
+    "passwordHash": "22a0ab286963c880eda3fb66b9b0e051d684638c09e0241b77394719442ef914bd51e20c8a1a53fa987ca32ec44e704461b203518cc1d7f66bed6baf369f50b5",
+    "role": "FACULTY"
+  },
+  {
+    "email": "advin@mru.edu.in",
+    "name": "Dr. Advin Masih",
+    "departmentCode": "MATHEMATICS",
+    "department": "Mathematics",
+    "school": "School of Sciences",
+    "salt": "f65156393b5968fe8116759eb2c7030d",
+    "passwordHash": "e87dae9dfe6e38b7a8ba7835c45237fb641b4685881af151cfba8834c6bb6962879ff293cf4e4c9a4ac371c49925b9a9b3619f205551e554b8cac251abf5824d",
+    "role": "FACULTY"
+  },
+  {
+    "email": "ankita@mru.edu.in",
+    "name": "Dr. Ankita Gaur",
+    "departmentCode": "MATHEMATICS",
+    "department": "Mathematics",
+    "school": "School of Sciences",
+    "salt": "1288acf87e718940c6017cdb01d6253b",
+    "passwordHash": "b43ac8c331b67a390f69e44dbca6f039d45155a3142c36799d08607f74fdf996e6eb7241ddcaec6c1424b222caf62fa83a54607733a9a7b7a266526c57437e71",
+    "role": "FACULTY"
+  },
+  {
+    "email": "bhawnasingla@mru.edu.in",
+    "name": "Dr. Bhawna Singla",
+    "departmentCode": "MATHEMATICS",
+    "department": "Mathematics",
+    "school": "School of Sciences",
+    "salt": "22d9eccc859145ffe031566b0859adb8",
+    "passwordHash": "e54642aa451a96fb6a4fc11493aa32a2875fb940676b54acce9aa83921b5a1b50c1724d2bdb55f9cadc383900e1a242865e72e6fb1028c3b2c01e0abcb4cb1a8",
+    "role": "FACULTY"
+  },
+  {
+    "email": "seema@mru.edu.in",
+    "name": "Ms. Seema Aggarwal",
+    "departmentCode": "MATHEMATICS",
+    "department": "Mathematics",
+    "school": "School of Sciences",
+    "salt": "c30c085e3deea11fd41d76d58b731b8d",
+    "passwordHash": "61966c5af6bfda4dac59ea4dfffb959bf7b18f6735bbd75976e83d5e5cff03a7ec19591cae682bc2c8245f28c63bde10820410bb339f5618b589c07946237515",
+    "role": "FACULTY"
+  },
+  {
+    "email": "kushallalwani@mru.edu.in",
+    "name": "Dr. Kushal Lalwani",
+    "departmentCode": "MATHEMATICS",
+    "department": "Mathematics",
+    "school": "School of Sciences",
+    "salt": "11db8fddbbdba10d419e10510fce92be",
+    "passwordHash": "0e560f7ee47d3208d684c4dd46b48148d28d1f1539d382ea9c03258deffeabd843d40c5ee4a80a8554c7be2841d384117f46a0694abe6d81b9bcd03c68ecbf02",
+    "role": "FACULTY"
+  },
+  {
+    "email": "dean.law@mru.edu.in",
+    "name": "Dr. Shaveta Gagneja",
+    "departmentCode": "LAW",
+    "department": "Law",
+    "school": "School of Law",
+    "salt": "6663b7ed605892f88bfe6dddfd519abe",
+    "passwordHash": "e908b23be76471ef9e05364f63d1bdfaefb8168afdb29d46d99e1c18062040a9eb48280aecdb34d412773f724f9bfab85b816d58ea8dfab448eb8e55d44d9422",
+    "role": "FACULTY"
+  },
+  {
+    "email": "hodlaw@mru.edu.in",
+    "name": "Dr. Ruchi Lal",
+    "departmentCode": "LAW",
+    "department": "Law",
+    "school": "School of Law",
+    "salt": "c830e4ef7b6014397273b8df96dcc180",
+    "passwordHash": "2cfdb6a1f3fbcb18f07ae5207f8ea4f38c5b77d5bb6bcf8910441ff06f1de4eac8bf2108fa2a1aa059ae121e5813644655399dd2f1309ef48cad1b08549c66e5",
+    "role": "FACULTY"
+  },
+  {
+    "email": "shaharyarasafkhan@mru.edu.in",
+    "name": "Dr. Shaharyar Asaf Khan",
+    "departmentCode": "LAW",
+    "department": "Law",
+    "school": "School of Law",
+    "salt": "09a514ad6f59bd94eaed1fc30586bb81",
+    "passwordHash": "deb22ee018adc1a8a93db06ad344b8d0aca8183962f03f3fdc6230a4f5d1c358af4ab5b7f9a654c78ae4c908b95b71502bf7b2db21b650c31e57040532f2651a",
+    "role": "FACULTY"
+  },
+  {
+    "email": "skbose@mru.edu.in",
+    "name": "Dr. S. K. Bose",
+    "departmentCode": "LAW",
+    "department": "Law",
+    "school": "School of Law",
+    "salt": "26e9dd81cf71cb5939eb66ea42a96bf8",
+    "passwordHash": "185ee17a27ca2b0f1b536f2d386d3ae5b43b2df2f66b18b171665f7fbaa1daa452119648993ea0fa91c4849715cf55abddf80b08aaf9954afa7e62c1164cf234",
+    "role": "FACULTY"
+  },
+  {
+    "email": "anildawra@mru.edu.in",
+    "name": "Dr. Anil Dawra",
+    "departmentCode": "LAW",
+    "department": "Law",
+    "school": "School of Law",
+    "salt": "016ca23c8ad708bc537ad75fc67ad7aa",
+    "passwordHash": "dd75f6bcc5717c1ece3b476de0fa23f3bb68759291cee44a7f8c4246307b5cae62ea5cd540981ca84128b2b4683ee524bfd0d647f41c0d5ca773d605599791af",
+    "role": "FACULTY"
+  },
+  {
+    "email": "supernavenaik@mru.edu.in",
+    "name": "Dr. Superna Venaik",
+    "departmentCode": "LAW",
+    "department": "Law",
+    "school": "School of Law",
+    "salt": "f142ee3fb511c43d4b6bf867a1e143c3",
+    "passwordHash": "ebbaa351b131d17f9193816065c83c81c220d6e139646fe3683f2cf7a61d97d26c106fd9fd02053c02a12e7c6bccdfac860b1912833f2dff4d67deb8f3a8783d",
+    "role": "FACULTY"
+  },
+  {
+    "email": "chhavi@mru.edu.in",
+    "name": "Dr. Chhavi Kulshretha",
+    "departmentCode": "LAW",
+    "department": "Law",
+    "school": "School of Law",
+    "salt": "406fbacd03463ef618973d0e935be0a7",
+    "passwordHash": "2b175a2f9a31351d5108fde368fbea9f5c915906bd1db08314acc86ffba89f058b8ee847b069bbe2e74960e77f73a5a60f027bd651bd0334347ab0055220a61a",
+    "role": "FACULTY"
+  },
+  {
+    "email": "tarundeep@mru.edu.in",
+    "name": "Dr. Tarundeep Kaur",
+    "departmentCode": "LAW",
+    "department": "Law",
+    "school": "School of Law",
+    "salt": "fdc81b205aded662d9eaced76a456a23",
+    "passwordHash": "14efffceee51e3f09be7889cf72fcfe7ed50b9a5273741411dbd511bdb8d0379b39addaf0bd3c9b426d69c7794c585e403d68adead73503f35bf5e404c91330e",
+    "role": "FACULTY"
+  },
+  {
+    "email": "ghazalaabidin.law@mru.edu.in",
+    "name": "Dr. Ghazala Abidin",
+    "departmentCode": "LAW",
+    "department": "Law",
+    "school": "School of Law",
+    "salt": "5327c24d032ff45b202976011afeebe0",
+    "passwordHash": "993a4f93fc4e24f43ad24c46ec53e642f815172e81df1d3c8470d37d033feaa0a18a5a957a8009c0c352ca615efa1fe22d20fb5bd816a67f7e5a1055b0fc1d8d",
+    "role": "FACULTY"
+  },
+  {
+    "email": "apalavatsa@mru.edu.in",
+    "name": "Dr. Apala Vatsa",
+    "departmentCode": "LAW",
+    "department": "Law",
+    "school": "School of Law",
+    "salt": "41a11b481a286dd9d6092f42d45f3eef",
+    "passwordHash": "b205044089921497116ca68e70a751f9ee4d6f0c079e17f43604bf34eb148c148b5a29a5dadf2b2bea12d7e07760e9420371f04e837cf90abf5b0ec96204ea1d",
+    "role": "FACULTY"
+  },
+  {
+    "email": "aditi@mru.edu.in",
+    "name": "Dr. Aditi Choudhary",
+    "departmentCode": "LAW",
+    "department": "Law",
+    "school": "School of Law",
+    "salt": "b62d22f0fcc72a251699f7fd18f61b37",
+    "passwordHash": "f7d551fe5d8788a5c49fc8892cb947282d93276d2d96339a9d75ac7392d102d381f6e19759c4e31e53582daff2fce2d5fd1a760b20c313c0595b45296b850908",
+    "role": "FACULTY"
+  },
+  {
+    "email": "vani.law@mru.edu.in",
+    "name": "Ms. Vani Kataria",
+    "departmentCode": "LAW",
+    "department": "Law",
+    "school": "School of Law",
+    "salt": "68f7d0fec54f65b648e6be395c8de77d",
+    "passwordHash": "c88e8f74dee9c631cf64a3372dabc33b894f62f404b6d6d5801034748d45983c1d155ec117cf8364f4491ff361f7d50ef8071927b2190370c831d161dff00f71",
+    "role": "FACULTY"
+  },
+  {
+    "email": "arushimmehta@mru.edu.in",
+    "name": "Dr. Arushi Malik",
+    "departmentCode": "LAW",
+    "department": "Law",
+    "school": "School of Law",
+    "salt": "6e2c13f366a50a38681f1da072eceeac",
+    "passwordHash": "d38a7096d52fb789d2ebb173e2f97a0a6e02032420e8a51d156a7f504ba9f2edd9105dbb652fe7d5c9783f52c630d3dbf3a5dcd3a8ca516e3bf966a81985ec15",
+    "role": "FACULTY"
+  },
+  {
+    "email": "asmita@mru.edu.in",
+    "name": "Ms. Asmita Patel",
+    "departmentCode": "LAW",
+    "department": "Law",
+    "school": "School of Law",
+    "salt": "216f2d83443aa8570769fb22d176ab0b",
+    "passwordHash": "b99beaf5097d780277652c1ece494e2febefe8002c9ec17e304d1b5c43b62d779ee9c685e0a6a9419855f1ac5009c2f21229d23c8084a302673930eb2b8e54bf",
+    "role": "FACULTY"
+  },
+  {
+    "email": "chaitali@mru.edu.in",
+    "name": "Ms. Chaitali Wadhwa",
+    "departmentCode": "LAW",
+    "department": "Law",
+    "school": "School of Law",
+    "salt": "f1373b4fbd8c167b038d7fb1c3743461",
+    "passwordHash": "64878491706b05c05b7dcff69d011760f9a30bc6b6299b1ef3ecddf798a3f286693d5ae92a02868eeb0ce21a6361211c3b2ace32f29d34b92ebf342facd06a6b",
+    "role": "FACULTY"
+  },
+  {
+    "email": "nidhi@mru.edu.in",
+    "name": "Ms. Nidhi",
+    "departmentCode": "LAW",
+    "department": "Law",
+    "school": "School of Law",
+    "salt": "2ab75c2c5b6c39d4bf85d2bf7dd56a06",
+    "passwordHash": "32667204dee5d43e58beeb1f0279b5ba0fd38978e911908a4a4330c4c1caaf0b0ba6acb9a059e8718ae88ed53972dee2c2a58a8f7d45e9711d61dd054665625a",
+    "role": "FACULTY"
+  },
+  {
+    "email": "simran@mru.edu.in",
+    "name": "Ms. Simran Singh",
+    "departmentCode": "LAW",
+    "department": "Law",
+    "school": "School of Law",
+    "salt": "03c612ee93e516d623e93c3170b07f4e",
+    "passwordHash": "3450ad20fe0a0aab17d611f046024d426e4ba9b29fb48cdf97522d4b6f640b467de62e038b862c82be58a5b3911259b5c10b13c61de58db298725a5c1f0a9f4f",
+    "role": "FACULTY"
+  },
+  {
+    "email": "yaminiatreya.law@mru.edu.in",
+    "name": "Ms. Yamini Atreya",
+    "departmentCode": "LAW",
+    "department": "Law",
+    "school": "School of Law",
+    "salt": "61e2745bf53e719a5cb7f85f1a6e2098",
+    "passwordHash": "6cccf4dfcec8395e0690eb697c4179b598ee7be8b2c5e7184758dea49cf51183d0fab43b77b17ddd6d368cade3917e189fc959442170900194d4d04934b79321",
+    "role": "FACULTY"
+  },
+  {
+    "email": "aaratrikapandey.law@mru.edu.in",
+    "name": "Dr. Aaratrika Pandey",
+    "departmentCode": "LAW",
+    "department": "Law",
+    "school": "School of Law",
+    "salt": "061b0349934ac7ce120b6c0c5d915244",
+    "passwordHash": "93a6645e5edcf96a57de67dfd57d22041fe0db7c7126d4c9dc0de9d6bfbdcb328e39c716a173f37d5330315103d1dae12a738bed0bd45c2db7e40aaa9ed8bd7f",
+    "role": "FACULTY"
+  },
+  {
+    "email": "surabhisharma@mru.edu.in",
+    "name": "Ms. Surabhi Sharma",
+    "departmentCode": "LAW",
+    "department": "Law",
+    "school": "School of Law",
+    "salt": "af64861293d00b535aea464598692b57",
+    "passwordHash": "180cce33c6a8a7cd7f0504f3201e30528f5d3c4289a6f56d1c4c43c27d43cbf1ac9c894d3c51368d910498ed84029ca09c552dd67ab10900b662cd6b379140cd",
+    "role": "FACULTY"
+  },
+  {
+    "email": "garimapahwa@mru.edu.in",
+    "name": "Ms. Garima Pahwa",
+    "departmentCode": "LAW",
+    "department": "Law",
+    "school": "School of Law",
+    "salt": "59ac5c1762b0bbe158045aff18798c46",
+    "passwordHash": "a0cd418e6401da3d19d61a52121419ea673d1594c84be6b158fd8d27a48311d8e68ec9cfce5ac18101175b3c35f46f854cd2d6188549f0904760730bd90665a6",
+    "role": "FACULTY"
+  },
+  {
+    "email": "anupamsharma@mru.edu.in",
+    "name": "Mr. Anupam Sharma",
+    "departmentCode": "LAW",
+    "department": "Law",
+    "school": "School of Law",
+    "salt": "402f6b092e5a3263d64b8025eeb678d3",
+    "passwordHash": "64a14830ad7d768f34e92f405eb7ed3ac02576c101ddf2b243d7ac9d0649db4fe8ab304e9a39017b7390f99975921c8b61a1ded2550f335685e99b793c99f2ae",
+    "role": "FACULTY"
+  },
+  {
+    "email": "adityaverma@mru.edu.in",
+    "name": "Mr. Aditya Verma",
+    "departmentCode": "LAW",
+    "department": "Law",
+    "school": "School of Law",
+    "salt": "3ff51501dab59c4c914b19c98a617598",
+    "passwordHash": "67f8d0945c336f5e7fac16a2a4b7a7ca48830a5ffda3eeb2d8d113b3c6768307f94e798616ec7385a1debf7053a6a17f85ed36dcfd3197e7ede2d400182b61ba",
+    "role": "FACULTY"
+  },
+  {
+    "email": "deepakbansal@mru.edu.in",
+    "name": "Mr. Deepak Bansal",
+    "departmentCode": "LAW",
+    "department": "Law",
+    "school": "School of Law",
+    "salt": "094b635af83375987c0aa82ff0ad140e",
+    "passwordHash": "ca48f95a0349694950f11e66c3a77709821420eee0308ec85e701f745bdabf47a7718c84d1631149dc51b42e8b515340e1ed7ae8032100277a2fd37f8877dda7",
+    "role": "FACULTY"
+  },
+  {
+    "email": "amanpriyasingh@mru.edu.in",
+    "name": "Ms. Amanpriya Singh",
+    "departmentCode": "LAW",
+    "department": "Law",
+    "school": "School of Law",
+    "salt": "4d2a0e7f6b8f71a52932cd7f60b7a418",
+    "passwordHash": "b2804732b86fe93f7a0d3ea4dd4ebc534f6259b9060e7d915b2262296daa18e178e869bdaa7ed38d8008983316fa7a0abad7b3cb93177841a37560f7bf1b8587",
+    "role": "FACULTY"
+  },
+  {
+    "email": "deaneducation@mru.edu.in",
+    "name": "Ms. Rashima V Varma",
+    "departmentCode": "EDUCATION & HUMANITIES",
+    "department": "Education & Humanities",
+    "school": "School of Education & Humanities",
+    "salt": "e121a03576b7dc070d40e8cbd96bca9b",
+    "passwordHash": "c9f2d3b5316650b3588bbb892959ad5fc1c9cc394789c8a477b464b7bc231e8037c6eebd9616b49c8b0d75cce7d7431ed5be55505450d3aa58d6447e1974fd12",
+    "role": "FACULTY"
+  },
+  {
+    "email": "hodeducation@mru.edu.in",
+    "name": "Dr. Rashee Singh",
+    "departmentCode": "EDUCATION & HUMANITIES",
+    "department": "Education & Humanities",
+    "school": "School of Education & Humanities",
+    "salt": "7270ca75d78b7dd8f8a06ad77f489bff",
+    "passwordHash": "5396dd2935bb2a15eca61291c415cc2c18ec77e83b5333ad8e0d36562b2644e085bf73dbbd8dcab836651cb3131031884dc65465add08fc7db403ce346386da0",
+    "role": "FACULTY"
+  },
+  {
+    "email": "savita@mru.edu.in",
+    "name": "Dr. Savita Sharma",
+    "departmentCode": "EDUCATION & HUMANITIES",
+    "department": "Education & Humanities",
+    "school": "School of Education & Humanities",
+    "salt": "8ba5fec0db313da77c5a09d233e6c40d",
+    "passwordHash": "146997dfda073f1ab8b49c2b7a606a9b144486fd1c95fc0755b94535109578bde4c4b6330433cb53b1bec5e1685cabb853d134f2a1e96dc3b2a5d6ef7b4fdf98",
+    "role": "FACULTY"
+  },
+  {
+    "email": "cheryljacob@mru.edu.in",
+    "name": "Dr. Cheryl Reshma Jacob",
+    "departmentCode": "EDUCATION & HUMANITIES",
+    "department": "Education & Humanities",
+    "school": "School of Education & Humanities",
+    "salt": "31871548aa46bcf6110f5a09b60f0b6c",
+    "passwordHash": "b3647fa50dbfac8f5effce9ae0f02b49ffeb9225ff6f8ea5a9794879b70b0d56f13fdf7984a9e68f941e790735471848cfca0fcd118878fc4c88db57e9bab0f3",
+    "role": "FACULTY"
+  },
+  {
+    "email": "eramaziz@mru.edu.in",
+    "name": "Ms. Eram Aziz",
+    "departmentCode": "EDUCATION & HUMANITIES",
+    "department": "Education & Humanities",
+    "school": "School of Education & Humanities",
+    "salt": "20347f2f58100f51731cce39ba64e924",
+    "passwordHash": "53791f3f48e519c20e036907b2223c552c4c7e5afbd4fd420d495419f899aa68ec38011abddc2749447b6dcb311ef4cd92f9bcb7abf00816e0fb3d92f68ed0f0",
+    "role": "FACULTY"
+  },
+  {
+    "email": "meenalrawat@mru.edu.in",
+    "name": "Ms. Meenal Rawat",
+    "departmentCode": "EDUCATION & HUMANITIES",
+    "department": "Education & Humanities",
+    "school": "School of Education & Humanities",
+    "salt": "778d4669a0d3efd8f7eb0887db0ef27a",
+    "passwordHash": "c8500dce844ee942abd34a1c589b47ec7eb8af6f4b9c95e82babd7ecf42bca60a550379850ff9dd4553f257fc30d16c256368d0105101e109b28e2d8922a9ecf",
+    "role": "FACULTY"
+  },
+  {
+    "email": "miramishra@mru.edu.in",
+    "name": "Dr. Mira Mishra",
+    "departmentCode": "EDUCATION & HUMANITIES",
+    "department": "Education & Humanities",
+    "school": "School of Education & Humanities",
+    "salt": "e38b646cc27a59e0e671a59b249751fd",
+    "passwordHash": "3abda7845bb520c411ce42929eb1986e1bfb4c5d92f50d8882feb2aafc101272754877a6fdcce9b638f3ba690b53541c4fadb48df7e572515072bd43fb6aa7ba",
+    "role": "FACULTY"
+  },
+  {
+    "email": "poojaparmar@mru.edu.in",
+    "name": "Dr. Pooja Parmar",
+    "departmentCode": "EDUCATION & HUMANITIES",
+    "department": "Education & Humanities",
+    "school": "School of Education & Humanities",
+    "salt": "e0a88ea3672264fe372fae6a3efbdd94",
+    "passwordHash": "39314d3c360318edc28d3336255e08283d732e7968f6719ae4b786506ed4407415acb2233259785e4e38cce2d3ce5a13cc8eb5b132bfc0e4448d9664dd350a5a",
+    "role": "FACULTY"
+  },
+  {
+    "email": "sdanand@mru.edu.in",
+    "name": "Mr. Sharv Datt Anand",
+    "departmentCode": "EDUCATION & HUMANITIES",
+    "department": "Education & Humanities",
+    "school": "School of Education & Humanities",
+    "salt": "32616fbe04d1afc5006d8cc1f95a7dfc",
+    "passwordHash": "ee0ae7b85144f0f048e22902a060d4528ca385b07a81e6e0560ffd89c5a5c2239c211f6f7eddd50b938baea4014ff7fefde94218750b74db52f0261f38b4d327",
+    "role": "FACULTY"
+  },
+  {
+    "email": "aishwaryasharma@mru.edu.in",
+    "name": "Ms. Aishwarya Sharma",
+    "departmentCode": "EDUCATION & HUMANITIES",
+    "department": "Education & Humanities",
+    "school": "School of Education & Humanities",
+    "salt": "5837050f20babcc4bff163ebd673888e",
+    "passwordHash": "75b320d52dfd2218795ffde603128f74692cb10d74cd1817107b2c375636ebb6edcdc8126b96479bc8b93a61fd04dd853887e78bbd1bf43be9328484496dea89",
+    "role": "FACULTY"
+  },
+  {
+    "email": "prachyaprerna@mru.edu.in",
+    "name": "Ms. Prachya Prerna",
+    "departmentCode": "EDUCATION & HUMANITIES",
+    "department": "Education & Humanities",
+    "school": "School of Education & Humanities",
+    "salt": "cdab49d6ed22ea82dc07d388d498846c",
+    "passwordHash": "2c5ad76baaa7c793c3ae05d3a255ec25097c2c866b49f61f78c83bad240d4b57492de9677f53dd93ba15ebc1509ff0e7458017d22e7dd3f7f115a28329f5a9c7",
+    "role": "FACULTY"
+  },
+  {
+    "email": "dineshg@mru.edu.in",
+    "name": "Mr. Dinesh",
+    "departmentCode": "EDUCATION & HUMANITIES",
+    "department": "Education & Humanities",
+    "school": "School of Education & Humanities",
+    "salt": "35be656498df17bc53906455fc5266ca",
+    "passwordHash": "15a97aa8294da89e954250b026db0fe1d776d10d4e78f5c400f6db90e25f9967a23c52d2de90e7dc470556f521334f0cd0a88ab5600a3b1eb465bcbea18c03db",
+    "role": "FACULTY"
+  },
+  {
+    "email": "shrutigaur@mru.edu.in",
+    "name": "Ms. Shruti Gaur",
+    "departmentCode": "EDUCATION & HUMANITIES",
+    "department": "Education & Humanities",
+    "school": "School of Education & Humanities",
+    "salt": "968a2d6dc26fe12195cd1711e6328932",
+    "passwordHash": "aed2afd10b87aab8a8fe720e7571666da18ee9309b54cb3464e33e4b67afe49fa845e5ea5be8d330350546b82bed7f73f1da6587ff228b7c5e7a417c2c5d908b",
+    "role": "FACULTY"
+  },
+  {
+    "email": "shubhamisra@mru.edu.in",
+    "name": "Dr. Shubha Misra",
+    "departmentCode": "EDUCATION & HUMANITIES",
+    "department": "Education & Humanities",
+    "school": "School of Education & Humanities",
+    "salt": "e6c859a8111289a3c4611b97fc6b5070",
+    "passwordHash": "ea704db5c13df889f86f4da0224e5bbd270d7fddf41965b349bd6b03c515295eaadb68b18e63da818071ba307133b992423ae44861d11fd1d59fae22a6648011",
+    "role": "FACULTY"
+  },
+  {
+    "email": "sangeetsharma@mru.edu.in",
+    "name": "Dr. Sangeet Sharma",
+    "departmentCode": "EDUCATION & HUMANITIES",
+    "department": "Education & Humanities",
+    "school": "School of Education & Humanities",
+    "salt": "0e0794f2471f3b25ee8482d3071e414f",
+    "passwordHash": "6cd53c10a6c4d556200ff64801df24c5178889855e99f3e13df7e0b6256ded441dc560b894fd6775e7e58609d75f00b95aa2e41e76a44dd66df9916eb20813ec",
+    "role": "FACULTY"
+  },
+  {
+    "email": "kavitha@mru.edu.in",
+    "name": "Dr. Kavitha K",
+    "departmentCode": "EDUCATION & HUMANITIES",
+    "department": "Education & Humanities",
+    "school": "School of Education & Humanities",
+    "salt": "43134d1d808ec58f4934dfff14111b71",
+    "passwordHash": "1dd4151ae5b8e2974756f454b128ca31d8fb69ff3c2474e0c54cec28c51f6a87ff1a3c4e14687e94d1a5d016e651f871ec63f7dec1180e6bfecaa0b7214409d2",
+    "role": "FACULTY"
+  },
+  {
+    "email": "sunilkumarroy@mru.edu.in",
+    "name": "Dr. Sunil Kr. Roy",
+    "departmentCode": "BUSINESS",
+    "department": "Business",
+    "school": "School of Business",
+    "salt": "26b6e617275d02d091630ed47f24871f",
+    "passwordHash": "4943c01ae1103107e78bc707aed5876d0433571657732992654d498d641bea6cdcaac8b69cc2a828d7c9e22aefdfcb9ad5b50a7eeb66f1ca540c7de8dfd57437",
+    "role": "FACULTY"
+  },
+  {
+    "email": "yogitasharma@mru.edu.in",
+    "name": "Dr. Yogita Sharma",
+    "departmentCode": "BUSINESS",
+    "department": "Business",
+    "school": "School of Business",
+    "salt": "889e7aeb6611d2c84fd25bac3cd701cf",
+    "passwordHash": "4657038c8daf63e0df9346f45a96447322194b65fc4b017a4ebea15b908cc0915328cbc87471ab4ac96c87dfb6f23c71a59aa3eee55ef3bebfb7a0427c839156",
+    "role": "FACULTY"
+  },
+  {
+    "email": "poojakapoor@mru.edu.in",
+    "name": "Dr. Pooja Kapoor",
+    "departmentCode": "BUSINESS",
+    "department": "Business",
+    "school": "School of Business",
+    "salt": "d52ff25427fb8ef251bcc22df5a894cc",
+    "passwordHash": "bc1764a578789c191a64b152baa9d10b7d1d4e88f0b91014262f21692a4d867aeea7ee118386cb6ab8448e4ea671225f4971bfc2a703b967b9154bce2de7c77a",
+    "role": "FACULTY"
+  },
+  {
+    "email": "pragati@mru.edu.in",
+    "name": "Dr. Pragati Chauhan",
+    "departmentCode": "BUSINESS",
+    "department": "Business",
+    "school": "School of Business",
+    "salt": "3a7b3fd64eb228fece937b3bd19b0f7a",
+    "passwordHash": "e2d121aa0bc11438bdc975e7e08f6583dd78bd6955ca4c42ace65ef5ce639e953173d50883f8445f72cdcfdae9f11979d2324438fa56d08fc65af7ca8a28e8f5",
+    "role": "FACULTY"
+  },
+  {
+    "email": "animesh@mru.edu.in",
+    "name": "Dr. Animesh Singh",
+    "departmentCode": "BUSINESS",
+    "department": "Business",
+    "school": "School of Business",
+    "salt": "b5cb46785cc4b2a3685ef73ccad23624",
+    "passwordHash": "d253f4a447d33c1e8aa5d412226f3f3aa000d176885ec482355c1955aa02b39f078cccfaac45f4678d4ac43bb44043199c4cf84058a6dcf24a728a332363cf48",
+    "role": "FACULTY"
+  },
+  {
+    "email": "shwetagoel@mru.edu.in",
+    "name": "Dr. Shweta Goel",
+    "departmentCode": "BUSINESS",
+    "department": "Business",
+    "school": "School of Business",
+    "salt": "b6ccea581dd95f270b61dddefc6b9601",
+    "passwordHash": "ac42c4b0c7eeb7ce11f540233e70b082fdec01f61ecea8ca0a514f628abc50727920a4e99c80268b42a81ced763cbe812aa999379c15f189e73c23ee2d3af8f3",
+    "role": "FACULTY"
+  },
+  {
+    "email": "gurpreetkaur@mru.edu.in",
+    "name": "Dr. Gurpreet Kaur",
+    "departmentCode": "BUSINESS",
+    "department": "Business",
+    "school": "School of Business",
+    "salt": "466a51b8276c6eb16a323f61479b936a",
+    "passwordHash": "a4f93ca4cd44e200b68a5696bef9a50cc5c347e66718478110863d20d17887cb2d73f874a16ed9b357fb244c142ad151474dfd2c99afd4aebf4e862b80ac0a26",
+    "role": "FACULTY"
+  },
+  {
+    "email": "rashi@mru.edu.in",
+    "name": "Dr. Rashi Banerji",
+    "departmentCode": "BUSINESS",
+    "department": "Business",
+    "school": "School of Business",
+    "salt": "d5f11eee23f63fda7afeaeb28574ece7",
+    "passwordHash": "ddbf6e0b48c80d0f85f00ebe2aa14653cf16f4b036ac80cb394c9a8913c3bdbc0a082bfacce92ed2c220a14d3fb7eab67e1787ddbcea33a2f77ed288d79fe954",
+    "role": "FACULTY"
+  },
+  {
+    "email": "sahibasharma@mru.edu.in",
+    "name": "Dr. Sahiba Sharma",
+    "departmentCode": "BUSINESS",
+    "department": "Business",
+    "school": "School of Business",
+    "salt": "c2a7ea1324227a7021c77c5719ade3d5",
+    "passwordHash": "19158f6d85906e28c5d7663a91f0f6bcf2f1857de2360362ea3f03fa450dcea00232cb16e5480c1eb5fc6fb059fc88d146c215055c22252522f10602691e25ad",
+    "role": "FACULTY"
+  },
+  {
+    "email": "teenahasija@mru.edu.in",
+    "name": "Dr. Teena Hasija",
+    "departmentCode": "BUSINESS",
+    "department": "Business",
+    "school": "School of Business",
+    "salt": "e18c1898aca5b727568378803e9da8f8",
+    "passwordHash": "3b74f2f6d09bca37a04f77988f971710381f0f049eee946297131e76aed2594d31345a556dc150b25e54ff9d5afbcafafe569ac0aeab64515b3a9a61327e4b3f",
+    "role": "FACULTY"
+  },
+  {
+    "email": "sonaltrivedi@mru.edu.in",
+    "name": "Ms. Sonal Trivedi",
+    "departmentCode": "BUSINESS",
+    "department": "Business",
+    "school": "School of Business",
+    "salt": "96e198ca39e6db4b1ae28371b53297f7",
+    "passwordHash": "fe2aeede1ecafaef997052e4f957751bf47581dc8b5e36a2af0c297553b626eaf2b8adbdce1be33b6c06817021b0966835ce7b0e3ade7fb58092441d75626e45",
+    "role": "FACULTY"
+  },
+  {
+    "email": "khushboogulati@mru.edu.in",
+    "name": "Dr. Khushboo Gulati",
+    "departmentCode": "BUSINESS",
+    "department": "Business",
+    "school": "School of Business",
+    "salt": "167919ebf0ece221d57ec40a91c6816e",
+    "passwordHash": "c1a693bd874e2789b978b67915c9754f19a5d8bc0080604555617e75d35fc64f21a66f8877cfd0ae5d644569efb63b0c72d8fd44c88ec8b5e0af1ccff2ea7db3",
+    "role": "FACULTY"
+  },
+  {
+    "email": "minakshisharma@mru.edu.in",
+    "name": "Dr. Minakshi Sharma",
+    "departmentCode": "BUSINESS",
+    "department": "Business",
+    "school": "School of Business",
+    "salt": "c9ceb8d730aa1850502a8983f767e1ef",
+    "passwordHash": "c776da6a79b0c40fdd0d9be086d2edbd5cc5ba74dac2c77c650f0de6cc6c6eb2d2bcce2d330143d46e894361d155793404814a8a77ea1f4fa868faf9b5011919",
+    "role": "FACULTY"
+  },
+  {
+    "email": "neerajchopra@mru.edu.in",
+    "name": "Dr. Neeraj Chopra",
+    "departmentCode": "BUSINESS",
+    "department": "Business",
+    "school": "School of Business",
+    "salt": "f9354f532b430b7187f38518f6ec86cb",
+    "passwordHash": "de37db10373f92452a313d4cedbfbeda32d51bdc890351b096f4dc74ae03638d8173b1d20fe2a3a6eb06ebc34631be914d52ad0899f0b71b5f75be3e153fd424",
+    "role": "FACULTY"
+  },
+  {
+    "email": "shagunchahal@mru.edu.in",
+    "name": "Dr. Shagun Chahal",
+    "departmentCode": "BUSINESS",
+    "department": "Business",
+    "school": "School of Business",
+    "salt": "07fc2cbbf3754f4fb8d93c3c2ea11dcf",
+    "passwordHash": "60e956bc5d9f4c01a6d8365dad1b83e55db084574fc90c5ea0a71de994f38f6e4a66ff634395b8d619dd56c7d5bd748e4a6213164286a7fefcb8c417bef10ffd",
+    "role": "FACULTY"
+  },
+  {
+    "email": "vandana@mru.edu.in",
+    "name": "Ms. Vandana Bhat",
+    "departmentCode": "BUSINESS",
+    "department": "Business",
+    "school": "School of Business",
+    "salt": "1d313286b8be7f1d79827365f12021b0",
+    "passwordHash": "815d722c4ce16526101b0584de56301b628525f69c43842ff0798e418e0044fe8b3618cdaa1317fede31aa9486ab78215ba27447e3b86ad1eeb5c35bf0f3753e",
+    "role": "FACULTY"
+  },
+  {
+    "email": "shanujain@mru.edu.in",
+    "name": "Ms. Shanu Jain",
+    "departmentCode": "BUSINESS",
+    "department": "Business",
+    "school": "School of Business",
+    "salt": "d99689604f6d3bc7f76f64fb60991e39",
+    "passwordHash": "078229dc614b92894c5f757eeb818016571f54afd1e126c875f91da7cd31fc9f50011f53fab86217abc39440a9a0be31a105d4871a9310439bdc7bff80d55040",
+    "role": "FACULTY"
+  },
+  {
+    "email": "akankshakathuria@mru.edu.in",
+    "name": "Ms. Akanksha Kathuria",
+    "departmentCode": "BUSINESS",
+    "department": "Business",
+    "school": "School of Business",
+    "salt": "536ddb34d190aa56b445ddd5f2359d9e",
+    "passwordHash": "f7ee507d290b712ae79442c6f405f42e506dfcae27f458fb24339f1189b9e217799d7d3056e26abcd5346cdc2b7eedcbc5f4364714c23a9a2e7b2fc6a15298d0",
+    "role": "FACULTY"
+  },
+  {
+    "email": "shellyagarwal@mru.edu.in",
+    "name": "Dr. Shelly Aggarwal",
+    "departmentCode": "BUSINESS",
+    "department": "Business",
+    "school": "School of Business",
+    "salt": "52becb030fe26f5ef7debe5224370278",
+    "passwordHash": "f37a37ff620983ac932b148564d383a672e98308781dbdb080d3540d1e642431e1b45906c07c2263cbdc5bfd8eac81d8382aae7598b9233d9e39d4ff950e23c9",
+    "role": "FACULTY"
+  },
+  {
+    "email": "shikhanagar@mru.edu.in",
+    "name": "Ms. Shikha Nagar",
+    "departmentCode": "BUSINESS",
+    "department": "Business",
+    "school": "School of Business",
+    "salt": "68c2cd494406564dde580c957a274857",
+    "passwordHash": "fdd9524f56770e34ba21cc31d5c5fbc34f82251b21d6597feb5bc1ea48963503960abbc05349f6f37d0085e0f99ec82aec7151443d58a34855f64c3198ce92c5",
+    "role": "FACULTY"
+  },
+  {
+    "email": "gunjanrana@mru.edu.in",
+    "name": "Dr. Gunjan A Rana",
+    "departmentCode": "BUSINESS",
+    "department": "Business",
+    "school": "School of Business",
+    "salt": "134586ec4d8cc3f70b0da6f5d5c139d7",
+    "passwordHash": "5000b67b3b67a469b259390b48c98cc3c70c8bfd1dce3afb39c8fee1068a37746ddcd4779cb6e1712c16f8d7cc76eb3181ab99bbb6091446bbe92061a3671e15",
+    "role": "FACULTY"
+  }
+]

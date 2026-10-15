@@ -15,7 +15,7 @@ Health check: http://localhost:3000/health
 
 ## Demo login
 
-- Faculty: gunjan@mru.edu.in (faculty account; legacy faculty@mru.edu.in paper records are reassigned on database initialization)
+- Faculty: faculty@mru.edu.in / demo123
 - COE: coe@mru.edu.in / demo123
 - Moderator: moderator@mru.edu.in / demo123
 
@@ -118,10 +118,3 @@ The `/api/papers` and `/api/papers/:id/replace-file` endpoints validate submissi
 - Dashboard/workflow status counts are normalized across common legacy labels (for example, `Approved by Moderator`, `APPROVED_BY_MODERATOR`, and `Final Approved & Archived`). A moderator report is intentionally limited to that moderator's assigned school/department, while the COE report can include all records; their totals will differ when the moderator is scoped to only part of the university.
 - Scheduled-vs-uploaded comparisons use course code, mapped department, semester, exam type, and programme where both sides provide it. A paper marked `Changes Required` is still an uploaded paper; it should not be counted as a missing upload.
 - The uploaded PDF is used for validating submissions, but PDF upload alone does not create structured course schedule rows. COE must add/import the datesheet courses into the COE Datesheet Schedule for the portal to calculate a numeric pending count. When no structured schedule rows exist, the dashboard now shows `—` and an explanatory message rather than incorrectly showing `0`.
-
-
-## Faculty login IDs (MRU directory import)
-
-The login ID is each faculty member's official email address from `Email ID's 14.10.2026.xlsx`. Faculty access is matched against the imported directory and the session shows the mapped school and department. The included `Faculty_Login_IDs.xlsx` contains the roster and grouping.
-
-**Security limitation:** this front-end version is not an authenticated production identity system; the password field is not verified by a server. Do not treat this as secure account provisioning or issue shared passwords. Before live institutional use, implement server-side authentication, individual password setup/reset, hashed passwords, and role/school/department authorization in PostgreSQL.
