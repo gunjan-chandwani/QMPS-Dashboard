@@ -368,7 +368,9 @@
                             Approved by Moderation <span id="coe-badge-moderation-approved" class="ml-1 px-1.5 py-0.5 bg-violet-100 text-violet-800 rounded-full text-[10px] font-bold">0</span>
                         </button>
                         <button onclick="filterCoeTab('RESUBMITTED')" id="coe-tab-resubmitted" class="pb-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-700 whitespace-nowrap">
-                            Changes Required / Awaiting Revision <span id="coe-badge-changes-required" class="ml-1 px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded-full text-[10px] font-bold">0</span>
+                            Revision Tracking
+                            <span title="Awaiting faculty revision" class="text-[10px] font-semibold text-amber-800">Pending <span id="coe-badge-changes-required" class="px-1.5 py-0.5 bg-amber-100 rounded-full font-bold">0</span></span>
+                            <span title="Revised papers submitted back to COE" class="text-[10px] font-semibold text-purple-800">Resubmitted <span id="coe-badge-resubmitted" class="px-1.5 py-0.5 bg-purple-100 rounded-full font-bold">0</span></span>
                         </button>
                         <button onclick="filterCoeTab('ARCHIVED')" id="coe-tab-archived" class="pb-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-700 whitespace-nowrap">
                             Final Archived Papers
@@ -1300,7 +1302,7 @@ window.onload = function() {
                 titleElement.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-600"></i><span>Approved by Moderation — ${document.getElementById('coe-badge-moderation-approved')?.textContent || 0} paper(s) awaiting COE final approval</span>`;
                 actionBar.classList.add('hidden');
             } else if (tab === 'RESUBMITTED') {
-                titleElement.innerHTML = `<i class="fa-solid fa-rotate-right text-amber-600"></i><span>Changes Required — ${document.getElementById('coe-badge-changes-required')?.textContent || 0} paper(s) returned to faculty for correction</span>`;
+                titleElement.innerHTML = `<i class="fa-solid fa-rotate-right text-purple-600"></i><span>Revision Tracking — ${document.getElementById('coe-badge-resubmitted')?.textContent || 0} revised paper(s) submitted to COE; ${document.getElementById('coe-badge-changes-required')?.textContent || 0} paper(s) still awaiting faculty revision</span>`;
                 actionBar.classList.add('hidden');
             } else {
                 titleElement.innerHTML = `<i class="fa-solid fa-box-archive text-teal-600"></i><span>Final Approved & Archived Question Papers</span>`;
@@ -1357,7 +1359,8 @@ window.onload = function() {
             const changesRequired = papers.filter(p => ['CHANGES_REQUIRED','CHANGES_REQUIRED_BY_MODERATOR'].includes(normalizedStatus(p)));
             const finalApproved = papers.filter(p => ['FINAL_APPROVED','FINAL_APPROVED_&_ARCHIVED'].includes(normalizedStatus(p)));
             const totalCard = (label, value, cls) => `<div class="rounded-xl border p-3 ${cls}"><div class="text-xs font-semibold opacity-80">${label}</div><div class="text-2xl font-black mt-1">${value}</div></div>`;
-            document.getElementById('coe-report-summary').innerHTML = [totalCard('Papers Uploaded',papers.length,'border-slate-200 bg-slate-50 text-slate-900'),totalCard('Pending Datesheet Uploads',schedules.length ? pending.length : '—','border-rose-200 bg-rose-50 text-rose-900'),totalCard('Approved by Moderation',moderated.length,'border-violet-200 bg-violet-50 text-violet-900'),totalCard('Final Approved by COE',finalApproved.length,'border-emerald-200 bg-emerald-50 text-emerald-900')].join('');
+            const resubmitted = papers.filter(p => normalizedStatus(p) === 'RESUBMITTED_TO_COE');
+            document.getElementById('coe-report-summary').innerHTML = [totalCard('Papers Uploaded',papers.length,'border-slate-200 bg-slate-50 text-slate-900'),totalCard('Pending Datesheet Uploads',schedules.length ? pending.length : '—','border-rose-200 bg-rose-50 text-rose-900'),totalCard('Awaiting Faculty Revision',changesRequired.length,'border-amber-200 bg-amber-50 text-amber-900'),totalCard('Revised Papers Resubmitted to COE',resubmitted.length,'border-purple-200 bg-purple-50 text-purple-900'),totalCard('Approved by Moderation',moderated.length,'border-violet-200 bg-violet-50 text-violet-900'),totalCard('Final Approved by COE',finalApproved.length,'border-emerald-200 bg-emerald-50 text-emerald-900')].join('');
             const keys = new Map();
             function row(school, dept, semester) { const key=[school,dept,semester].join('|||'); if(!keys.has(key)) keys.set(key,{school,dept,semester,scheduled:0,uploaded:0,pending:0,moderated:0,approved:0}); return keys.get(key); }
             schedules.forEach(s=>{const r=row(qpmsSchoolFor(s),qpmsDepartmentFor(s),s.semester||'Not specified');r.scheduled++;if(!(papers || []).some(p=>qpmsScheduleMatchesPaper(s,p)))r.pending++;});
@@ -1369,6 +1372,7 @@ window.onload = function() {
             document.getElementById('quick-changes-list').innerHTML=changesRequired.length?changesRequired.map(qpmsPaperLink).join(''):'<p class="text-xs text-slate-500">No papers are currently awaiting faculty correction.</p>';
             const moderationBadge = document.getElementById('coe-badge-moderation-approved'); if (moderationBadge) moderationBadge.textContent = moderated.length;
             const changesBadge = document.getElementById('coe-badge-changes-required'); if (changesBadge) changesBadge.textContent = changesRequired.length;
+            const resubmittedBadge = document.getElementById('coe-badge-resubmitted'); if (resubmittedBadge) resubmittedBadge.textContent = papers.filter(p => normalizedStatus(p) === 'RESUBMITTED_TO_COE').length;
             document.getElementById('quick-approved-count').textContent = finalApproved.length;
             document.getElementById('quick-approved-list').innerHTML=finalApproved.length?finalApproved.map(qpmsPaperLink).join(''):'<p class="text-xs text-slate-500">No final-approved papers available yet.</p>';
             document.getElementById('quick-pending-count').textContent = schedules.length ? pending.length : '—';
@@ -1562,7 +1566,7 @@ window.onload = function() {
             } else if (coeTabFilter === 'MODERATION_APPROVED') {
                 filtered = papersDatabase.filter(p => p.status === 'APPROVED');
             } else if (coeTabFilter === 'RESUBMITTED') {
-                filtered = papersDatabase.filter(p => ['CHANGES_REQUIRED', 'CHANGES_REQUIRED_BY_MODERATOR'].includes(String(p.status || '').toUpperCase()));
+                filtered = papersDatabase.filter(p => ['CHANGES_REQUIRED', 'CHANGES_REQUIRED_BY_MODERATOR', 'RESUBMITTED_TO_COE'].includes(String(p.status || '').toUpperCase()));
             } else {
                 filtered = papersDatabase.filter(p => p.status === 'FINAL_APPROVED');
             }
