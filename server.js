@@ -88,6 +88,25 @@ async function initDb() {
     created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()
   )`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_datesheet_schedule_lookup ON datesheet_schedule (UPPER(course_code), LOWER(department), LOWER(semester), LOWER(exam_type))`);
+
+  // One-time-safe account consolidation: preserve every paper and its workflow status
+  // while moving legacy demo-account ownership to Gunjan's official faculty ID.
+  await pool.query(`
+    UPDATE papers
+       SET faculty = 'gunjan@mru.edu.in', updated_at = NOW()
+     WHERE LOWER(TRIM(COALESCE(faculty, ''))) = 'faculty@mru.edu.in'
+  `);
+  await pool.query(`
+    UPDATE papers
+       SET moderation_details = REPLACE(moderation_details::text, 'faculty@mru.edu.in', 'gunjan@mru.edu.in')::jsonb,
+           updated_at = NOW()
+     WHERE moderation_details IS NOT NULL
+       AND moderation_details::text ILIKE '%faculty@mru.edu.in%'
+  `);
+  await pool.query(`
+    UPDATE coe_notices SET uploaded_by = 'gunjan@mru.edu.in'
+     WHERE LOWER(TRIM(COALESCE(uploaded_by, ''))) = 'faculty@mru.edu.in'
+  `);
 }
 
 function dateVariants(isoDate) {
