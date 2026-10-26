@@ -1163,9 +1163,15 @@ window.onload = function() {
             document.getElementById('view-moderator').classList.toggle('hidden', userObj.role !== 'MODERATOR');
 
             renderDashboard();
+            // Reload paper records for the signed-in account's permitted scope.
+            window.QPMS?.loadPapers(userObj).then(apiPapers => {
+                papersDatabase = apiPapers.map(window.QPMS.toUiPaper);
+                renderDashboard();
+                if (userObj.role === 'FACULTY') renderFacultyView();
+            }).catch(err => console.warn('Could not load account-scoped question papers:', err.message));
         }
 
-        function handleLogout() {
+        function handleLogout {
             currentSession = null;
             document.getElementById('app-portal').classList.add('hidden');
             document.getElementById('view-login').classList.remove('hidden');
@@ -2240,8 +2246,11 @@ window.QPMS = {
       auditForm: p.moderation_details || p.moderationDetails || (p.comments ? {comments: p.comments} : null), moderationDetails: p.moderation_details || p.moderationDetails || null, comments: p.comments || '', updatedAt: p.updated_at || '', submissionDate: p.submission_date || '', hasFile: p.has_file !== false, auditTrail: [{action: 'Uploaded Version 1', role: 'Faculty', user: p.faculty || '', timestamp: p.created_at ? new Date(p.created_at).toLocaleString() : '', details: 'Submitted question paper to COE'}]
     };
   },
-  async loadPapers() {
-    const r = await fetch('/api/papers', {cache:'no-store'});
+  async loadPapers(session = currentSession) {
+    const params = new URLSearchParams();
+    if (session?.email) params.set('email', session.email);
+    if (session?.role) params.set('role', session.role);
+    const r = await fetch('/api/papers' + (params.toString() ? '?' + params.toString() : ''), {cache:'no-store'});
     const j = await r.json();
     if (!r.ok) throw new Error(j.error || 'Could not load papers');
     return j.papers || [];
@@ -2249,6 +2258,7 @@ window.QPMS = {
   async createPaper(data, file) {
     const fd = new FormData();
     Object.entries(data || {}).forEach(([k,v]) => { if (v !== undefined && v !== null) fd.append(k, v); });
+    if (!fd.has('ownerEmail')) fd.append('ownerEmail', String(currentSession?.email || 'gunjan@mru.edu.in').toLowerCase());
     fd.append('file', file);
     const r = await fetch('/api/papers', {method:'POST', body:fd});
     const j = await r.json();
