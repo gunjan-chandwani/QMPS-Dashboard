@@ -81,6 +81,12 @@ async function initDb() {
           department_code=EXCLUDED.department_code,
           department=EXCLUDED.department,
           school=EXCLUDED.school,
+          password_salt=CASE
+            WHEN LOWER(EXCLUDED.email) <> 'gunjan@mru.edu.in' AND faculty_accounts.must_change_password=TRUE
+            THEN EXCLUDED.password_salt ELSE faculty_accounts.password_salt END,
+          password_hash=CASE
+            WHEN LOWER(EXCLUDED.email) <> 'gunjan@mru.edu.in' AND faculty_accounts.must_change_password=TRUE
+            THEN EXCLUDED.password_hash ELSE faculty_accounts.password_hash END,
           updated_at=NOW()
       `, [user.email, user.name, user.departmentCode, user.department, user.school, newAccountSalt.toString("hex"), newAccountHash]);
     }
