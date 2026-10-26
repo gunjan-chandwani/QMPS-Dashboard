@@ -1942,7 +1942,7 @@ window.onload = function() {
             // Refresh the list before checking, so a paper uploaded in another tab/session is detected.
             if (!paperId) {
                 try {
-                    const latestPapers = await window.QPMS.loadPapers();
+                    const latestPapers = await window.QPMS.loadPapers(currentSession);
                     papersDatabase = latestPapers.map(window.QPMS.toUiPaper);
                 } catch (refreshError) {
                     console.warn('Could not refresh papers before duplicate check:', refreshError);
@@ -2116,7 +2116,7 @@ window.onload = function() {
                 if (!window.QPMS) throw new Error('Persistent API is not available');
                 await window.QPMS.updatePaper(paper.id, {status: paper.status, comments, moderationDetails: paper.auditForm});
                 // Re-read the server record so the displayed status always reflects PostgreSQL.
-                const fresh = await window.QPMS.loadPapers();
+                const fresh = await window.QPMS.loadPapers(currentSession);
                 papersDatabase = fresh.map(window.QPMS.toUiPaper);
             } catch (err) {
                 paper.status = previousStatus;
@@ -2148,7 +2148,7 @@ window.onload = function() {
             try {
                 if (!window.QPMS) throw new Error('Persistent API is not available');
                 await window.QPMS.updatePaper(paper.id, {status: paper.status});
-                const fresh = await window.QPMS.loadPapers();
+                const fresh = await window.QPMS.loadPapers(currentSession);
                 papersDatabase = fresh.map(window.QPMS.toUiPaper);
             } catch (err) {
                 paper.status = previousStatus;
@@ -2286,20 +2286,19 @@ window.QPMS = {
 (async function loadPersistentQPMSData() {
   loadCoeNotices();
   loadDatesheetSchedule();
-  try {
-    const apiPapers = await window.QPMS.loadPapers();
-    papersDatabase = apiPapers.map(window.QPMS.toUiPaper);
-    window.dispatchEvent(new CustomEvent("qpms:persistent-data-loaded", {detail: papersDatabase}));
-    // Repaint immediately after PostgreSQL data arrives. Do not let a separate widget
-    // failure block the faculty's saved submission history.
-    if (currentSession) renderDashboard();
-    const facultyTable = document.getElementById('faculty-papers-list');
-    if (facultyTable && currentSession && currentSession.role === 'FACULTY') {
-      try { renderFacultyView(); } catch (err) { console.error('QMPS faculty paper repaint failed:', err); }
+  // Never request or populate question-paper records before a user has signed in.
+  // Login handler loads the records using that account's scope.
+  if (currentSession) {
+    try {
+      const apiPapers = await window.QPMS.loadPapers(currentSession);
+      papersDatabase = apiPapers.map(window.QPMS.toUiPaper);
+      window.dispatchEvent(new CustomEvent("qpms:persistent-data-loaded", {detail: papersDatabase}));
+      renderDashboard();
+      if (currentSession.role === 'FACULTY') renderFacultyView();
+      console.log("QPMS: loaded", papersDatabase.length, "account-scoped records from PostgreSQL");
+    } catch (e) {
+      console.warn("QPMS: account-scoped paper data could not be loaded:", e.message);
     }
-    console.log("QPMS: loaded", papersDatabase.length, "persistent records from PostgreSQL");
-  } catch (e) {
-    console.warn("QPMS: persistent data could not be loaded:", e.message);
   }
 })();
 </script>
