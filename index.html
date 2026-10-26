@@ -1171,7 +1171,7 @@ window.onload = function() {
             }).catch(err => console.warn('Could not load account-scoped question papers:', err.message));
         }
 
-        function handleLogout {
+        function handleLogout() {
             currentSession = null;
             document.getElementById('app-portal').classList.add('hidden');
             document.getElementById('view-login').classList.remove('hidden');
