@@ -123,6 +123,26 @@ async function initDb() {
       );
       console.log("One-time faculty temporary-password recovery completed (Gunjan account excluded).");
     }
+    // One-time Gunjan account recovery after faculty password synchronization.
+    // The account must change this temporary password immediately after login.
+    const gunjanRecovery = await pool.query(
+      "SELECT migration_key FROM app_migrations WHERE migration_key = $1",
+      ["gunjan_password_recovery_v1"]
+    );
+    if (gunjanRecovery.rowCount === 0) {
+      const gunjanSalt = crypto.randomBytes(16);
+      const gunjanHash = crypto.scryptSync("mru123", gunjanSalt, 64).toString("hex");
+      await pool.query(`
+        UPDATE faculty_accounts
+        SET password_salt=$2, password_hash=$3, must_change_password=TRUE, active=TRUE, updated_at=NOW()
+        WHERE LOWER(email)=LOWER($1)
+      `, ["gunjan@mru.edu.in", gunjanSalt.toString("hex"), gunjanHash]);
+      await pool.query(
+        "INSERT INTO app_migrations (migration_key) VALUES ($1) ON CONFLICT DO NOTHING",
+        ["gunjan_password_recovery_v1"]
+      );
+      console.log("One-time Gunjan account password recovery completed.");
+    }
     console.log(`Faculty accounts provisioned: ${seedUsers.length}.`);
   }
 
