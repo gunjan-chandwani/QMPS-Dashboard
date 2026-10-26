@@ -1311,8 +1311,12 @@ window.onload = function() {
             const myEmail = String(currentSession?.email || '').trim().toLowerCase();
             const myName = String(currentSession?.name || '').trim().toLowerCase();
             const myPapers = papersDatabase.filter(paper => {
-                const owner = String(paper.facultyName || paper.faculty || '').trim().toLowerCase();
-                return owner && (owner === myName || owner === myEmail);
+                // Use the database ownership field as the primary identity. Faculty display
+                // names can differ from the signed-in account name on older submissions.
+                const ownerEmail = String(paper.ownerEmail || '').trim().toLowerCase();
+                const ownerName = String(paper.facultyName || paper.faculty || '').trim().toLowerCase();
+                return (ownerEmail && ownerEmail === myEmail) ||
+                    (ownerName && (ownerName === myName || ownerName === myEmail));
             });
             if (myPapers.length === 0) {
                 container.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400">No question papers uploaded under your account yet. Use Upload Question Paper to submit one.</td></tr>`;
@@ -2241,7 +2245,7 @@ window.QPMS = {
       id, courseName: p.title || p.subject || 'Question Paper', courseCode: (p.course || '').toUpperCase(), school: p.school || '',
       department: p.department || '', program: p.program || '', semester: p.semester || '',
       examType: p.exam || '', paperDate: p.submission_date ? new Date(p.submission_date).toISOString().slice(0,10) : '',
-      facultyName: p.faculty || '', currentVersion: 1, status: ({'Submitted by Faculty':'SUBMITTED_TO_COE','Submitted to COE':'SUBMITTED_TO_COE','Approved by Moderator':'APPROVED','Approved by Moderation':'APPROVED','Moderation Approved':'APPROVED','APPROVED_BY_MODERATOR':'APPROVED','Changes Required':'CHANGES_REQUIRED','Resubmitted to COE':'RESUBMITTED_TO_COE','Final Approved':'FINAL_APPROVED','Final Approved & Archived':'FINAL_APPROVED'}[p.status] || p.status || 'SUBMITTED_TO_COE'), hasFile: p.has_file !== false,
+      facultyName: p.faculty || p.faculty_name || p.owner_email || '', ownerEmail: p.owner_email || p.ownerEmail || '', currentVersion: 1, status: ({'Submitted by Faculty':'SUBMITTED_TO_COE','Submitted to COE':'SUBMITTED_TO_COE','Approved by Moderator':'APPROVED','Approved by Moderation':'APPROVED','Moderation Approved':'APPROVED','APPROVED_BY_MODERATOR':'APPROVED','Changes Required':'CHANGES_REQUIRED','Resubmitted to COE':'RESUBMITTED_TO_COE','Final Approved':'FINAL_APPROVED','Final Approved & Archived':'FINAL_APPROVED'}[p.status] || p.status || 'SUBMITTED_TO_COE'), hasFile: p.has_file !== false,
       versions: [{version: 1, filename, uploadTime: p.created_at ? new Date(p.created_at).toLocaleString() : '', uploadedBy: p.faculty || ''}],
       auditForm: p.moderation_details || p.moderationDetails || (p.comments ? {comments: p.comments} : null), moderationDetails: p.moderation_details || p.moderationDetails || null, comments: p.comments || '', updatedAt: p.updated_at || '', submissionDate: p.submission_date || '', hasFile: p.has_file !== false, auditTrail: [{action: 'Uploaded Version 1', role: 'Faculty', user: p.faculty || '', timestamp: p.created_at ? new Date(p.created_at).toLocaleString() : '', details: 'Submitted question paper to COE'}]
     };
