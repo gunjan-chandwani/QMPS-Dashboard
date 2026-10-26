@@ -65,6 +65,13 @@ async function initDb() {
   if (fs.existsSync(facultySeedPath)) {
     const seedUsers = JSON.parse(fs.readFileSync(facultySeedPath, "utf8"));
     for (const user of seedUsers) {
+      // Only newly created non-Gunjan accounts receive the requested temporary password.
+      // Existing account passwords are never overwritten by this startup seed.
+      const isGunjanAccount = String(user.email || "").trim().toLowerCase() === "gunjan@mru.edu.in";
+      const newAccountSalt = isGunjanAccount ? Buffer.from(user.salt, "hex") : crypto.randomBytes(16);
+      const newAccountHash = isGunjanAccount
+        ? user.passwordHash
+        : crypto.scryptSync("mru123", newAccountSalt, 64).toString("hex");
       await pool.query(`
         INSERT INTO faculty_accounts
           (email, full_name, department_code, department, school, role, password_salt, password_hash, must_change_password, active)
@@ -75,7 +82,7 @@ async function initDb() {
           department=EXCLUDED.department,
           school=EXCLUDED.school,
           updated_at=NOW()
-      `, [user.email, user.name, user.departmentCode, user.department, user.school, user.salt, user.passwordHash]);
+      `, [user.email, user.name, user.departmentCode, user.department, user.school, newAccountSalt.toString("hex"), newAccountHash]);
     }
     console.log(`Faculty accounts provisioned: ${seedUsers.length} (existing passwords preserved for existing accounts).`);
   }
