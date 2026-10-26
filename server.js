@@ -90,7 +90,40 @@ async function initDb() {
           updated_at=NOW()
       `, [user.email, user.name, user.departmentCode, user.department, user.school, newAccountSalt.toString("hex"), newAccountHash]);
     }
-    console.log(`Faculty accounts provisioned: ${seedUsers.length} (existing passwords preserved for existing accounts).`);
+    // One-time recovery migration: align all seeded faculty accounts to the published temporary password.
+    // Gunjan's account is deliberately excluded. A migration marker prevents later deployments
+    // from resetting passwords that faculty have already changed.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS app_migrations (
+        migration_key TEXT PRIMARY KEY,
+        applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    const resetMigration = await pool.query(
+      "SELECT migration_key FROM app_migrations WHERE migration_key = $1",
+      ["faculty_temp_password_reset_v1"]
+    );
+    if (resetMigration.rowCount === 0) {
+      for (const user of seedUsers) {
+        if (String(user.email || "").trim().toLowerCase() === "gunjan@mru.edu.in") continue;
+        const salt = crypto.randomBytes(16);
+        const hash = crypto.scryptSync("mru123", salt, 64).toString("hex");
+        await pool.query(`
+          UPDATE faculty_accounts
+          SET password_salt = $2,
+              password_hash = $3,
+              must_change_password = TRUE,
+              updated_at = NOW()
+          WHERE LOWER(email) = LOWER($1)
+        `, [user.email, salt.toString("hex"), hash]);
+      }
+      await pool.query(
+        "INSERT INTO app_migrations (migration_key) VALUES ($1) ON CONFLICT DO NOTHING",
+        ["faculty_temp_password_reset_v1"]
+      );
+      console.log("One-time faculty temporary-password recovery completed (Gunjan account excluded).");
+    }
+    console.log(`Faculty accounts provisioned: ${seedUsers.length}.`);
   }
 
   await pool.query(`
