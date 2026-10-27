@@ -1332,7 +1332,13 @@ window.onload = function() {
                     <td class="px-4 py-3.5 text-slate-600">${paper.department}<br/><span class="text-xs text-slate-400">${paper.program} • ${paper.semester}</span></td>
                     <td class="px-4 py-3.5 text-slate-600 font-medium">${paper.examType}<br/><span class="text-xs text-amber-700"><i class="fa-regular fa-calendar mr-1"></i>${paper.paperDate}</span></td>
                     <td class="px-4 py-3.5"><span class="px-2 py-0.5 bg-slate-100 rounded text-xs font-bold text-slate-700">v${paper.currentVersion}</span></td>
-                    <td class="px-4 py-3.5">${getStatusBadge(paper.status)}</td>
+                    <td class="px-4 py-3.5">
+                        ${getStatusBadge(paper.status)}
+                        ${['CHANGES_REQUIRED','CHANGES_REQUIRED_BY_MODERATOR'].includes(qpmsNormalizeStatus(paper.status)) ? `<div class="mt-2 max-w-md rounded-lg border border-amber-200 bg-amber-50 p-3 text-left whitespace-normal">
+                            <div class="text-xs font-bold text-amber-900 mb-1"><i class="fa-solid fa-comment-dots mr-1"></i> Moderator Changes Required</div>
+                            <div class="text-xs text-amber-900">${escapeHtml(String(qpmsAuditDetails(paper).comments || "No written comments recorded. Open Audit Details to review the saved checklist."))}</div>
+                        </div>` : ''}
+                    </td>
                     <td class="px-4 py-3.5 text-right space-x-2">
                         ${paper.hasFile !== false ? `
                             <a href="/api/papers/${encodeURIComponent(paper.id)}/view" target="_blank" rel="noopener" class="inline-flex items-center px-2.5 py-1 bg-brand-600 hover:bg-brand-700 text-white rounded text-xs font-semibold shadow-xs"><i class="fa-solid fa-eye mr-1"></i> View</a>
