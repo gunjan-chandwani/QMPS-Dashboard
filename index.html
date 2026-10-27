@@ -1338,23 +1338,8 @@ window.onload = function() {
                             <a href="/api/papers/${encodeURIComponent(paper.id)}/view" target="_blank" rel="noopener" class="inline-flex items-center px-2.5 py-1 bg-brand-600 hover:bg-brand-700 text-white rounded text-xs font-semibold shadow-xs"><i class="fa-solid fa-eye mr-1"></i> View</a>
                             <a href="/api/papers/${encodeURIComponent(paper.id)}/file" class="inline-flex items-center px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold shadow-xs"><i class="fa-solid fa-download mr-1"></i> Download</a>
                         ` : ''}
-                        ${paper.status === 'CHANGES_REQUIRED' ? `
-                            <button onclick="openRevisionModal('${paper.id}')" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs font-semibold shadow-xs">
-                                <i class="fa-solid fa-pen-to-square mr-1"></i> Revise Paper
-                            </button>
-                        ` : ''}
-                        <button onclick="openAuditModal('${paper.id}')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-medium">
-                            <i class="fa-solid fa-timeline mr-1"></i> Audit Trail
-                        </button>
                     </td>
                 </tr>
-                ${(paper.moderationDetails || paper.moderation_details || paper.auditForm || paper.comments) ? (() => {
-                    const audit = paper.moderationDetails || paper.moderation_details || paper.auditForm || {};
-                    const feedback = audit.comments || paper.comments || '';
-                    const reviewDate = audit.date || paper.moderationDate || '';
-                    const checklist = [audit.q1 && `Q1: ${audit.q1}`, audit.q2 && `Q2: ${audit.q2}`, audit.q3 && `Q3: ${audit.q3}`, audit.q4 && `Q4: ${audit.q4}`, audit.q5 && `Q5: ${audit.q5}`, audit.q6 && `Q6: ${audit.q6}`, audit.q7 && `Q7: ${audit.q7}`, audit.q8 && `Q8: ${audit.q8}`, audit.q9 && `Q9: ${audit.q9}`, audit.q10 && `Q10: ${audit.q10}`, audit.q11 && `Q11: ${audit.q11}`, audit.q12 && `Q12: ${audit.q12}`].filter(Boolean).join(' • ');
-                    return `<tr class="bg-amber-50/70"><td colspan="6" class="px-4 pb-4 pt-2"><div class="rounded-lg border border-amber-200 p-3"><div class="flex flex-wrap items-center justify-between gap-2"><strong class="text-amber-900"><i class="fa-solid fa-message mr-1"></i> Moderator Feedback / Required Changes</strong><span class="text-xs text-amber-800">${escapeHtml(reviewDate || 'Review date not recorded')}</span></div><p class="mt-2 text-sm text-slate-800 whitespace-pre-wrap">${escapeHtml(feedback || (paper.status === 'CHANGES_REQUIRED' ? 'Moderator marked changes as required. Please contact the moderator/COE for details.' : 'No written comments provided.'))}</p>${checklist ? `<p class="mt-2 text-xs text-slate-700"><strong>Audit checklist:</strong> ${escapeHtml(checklist)}</p>` : ''}${paper.status === 'CHANGES_REQUIRED' ? '<p class="mt-2 text-xs font-bold text-amber-900">Please revise your question paper according to the moderator feedback and resubmit it.</p>' : ''}</div></td></tr>`;
-                })() : ''}
             `).join('');
         }
 
@@ -1836,6 +1821,11 @@ window.onload = function() {
                                 <i class="fa-solid fa-clipboard-check mr-1"></i> Fill Audit Checklist
                             </button>
                         ` : ''}
+                        ${['CHANGES_REQUIRED','CHANGES_REQUIRED_BY_MODERATOR'].includes(qpmsNormalizeStatus(paper.status)) ? `
+                            <button onclick="openRevisionModal('${paper.id}')" class="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs font-semibold shadow-xs">
+                                <i class="fa-solid fa-file-arrow-up mr-1"></i> Upload Revised Paper
+                            </button>
+                        ` : ''}
                         <button onclick="openAuditModal('${paper.id}')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-medium">
                             Audit Details
                         </button>
@@ -1978,7 +1968,7 @@ window.onload = function() {
                 semester: document.getElementById('upload-semester').value,
                 course: document.getElementById('upload-course-code').value.toUpperCase(),
                 subject: courseName,
-                faculty: currentSession?.name || 'Unknown Faculty',
+                faculty: paperId ? (papersDatabase.find(p => String(p.id) === String(paperId))?.facultyName || currentSession?.name || 'Unknown Faculty') : (currentSession?.name || 'Unknown Faculty'),
                 exam: document.getElementById('upload-exam').value,
                 status: paperId ? 'RESUBMITTED_TO_COE' : 'SUBMITTED_TO_COE',
                 expected: true,
