@@ -687,6 +687,42 @@ function makeZip(files) {
   return Buffer.concat([...localParts, ...centralParts, end]);
 }
 
+app.get('/api/papers/revised-by-school.zip', async (req, res) => {
+  try {
+    const school = String(req.query.school || '').trim();
+    if (!school) return res.status(400).send('Please select a school.');
+    const { rows } = await pool.query(`
+      SELECT id::text AS id, original_filename, file_path, file_data, course, subject, title
+      FROM papers
+      WHERE UPPER(REPLACE(COALESCE(status,''), ' ', '_')) = 'RESUBMITTED_TO_COE'
+        AND LOWER(TRIM(COALESCE(school,''))) = LOWER(TRIM($1))
+        AND (file_data IS NOT NULL OR file_path IS NOT NULL)
+      ORDER BY created_at ASC
+    `, [school]);
+    const files = [];
+    const used = new Set();
+    for (const p of rows) {
+      let data = p.file_data;
+      if (!data && p.file_path && fs.existsSync(p.file_path)) data = fs.readFileSync(p.file_path);
+      if (!data) continue;
+      const base = String(p.original_filename || `${p.course || p.subject || p.title || 'revised-paper'}-${p.id}.pdf`)
+        .replace(/[\\/:*?"<>|]/g, '_').trim() || `revised-paper-${p.id}.pdf`;
+      let name = `${String(p.id).padStart(5, '0')}_${base}`;
+      let suffix = 1;
+      while (used.has(name.toLowerCase())) name = `${String(p.id).padStart(5, '0')}_${suffix++}_${base}`;
+      used.add(name.toLowerCase());
+      files.push({ name, data });
+    }
+    if (!files.length) return res.status(404).send('No revised papers are available for this school.');
+    const zip = makeZip(files);
+    const safeSchool = school.replace(/[^a-z0-9_-]+/gi, '_');
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="QPMS_Revised_Papers_${safeSchool}_${new Date().toISOString().slice(0,10)}.zip"`);
+    res.setHeader('Content-Length', zip.length);
+    res.end(zip);
+  } catch (e) { res.status(500).send(`Could not package revised papers: ${e.message}`); }
+});
+
 app.get('/api/papers/download-all.zip', async (_req, res) => {
   try {
     const { rows } = await pool.query(`SELECT id::text AS id, title, course, subject, original_filename, file_path, file_data
