@@ -1429,6 +1429,33 @@ window.onload = function() {
             return `<div class="bg-white/80 border border-white rounded-lg p-2"><div class="font-semibold text-slate-800 truncate" title="${escapeHtml(p.courseName || '')}">${escapeHtml(p.courseName || 'Question Paper')}</div><div class="text-[10px] text-slate-500">${escapeHtml(p.courseCode || '')} · ${escapeHtml(p.department || '')}</div><div class="flex gap-2 mt-1"><a class="text-[11px] font-bold text-brand-700 hover:underline" target="_blank" href="/api/papers/${id}/view">View</a><a class="text-[11px] font-bold text-emerald-700 hover:underline" href="/api/papers/${id}/file">Download</a></div></div>`;
         }
         function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+        function qpmsCoeSchoolDownloadControl(category, items) {
+            const schools = [...new Map((items || []).filter(x => String(x.school || '').trim())
+                .map(x => [String(x.school).trim(), qpmsSchoolFor(x)])).entries()].sort((a,b) => a[1].localeCompare(b[1]));
+            const id = 'coe-download-school-' + category.toLowerCase();
+            return `<div class="flex flex-wrap items-center gap-2 mb-2 rounded-lg border border-slate-200 bg-white p-2">
+                <label for="${id}" class="text-[11px] font-semibold text-slate-700">School-wise download</label>
+                <select id="${id}" class="max-w-48 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs"><option value="">Select School</option>${schools.map(([v,l]) => `<option value="${escapeHtml(v)}">${escapeHtml(l)}</option>`).join('')}</select>
+                <button type="button" onclick="downloadCoeCategoryBySchool('${category}')" class="rounded-md bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-900">Download All</button>
+            </div>`;
+        }
+        function downloadCoeCategoryBySchool(category) {
+            const id = 'coe-download-school-' + String(category).toLowerCase();
+            const school = document.getElementById(id)?.value || '';
+            if (!school) { showToast('Please select a school first.', 'warning'); return; }
+            if (category === 'NOT_UPLOADED') {
+                const papers = (papersDatabase || []).filter(p => qpmsReportInScope(p, 'COE'));
+                const schedules = (datesheetSchedule || []).filter(s => qpmsReportInScope(s, 'COE') && String(s.school || '').trim() === school);
+                const missing = schedules.filter(s => !papers.some(p => qpmsScheduleMatchesPaper(s,p)));
+                const rows = [['School','Department','Programme','Semester','Course Code','Course Name','Exam Type','Exam Date','Faculty']];
+                missing.forEach(s => rows.push([qpmsSchoolFor(s),qpmsDepartmentFor(s),s.program||'',s.semester||'',s.courseCode||'',s.courseName||'',s.examType||'',s.paperDate||'',s.facultyName||'Faculty not assigned']));
+                if (!missing.length) { showToast('No missing datesheet papers found for this school.', 'warning'); return; }
+                qpmsDownloadCsv('QPMS_Datesheet_Papers_Not_Uploaded_' + school.replace(/[^a-z0-9_-]+/gi,'_') + '.csv', rows);
+                return;
+            }
+            window.location.href = '/api/papers/download-by-school.zip?category=' + encodeURIComponent(category) + '&school=' + encodeURIComponent(school);
+        }
+
         function renderCoeReports() {
             const inScope = item => !currentSession?.schoolScope || (qpmsSchoolFor(item) === currentSession.schoolScope && (!currentSession.departmentScope || qpmsDepartmentFor(item).toUpperCase() === currentSession.departmentScope.toUpperCase()));
             const papers = (papersDatabase || []).filter(inScope);
@@ -1458,16 +1485,16 @@ window.onload = function() {
             papers.forEach(p=>{const r=row(qpmsSchoolFor(p),qpmsDepartmentFor(p),p.semester||'Not specified');r.uploaded++;if(['APPROVED','APPROVED_BY_MODERATOR','MODERATION_APPROVED'].includes(String(p.status||'').toUpperCase().replace(/[ -]+/g,'_')))r.moderated++;if(['FINAL_APPROVED','FINAL_APPROVED_&_ARCHIVED'].includes(String(p.status||'').toUpperCase().replace(/[ -]+/g,'_')))r.approved++;});
             document.getElementById('coe-school-report').innerHTML = [...keys.values()].sort((a,b)=>a.school.localeCompare(b.school)||a.dept.localeCompare(b.dept)||a.semester.localeCompare(b.semester)).map(r=>`<tr><td class="p-3 font-semibold text-slate-800">${escapeHtml(r.school)}</td><td class="p-3">${escapeHtml(r.dept)}</td><td class="p-3">${escapeHtml(r.semester)}</td><td class="p-3">${r.scheduled}</td><td class="p-3 font-bold">${r.uploaded}</td><td class="p-3 ${r.pending?'text-rose-700 font-bold':''}">${r.pending}</td><td class="p-3 text-violet-700 font-bold">${r.moderated}</td><td class="p-3 text-emerald-700 font-bold">${r.approved}</td></tr>`).join('');
             document.getElementById('quick-moderated-count').textContent = moderated.length;
-            document.getElementById('quick-moderated-list').innerHTML=moderated.length?moderated.map(qpmsPaperLink).join(''):'<p class="text-xs text-slate-500">No papers currently approved by moderation.</p>';
+            document.getElementById('quick-moderated-list').innerHTML=qpmsCoeSchoolDownloadControl('MODERATION_APPROVED', moderated) + (moderated.length?moderated.map(qpmsPaperLink).join(''):'<p class="text-xs text-slate-500">No papers currently approved by moderation.</p>');
             document.getElementById('quick-changes-count').textContent = changesRequired.length;
-            document.getElementById('quick-changes-list').innerHTML=changesRequired.length?changesRequired.map(qpmsPaperLink).join(''):'<p class="text-xs text-slate-500">No papers are currently awaiting faculty correction.</p>';
+            document.getElementById('quick-changes-list').innerHTML=qpmsCoeSchoolDownloadControl('CHANGES_REQUIRED', changesRequired) + (changesRequired.length?changesRequired.map(qpmsPaperLink).join(''):'<p class="text-xs text-slate-500">No papers are currently awaiting correction.</p>');
             const moderationBadge = document.getElementById('coe-badge-moderation-approved'); if (moderationBadge) moderationBadge.textContent = moderated.length;
             const changesBadge = document.getElementById('coe-badge-changes-required'); if (changesBadge) changesBadge.textContent = changesRequired.length;
             const resubmittedBadge = document.getElementById('coe-badge-resubmitted'); if (resubmittedBadge) resubmittedBadge.textContent = papers.filter(p => normalizedStatus(p) === 'RESUBMITTED_TO_COE').length;
             document.getElementById('quick-approved-count').textContent = finalApproved.length;
-            document.getElementById('quick-approved-list').innerHTML=finalApproved.length?finalApproved.map(qpmsPaperLink).join(''):'<p class="text-xs text-slate-500">No final-approved papers available yet.</p>';
+            document.getElementById('quick-approved-list').innerHTML=qpmsCoeSchoolDownloadControl('FINAL_APPROVED', finalApproved) + (finalApproved.length?finalApproved.map(qpmsPaperLink).join(''):'<p class="text-xs text-slate-500">No final-approved papers available yet.</p>');
             document.getElementById('quick-pending-count').textContent = schedules.length ? pending.length : '—';
-            document.getElementById('quick-pending-list').innerHTML = pending.length ? pending.map(s=>`<div class="bg-white/80 border border-white rounded-lg p-2"><div class="font-semibold text-slate-800">${escapeHtml(s.courseName)}</div><div class="text-[10px] text-slate-500">${escapeHtml(s.courseCode)} · ${escapeHtml(qpmsSchoolFor(s))} · ${escapeHtml(qpmsDepartmentFor(s))} · ${escapeHtml(s.semester||'Semester not set')}</div><div class="text-[10px] text-rose-700 mt-1">Exam: ${escapeHtml(s.paperDate||'Date not set')} · ${escapeHtml(s.facultyName||'Faculty not assigned')}${qpmsSchoolFor(s)==='School mapping required' ? ' · COE school mapping required' : ''}</div></div>`).join('') : (schedules.length ? '<p class="text-xs text-emerald-700">All structured schedule entries have matching uploaded papers.</p>' : '<p class="text-xs text-amber-800">No structured datesheet schedule rows are loaded. Uploading a PDF alone does not create course-wise pending records; add/import the courses in COE Datesheet Schedule to calculate this count.</p>');
+            document.getElementById('quick-pending-list').innerHTML=qpmsCoeSchoolDownloadControl('NOT_UPLOADED', pending) + (pending.length ? pending.map(s=>`<div class="bg-white/80 border border-white rounded-lg p-2"><div class="font-semibold text-slate-800">${escapeHtml(s.courseName)}</div><div class="text-[10px] text-slate-500">${escapeHtml(s.courseCode)} · ${escapeHtml(qpmsSchoolFor(s))} · ${escapeHtml(qpmsDepartmentFor(s))} · ${escapeHtml(s.semester||'Semester not set')}</div><div class="text-[10px] text-rose-700 mt-1">Exam: ${escapeHtml(s.paperDate||'Date not set')} · ${escapeHtml(s.facultyName||'Faculty not assigned')}${qpmsSchoolFor(s)==='School mapping required' ? ' · COE school mapping required' : ''}</div></div>`).join('') : (schedules.length ? '<p class="text-xs text-emerald-700">All structured schedule entries have matching uploaded papers.</p>' : '<p class="text-xs text-amber-800">No structured datesheet schedule rows are loaded. Uploading a PDF alone does not create course-wise pending records; add/import the courses in COE Datesheet Schedule to calculate this count.</p>'));
         }
         function qpmsReportInScope(item, role) {
             // Moderator reports must only include records assigned to that moderator's scope.
