@@ -1443,12 +1443,13 @@ window.onload = function() {
             const revisedSchoolSelect = document.getElementById('coe-revised-school');
             if (revisedSchoolSelect) {
                 const selectedSchool = revisedSchoolSelect.value;
-                const revisedSchools = [...new Set((papersDatabase || [])
-                    .filter(p => String(p.status || '').toUpperCase().replace(/[ -]+/g, '_') === 'RESUBMITTED_TO_COE' && p.hasFile !== false)
-                    .map(p => qpmsSchoolFor(p)).filter(Boolean))].sort((a,b) => a.localeCompare(b));
+                const revisedSchools = [...new Map((papersDatabase || [])
+                    .filter(p => String(p.status || '').toUpperCase().replace(/[ -]+/g, '_') === 'RESUBMITTED_TO_COE' && p.hasFile !== false && String(p.school || '').trim())
+                    .map(p => [String(p.school).trim(), qpmsSchoolFor(p)])).entries()]
+                    .sort((a,b) => a[1].localeCompare(b[1]));
                 revisedSchoolSelect.innerHTML = '<option value="">Select School</option>' + revisedSchools
-                    .map(school => `<option value="${escapeHtml(school)}">${escapeHtml(school)}</option>`).join('');
-                if (revisedSchools.includes(selectedSchool)) revisedSchoolSelect.value = selectedSchool;
+                    .map(([schoolValue, schoolLabel]) => `<option value="${escapeHtml(schoolValue)}">${escapeHtml(schoolLabel)}</option>`).join('');
+                if (revisedSchools.some(([schoolValue]) => schoolValue === selectedSchool)) revisedSchoolSelect.value = selectedSchool;
             }
             document.getElementById('coe-report-summary').innerHTML = [totalCard('Papers Uploaded',papers.length,'border-slate-200 bg-slate-50 text-slate-900'),totalCard('Pending Datesheet Uploads',schedules.length ? pending.length : '—','border-rose-200 bg-rose-50 text-rose-900'),totalCard('Awaiting Faculty Revision',changesRequired.length,'border-amber-200 bg-amber-50 text-amber-900'),totalCard('Revised Papers Resubmitted to COE',resubmitted.length,'border-purple-200 bg-purple-50 text-purple-900'),totalCard('Approved by Moderation',moderated.length,'border-violet-200 bg-violet-50 text-violet-900'),totalCard('Final Approved by COE',finalApproved.length,'border-emerald-200 bg-emerald-50 text-emerald-900')].join('');
             const keys = new Map();
