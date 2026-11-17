@@ -199,6 +199,35 @@ async function initDb() {
     created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()
   )`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_datesheet_schedule_lookup ON datesheet_schedule (UPPER(course_code), LOWER(department), LOWER(semester), LOWER(exam_type))`);
+
+  // Separate COE/Moderator credentials; existing credentials are never overwritten.
+  await pool.query(`CREATE TABLE IF NOT EXISTS role_accounts (
+    id BIGSERIAL PRIMARY KEY, email TEXT UNIQUE NOT NULL, full_name TEXT NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('COE','MODERATOR')), school TEXT, department TEXT,
+    password_salt TEXT NOT NULL, password_hash TEXT NOT NULL,
+    must_change_password BOOLEAN NOT NULL DEFAULT TRUE, active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()
+  )`);
+  const roleUsers = [
+    {email:'coe@mru.edu.in',fullName:'Controller of Examinations Cell',role:'COE',school:null,department:null},
+    {email:'moderator_cst@mru.edu.in',fullName:'CST Moderator',role:'MODERATOR',school:'School of Engineering',department:'CST'},
+    {email:'moderator_ece@mru.edu.in',fullName:'ECE Moderator',role:'MODERATOR',school:'School of Engineering',department:'ECE'},
+    {email:'moderator_me@mru.edu.in',fullName:'ME Moderator',role:'MODERATOR',school:'School of Engineering',department:'ME'},
+    {email:'moderator_ide@mru.edu.in',fullName:'IDE Moderator',role:'MODERATOR',school:'School of Engineering',department:'IDE'},
+    {email:'moderator_sciences@mru.edu.in',fullName:'Sciences Moderator',role:'MODERATOR',school:'School of Sciences',department:null},
+    {email:'moderator_sob@mru.edu.in',fullName:'Business Moderator',role:'MODERATOR',school:'School of Business',department:null},
+    {email:'moderator_law@mru.edu.in',fullName:'Law Moderator',role:'MODERATOR',school:'School of Law',department:null},
+    {email:'moderator_soeh@mru.edu.in',fullName:'Education & Humanities Moderator',role:'MODERATOR',school:'School of Education',department:null}
+  ];
+  const roleTempPassword = process.env.QPMS_ROLE_TEMP_PASSWORD || 'mru123';
+  for (const account of roleUsers) {
+    const salt = crypto.randomBytes(16);
+    const hash = crypto.scryptSync(roleTempPassword, salt, 64);
+    await pool.query(`INSERT INTO role_accounts
+      (email,full_name,role,school,department,password_salt,password_hash,must_change_password,active)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE,TRUE) ON CONFLICT (email) DO NOTHING`,
+      [account.email,account.fullName,account.role,account.school,account.department,salt.toString('hex'),hash.toString('hex')]);
+  }
 }
 
 function dateVariants(isoDate) {
@@ -397,7 +426,33 @@ app.post("/api/auth/login", async (req, res) => {
   try {
     const email = String(req.body?.email || "").trim().toLowerCase();
     const password = String(req.body?.password || "");
+    const requestedRole = String(req.body?.role || "").trim().toUpperCase();
     if (!email || !password) return res.status(400).json({ok:false,error:"Enter your university email and password."});
+
+    const roleResult = await pool.query(`SELECT email, full_name, role, school, department, password_salt, password_hash, must_change_password, active
+      FROM role_accounts WHERE email=$1 LIMIT 1`, [email]);
+    const roleUser = roleResult.rows[0];
+    if (roleUser) {
+      if (!roleUser.active || (requestedRole && requestedRole !== roleUser.role)) {
+        return res.status(401).json({ok:false,error:"This account is not authorized for the selected login role."});
+      }
+      const actual = crypto.scryptSync(password, Buffer.from(roleUser.password_salt, "hex"), 64);
+      const expected = Buffer.from(roleUser.password_hash, "hex");
+      if (actual.length !== expected.length || !crypto.timingSafeEqual(actual, expected)) {
+        return res.status(401).json({ok:false,error:"Incorrect email or password."});
+      }
+      return res.json({ok:true,user:{
+        name:roleUser.full_name,email:roleUser.email,role:roleUser.role,
+        avatar:(roleUser.full_name || roleUser.role).trim().charAt(0).toUpperCase(),
+        dept:roleUser.school ? `${roleUser.school}${roleUser.department ? ' • '+roleUser.department : ''}` : roleUser.role,
+        schoolScope:roleUser.school,departmentScope:roleUser.department,
+        mustChangePassword:roleUser.must_change_password
+      }});
+    }
+
+    if (requestedRole && requestedRole !== "FACULTY") {
+      return res.status(401).json({ok:false,error:"Account not found for the selected role."});
+    }
     const result = await pool.query(`
       SELECT email, full_name, department_code, department, school, role, password_salt, password_hash, must_change_password, active
       FROM faculty_accounts WHERE email=$1 LIMIT 1
@@ -417,7 +472,7 @@ app.post("/api/auth/login", async (req, res) => {
       departmentCode:user.department_code, mustChangePassword: user.must_change_password
     }});
   } catch (e) {
-    console.error("Faculty login failed:", e.message);
+    console.error("Login failed:", e.message);
     return res.status(500).json({ok:false,error:"Login service is temporarily unavailable. Please try again."});
   }
 });
@@ -427,8 +482,25 @@ app.post("/api/auth/change-password", async (req, res) => {
     const email = String(req.body?.email || "").trim().toLowerCase();
     const currentPassword = String(req.body?.currentPassword || "");
     const newPassword = String(req.body?.newPassword || "");
+    if (!email || !currentPassword) return res.status(400).json({ok:false,error:"Enter the current password."});
     if (newPassword.length < 12) return res.status(400).json({ok:false,error:"Choose a password with at least 12 characters."});
-    const result = await pool.query(`SELECT email, password_salt, password_hash FROM faculty_accounts WHERE email=$1 AND active=TRUE LIMIT 1`, [email]);
+
+    const roleResult = await pool.query(`SELECT email,password_salt,password_hash FROM role_accounts WHERE email=$1 AND active=TRUE LIMIT 1`, [email]);
+    const roleUser = roleResult.rows[0];
+    if (roleUser) {
+      const actual = crypto.scryptSync(currentPassword, Buffer.from(roleUser.password_salt, "hex"), 64);
+      const expected = Buffer.from(roleUser.password_hash, "hex");
+      if (actual.length !== expected.length || !crypto.timingSafeEqual(actual, expected)) {
+        return res.status(401).json({ok:false,error:"Current password is incorrect."});
+      }
+      const salt = crypto.randomBytes(16);
+      const hash = crypto.scryptSync(newPassword, salt, 64);
+      await pool.query(`UPDATE role_accounts SET password_salt=$2,password_hash=$3,must_change_password=FALSE,updated_at=NOW() WHERE email=$1`,
+        [email,salt.toString("hex"),hash.toString("hex")]);
+      return res.json({ok:true,message:"Password changed successfully."});
+    }
+
+    const result = await pool.query(`SELECT email,password_salt,password_hash FROM faculty_accounts WHERE email=$1 AND active=TRUE LIMIT 1`, [email]);
     const user = result.rows[0];
     if (!user) return res.status(401).json({ok:false,error:"Account not found."});
     const actual = crypto.scryptSync(currentPassword, Buffer.from(user.password_salt, "hex"), 64);
@@ -438,7 +510,7 @@ app.post("/api/auth/change-password", async (req, res) => {
     }
     const salt = crypto.randomBytes(16);
     const hash = crypto.scryptSync(newPassword, salt, 64);
-    await pool.query(`UPDATE faculty_accounts SET password_salt=$2, password_hash=$3, must_change_password=FALSE, updated_at=NOW() WHERE email=$1`,
+    await pool.query(`UPDATE faculty_accounts SET password_salt=$2,password_hash=$3,must_change_password=FALSE,updated_at=NOW() WHERE email=$1`,
       [email, salt.toString("hex"), hash.toString("hex")]);
     return res.json({ok:true,message:"Password changed successfully."});
   } catch (e) {
