@@ -1061,10 +1061,10 @@ window.onload = function() {
                 document.getElementById('login-email').focus();
                 return;
             }
-            const userObj = USERS[role];
-            document.getElementById('login-email').value = role === 'MODERATOR' ? 'moderator_cst@mru.edu.in' : `${role.toLowerCase()}@mru.edu.in`;
-            // Existing COE/moderator demo flow is retained.
-            handleLoginSuccess({...userObj, email: document.getElementById('login-email').value});
+            document.getElementById('login-email').value = role === 'MODERATOR' ? 'moderator_cst@mru.edu.in' : 'coe@mru.edu.in';
+            document.getElementById('login-password').value = '';
+            showToast('Enter your assigned password to continue.', 'info');
+            document.getElementById('login-password').focus();
         }
 
         async function handleLogin(e) {
@@ -1077,7 +1077,7 @@ window.onload = function() {
                     const response = await fetch('/api/auth/login', {
                         method: 'POST',
                         headers: {'Content-Type':'application/json'},
-                        body: JSON.stringify({email, password})
+                        body: JSON.stringify({email, password, role})
                     });
                     const result = await response.json();
                     if (!response.ok || !result.ok || !result.user) throw new Error(result.error || 'Faculty login failed.');
@@ -1129,23 +1129,35 @@ window.onload = function() {
                 }
                 return;
             }
-            if (role === 'MODERATOR') {
-                const schoolMap = {
-                  'moderator_cst@mru.edu.in': ['School of Engineering','CST'],
-                  'moderator_ece@mru.edu.in': ['School of Engineering','ECE'],
-                  'moderator_me@mru.edu.in': ['School of Engineering','ME'],
-                  'moderator_ide@mru.edu.in': ['School of Engineering','IDE'],
-                  'moderator_sciences@mru.edu.in': ['School of Sciences',null],
-                  'moderator_sob@mru.edu.in': ['School of Business',null],
-                  'moderator_law@mru.edu.in': ['School of Law',null],
-                  'moderator_soeh@mru.edu.in': ['School of Education',null]
-                };
-                if (!schoolMap[email]) { showToast('Use your assigned school moderator email.', 'error'); return; }
-                const [school, department] = schoolMap[email];
-                handleLoginSuccess({...USERS.MODERATOR, email, name: email.split('@')[0].replace('moderator_','').toUpperCase() + ' Moderator', schoolScope: school, departmentScope: department});
+            if (role === 'COE' || role === 'MODERATOR') {
+                try {
+                    const response = await fetch('/api/auth/login', {
+                        method:'POST', headers:{'Content-Type':'application/json'},
+                        body:JSON.stringify({email,password,role})
+                    });
+                    const result = await response.json();
+                    if (!response.ok || !result.ok || !result.user) throw new Error(result.error || 'Login failed.');
+                    if (result.user.mustChangePassword) {
+                        const newPassword = window.prompt('First login: create a new password (minimum 12 characters).');
+                        if (newPassword === null) return;
+                        const confirmPassword = window.prompt('Re-enter your new password to confirm.');
+                        if (newPassword !== confirmPassword) throw new Error('Passwords did not match. Please sign in again and retry.');
+                        if (newPassword.length < 12) throw new Error('New password must be at least 12 characters.');
+                        const changeResponse = await fetch('/api/auth/change-password', {
+                            method:'POST', headers:{'Content-Type':'application/json'},
+                            body:JSON.stringify({email,currentPassword:password,newPassword})
+                        });
+                        const changeResult = await changeResponse.json();
+                        if (!changeResponse.ok || !changeResult.ok) throw new Error(changeResult.error || 'Could not change password.');
+                        result.user.mustChangePassword = false;
+                        showToast('Password updated successfully.', 'success');
+                    }
+                    handleLoginSuccess(result.user);
+                } catch (err) {
+                    showToast(err.message || 'Unable to sign in. Check your email and password.', 'error');
+                }
                 return;
             }
-            handleLoginSuccess({...USERS[role], email});
         }
 
         function handleLoginSuccess(userObj) {
