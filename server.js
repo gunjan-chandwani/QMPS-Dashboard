@@ -200,6 +200,17 @@ async function initDb() {
   )`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_datesheet_schedule_lookup ON datesheet_schedule (UPPER(course_code), LOWER(department), LOWER(semester), LOWER(exam_type))`);
 
+  // Re-import the already-published Dec-2026 End Term PDF on startup. The import is
+  // idempotent (course/program/semester/exam/date key) and never deletes legacy rows.
+  const endTermNotice = await pool.query(`SELECT extracted_text FROM coe_notices
+    WHERE LOWER(COALESCE(title,'')) LIKE '%end term examination dec-2026%'
+       OR LOWER(COALESCE(original_filename,'')) LIKE '%end term datesheet december-2026%'
+    ORDER BY created_at DESC LIMIT 1`);
+  if (endTermNotice.rows[0]?.extracted_text) {
+    const imported = await syncDatesheetScheduleFromPdf(endTermNotice.rows[0].extracted_text, 'COE - End Term Dec-2026 re-import');
+    console.log(`End Term Dec-2026 schedule synchronized: ${imported.count} parsed rows (${imported.inserted} new, ${imported.updated} refreshed).`);
+  }
+
   // Separate COE/Moderator credentials; existing credentials are never overwritten.
   await pool.query(`CREATE TABLE IF NOT EXISTS role_accounts (
     id BIGSERIAL PRIMARY KEY, email TEXT UNIQUE NOT NULL, full_name TEXT NOT NULL,
@@ -344,7 +355,12 @@ async function getPublishedDatesheetText() {
         console.warn(`Could not extract text from existing datesheet ${row.id}:`, e.message);
       }
     }
-    if (extracted.trim()) docs.push({ title: row.title, filename: row.original_filename, text: normalizedPdfText(extracted) });
+    if (extracted.trim()) {
+      const normalized = normalizedPdfText(extracted);
+      const label = `${row.title || ''} ${row.original_filename || ''} ${normalized.slice(0, 1800)}`;
+      const examType = /end\\s*(?:term|sem(?:ester)?)/i.test(label) ? 'End Semester' : /supplement/i.test(label) ? 'Supplementary' : /mid\\s*sem/i.test(label) ? 'Mid Semester' : '';
+      docs.push({ id: row.id, title: row.title, filename: row.original_filename, examType, text: normalized });
+    }
   }
   return docs;
 }
@@ -368,9 +384,11 @@ async function validatePaperDateAgainstSchedule(data) {
 
   // The published COE PDF is the source of truth. Do not force COE to duplicate
   // every row manually in datesheet_schedule before the PDF can be used.
-  const documents = await getPublishedDatesheetText();
+  const allDocuments = await getPublishedDatesheetText();
+  const requestedExam = /end/i.test(exam) ? 'End Semester' : /supplement/i.test(exam) ? 'Supplementary' : /mid/i.test(exam) ? 'Mid Semester' : exam;
+  const documents = allDocuments.filter(d => d.examType === requestedExam);
   if (!documents.length) {
-    const error = new Error('No readable COE Examination Datesheet PDF was found in the portal. COE must publish a searchable PDF (scanned PDFs need OCR).');
+    const error = new Error(`No readable COE ${requestedExam} datesheet PDF was found in the portal. COE must publish the matching searchable PDF (scanned PDFs need OCR).`);
     error.statusCode = 400;
     throw error;
   }
