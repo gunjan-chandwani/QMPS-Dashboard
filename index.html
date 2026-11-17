@@ -970,9 +970,16 @@
                 (!sch.program || !p.program || same(p.program, sch.program));
         }
         function getUnuploadedPapers() {
-            // A paper with Changes Required has still been uploaded; it is pending revision,
-            // not a missing upload. Compare the complete schedule identity, not course code alone.
-            return (datesheetSchedule || []).filter(sch => !(papersDatabase || []).some(p => qpmsScheduleMatchesPaper(sch, p)));
+            // Current active cycle: First Semester, Batch 2026, Dec-2026 End Term.
+            // Historical Mid Semester rows remain in PostgreSQL but are not counted as current pending papers.
+            const activeEndTermMonth = '2026-12';
+            const isFirstSemester = value => ['1st','first','1','1st semester','first semester'].includes(qpmsNorm(value));
+            return (datesheetSchedule || []).filter(sch => {
+                const examType = qpmsExamNorm(sch.examType);
+                const date = String(sch.paperDate || '').slice(0, 7);
+                return examType === 'end semester' && isFirstSemester(sch.semester) && date === activeEndTermMonth &&
+                    !(papersDatabase || []).some(p => qpmsScheduleMatchesPaper(sch, p));
+            });
         }
 
         // App Initializer
