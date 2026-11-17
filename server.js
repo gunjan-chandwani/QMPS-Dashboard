@@ -281,7 +281,7 @@ function parseDatesheetScheduleRows(pdfText) {
       currentSemester = map[v] || (/^\d/.test(v) ? v.replace(/ST|ND|RD|TH/, '') : v);
     }
     if (/SCHEDULE FOR .*EXAMINATION/i.test(line)) {
-      if (/END\s*SEM/i.test(line)) currentExam = 'End Semester';
+      if (/END\s*(?:TERM|SEM(?:ESTER)?)/i.test(line)) currentExam = 'End Semester';
       else if (/SUPPLEMENT/i.test(line)) currentExam = 'Supplementary';
       else if (/MID\s*SEM/i.test(line)) currentExam = 'Mid Semester';
     }
@@ -358,7 +358,7 @@ async function getPublishedDatesheetText() {
     if (extracted.trim()) {
       const normalized = normalizedPdfText(extracted);
       const label = `${row.title || ''} ${row.original_filename || ''} ${normalized.slice(0, 1800)}`;
-      const examType = /end\\s*(?:term|sem(?:ester)?)/i.test(label) ? 'End Semester' : /supplement/i.test(label) ? 'Supplementary' : /mid\\s*sem/i.test(label) ? 'Mid Semester' : '';
+      const examType = /end\s*(?:term|sem(?:ester)?)/i.test(label) ? 'End Semester' : /supplement/i.test(label) ? 'Supplementary' : /mid\s*sem/i.test(label) ? 'Mid Semester' : '';
       docs.push({ id: row.id, title: row.title, filename: row.original_filename, examType, text: normalized });
     }
   }
