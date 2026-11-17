@@ -1668,5 +1668,13 @@
     "salt": "134586ec4d8cc3f70b0da6f5d5c139d7",
     "passwordHash": "5000b67b3b67a469b259390b48c98cc3c70c8bfd1dce3afb39c8fee1068a37746ddcd4779cb6e1712c16f8d7cc76eb3181ab99bbb6091446bbe92061a3671e15",
     "role": "FACULTY"
+  },
+  {
+    "email": "pvc@mru.edu.in",
+    "name": "Pro Vice Chancellor",
+    "departmentCode": "CHEMISTRY",
+    "department": "Chemistry",
+    "school": "School of Sciences",
+    "role": "FACULTY"
   }
 ]
