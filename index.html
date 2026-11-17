@@ -219,8 +219,8 @@
                 </div>
 
                 <!-- Quick Metrics (Updated with Unuploaded Datesheet Papers Metric) -->
-                <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center text-xs">
-                    <div class="bg-rose-50 p-2.5 rounded-lg border border-rose-100">
+                <div id="quick-metrics-grid" class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center text-xs">
+                    <div id="stat-unuploaded-card" class="bg-rose-50 p-2.5 rounded-lg border border-rose-100">
                         <span class="text-rose-600 font-medium block mb-0.5"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Not Uploaded</span>
                         <span id="stat-unuploaded" class="font-bold text-rose-800 text-base">0</span>
                     </div>
@@ -1227,6 +1227,14 @@ window.onload = function() {
             try { renderNoticesForRole(); } catch (err) { console.error('QMPS notices render failed:', err); }
 
             if (!currentSession) return;
+            // Hide only the Not Uploaded summary card for Faculty; retain it for COE/Moderator.
+            const isFacultyDashboard = currentSession.role === 'FACULTY';
+            document.getElementById('stat-unuploaded-card')?.classList.toggle('hidden', isFacultyDashboard);
+            const metricsGrid = document.getElementById('quick-metrics-grid');
+            if (metricsGrid) {
+                metricsGrid.classList.toggle('sm:grid-cols-4', isFacultyDashboard);
+                metricsGrid.classList.toggle('sm:grid-cols-5', !isFacultyDashboard);
+            }
             if (currentSession.role === 'FACULTY') {
                 try { renderFacultyPendingAlert(); } catch (err) { console.error('QMPS faculty pending alert failed:', err); }
                 try { renderFacultyView(); } catch (err) {
