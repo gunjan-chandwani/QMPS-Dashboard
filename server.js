@@ -269,7 +269,7 @@ function parseDatesheetScheduleRows(pdfText) {
   let currentSemester = '';
   let currentExam = 'Mid Semester';
   const dateRe = /(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})/;
-  const codeRe = /\b(?=[A-Z0-9.]*[A-Z])(?=[A-Z0-9.]*\d)[A-Z0-9.]{6,}\b/i;
+  const codeRe = /\b(?=[A-Z0-9.]*[A-Z].*[A-Z].*[A-Z])(?=[A-Z0-9.]*\d)[A-Z0-9.]{6,}\b/i;
   const isHeader = x => /^(date|timings?|course code|course name|manav rachna|schedule for|controller of examination|semester\s*[-:])/i.test(x);
   const cleanName = x => String(x || '').replace(dateRe, ' ').replace(codeRe, ' ').replace(/\d{1,2}\.\d{2}\s*(?:am|pm)?\s*[-–]\s*\d{1,2}\.\d{2}\s*(?:am|pm)?/ig, ' ').replace(/\s+/g, ' ').replace(/^[|: -]+|[|: -]+$/g, '').trim();
   for (let i = 0; i < lines.length; i++) {
