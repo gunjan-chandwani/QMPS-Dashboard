@@ -276,7 +276,17 @@ async function parseDatesheetScheduleLayout(pdfBuffer) {
         const cell=lines.filter(l=>l.y<top&&l.y>=bottom).flatMap(l=>l.items).filter(i=>i.x>210).map(i=>i.str).join(' ');
         const codes=[...new Set([...cell.matchAll(codeRe)].map(m=>m[0].toUpperCase()))];
         if(!codes.length)throw new Error('No course code at PDF page '+pageNo+' date '+date);
-        for(const courseCode of codes)rows.push({courseCode,courseName:courseCode,school:null,department:null,program,semester,examType:'End Semester',paperDate:'2026-12-'+date});
+        const v=program.toLowerCase();
+        let school=null,department=null;
+        if (/ll\\.?b|law|legal/.test(v)){school='School of Law';department='Law';}
+        else if (/bba|mba|business|management/.test(v)){school='School of Business';department='Business';}
+        else if (/b\\.?ed|education/.test(v)){school='School of Education & Humanities';department='Education';}
+        else if (/chemistry|physics|mathematics|biotech|b\\.?sc/.test(v)){school='School of Sciences';department='Sciences';}
+        else if (/robotics/.test(v)){school='School of Engineering';department='Robotics & AI';}
+        else if (/mechanical/.test(v)){school='School of Engineering';department='Mechanical Engineering';}
+        else if (/electronics|communication|vlsi/.test(v)){school='School of Engineering';department='Electronics & Communication';}
+        else if (/computer|bca|mca|technology|engineering/.test(v)){school='School of Engineering';department='Computer Science & Technology';}
+        for(const courseCode of codes)rows.push({courseCode,courseName:courseCode,school,department,program,semester,examType:'End Semester',paperDate:'2026-12-'+date});
       }
     }
   }
