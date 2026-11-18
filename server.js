@@ -237,93 +237,55 @@ function normalizedPdfText(text) {
 
 
 function parseDatesheetScheduleRows(pdfText) {
-  const text = String(pdfText || '').replace(/\r/g, '\n');
-  const pages = text.split(/\f/);
-  const semesterWords = {FIRST:'1st',SECOND:'2nd',THIRD:'3rd',FOURTH:'4th',FIFTH:'5th',SIXTH:'6th',SEVENTH:'7th',EIGHTH:'8th',NINTH:'9th',NINETH:'9th'};
-  const dateRe = /^(\d{2})\.(\d{2})\.(20\d{2})\s+(\d{2}\.\d{2}\s*(?:AM|PM)\s*[-–]\s*\d{2}\.\d{2}\s*(?:AM|PM|NOON))/i;
-  const codeRe = /(?:^|[\s/])(\d+(?:\.\d+)?[A-Z]{2}\d{2}[A-Z]\d{3}|[A-Z]{2,5}\d{2,4}[A-Z]?(?:-T)?)(?=[\s/]|$)/g;
-  const headingRe = /^(?:Bachelor|Bachelors|Master|B\.?\s*Tech|M\.?\s*Tech|BCA|MCA|MBA|BBA|LLB|LLM|B\.?\s*Sc|M\.?\s*Sc|B\.?A\.?\s*LL|B\.?A\.?\s*B\.?Ed)/i;
-  const classify = p => {
-    const v = p.toLowerCase();
-    if (/llb|ll\.b|law|legal/.test(v)) return ['School of Law','Law'];
-    if (/bba|mba|business|management/.test(v)) return ['School of Business','Business'];
-    if (/education|b\.?ed|itep/.test(v)) return ['School of Education & Humanities','Education'];
-    if (/chemistry|physics|mathematics|biotech|microbiology|b\.?sc/.test(v)) return ['School of Sciences','Sciences'];
-    if (/robotics/.test(v)) return ['School of Engineering','Robotics & AI'];
-    if (/mechanical|manufacturing/.test(v)) return ['School of Engineering','Mechanical Engineering'];
-    if (/electronics|communication|vlsi/.test(v)) return ['School of Engineering','Electronics & Communication'];
-    if (/computer|bca|mca|technology|engineering/.test(v)) return ['School of Engineering','Computer Science & Technology'];
-    return ['Unmapped / Other','Unmapped Department'];
-  };
-  const output = [];
-  let previousSemester = '';
-  for (const page of pages) {
-    const lines = page.split('\n').map(x => x.replace(/\s+/g,' ').trim()).filter(Boolean);
-    const semesterLine = lines.find(x => /SEMESTER\s*[-:]\s*(FIRST|SECOND|THIRD|FOURTH|FIFTH|SIXTH|SEVENTH|EIGHTH|NINTH|NINETH)/i.test(x));
-    const semMatch = semesterLine && semesterLine.match(/SEMESTER\s*[-:]\s*(FIRST|SECOND|THIRD|FOURTH|FIFTH|SIXTH|SEVENTH|EIGHTH|NINTH|NINETH)/i);
-    if (semMatch) previousSemester = semesterWords[semMatch[1].toUpperCase()];
-    if (!previousSemester || /MID\s*TERM|MID\s*SEMESTER/i.test(page.slice(0,220))) continue;
-    const blocks = [];
-    let block = null;
-    for (const line of lines) {
-      if (/^DATE\s+Timings?\s+Course Code/i.test(line)) {
-        if (block) blocks.push(block);
-        block = {rows:[], heading:''};
-      } else if (block && dateRe.test(line)) {
-        const m=line.match(dateRe);
-        const date=m[3]+'-'+m[2]+'-'+m[1];
-        if (date >= '2026-12-01' && date <= '2026-12-31')
-          block.rows.push({date, text:line.slice(m[0].length)});
-      } else if (block && block.rows.length && !/^(?:MANAV RACHNA|SCHEDULE FOR|SEMESTER\s*-|CONTROLLER|12-11-26|13-11-26|Page\s+\d+)/i.test(line)) {
-        // PDF text extraction often puts course codes and names on following lines.
-        block.rows[block.rows.length-1].text += ' '+line;
-      }
+  // PDF text order is not the visual reading order. Fail closed rather than
+  // assign unrelated programmes to datesheet entries.
+  throw new Error('PDF text-only extraction is disabled. Use layout-aware PDF import.');
+}
+
+async function parseDatesheetScheduleLayout(pdfBuffer) {
+  const pdfjs = require('pdfjs-dist/legacy/build/pdf.js');
+  const doc = await pdfjs.getDocument({data:new Uint8Array(pdfBuffer),disableFontFace:true,useSystemFonts:true}).promise;
+  const rows=[];
+  const semesterWords={FIRST:'1st',THIRD:'3rd',FIFTH:'5th',SEVENTH:'7th',NINTH:'9th',NINETH:'9th'};
+  const codeRe=/(?<![A-Z0-9])(?:\d+(?:\.\d+)?[A-Z]{2}\d{2}[A-Z]\d{3}|[A-Z]{2,5}\d{2,4}[A-Z]?(?:-T)?)(?![A-Z0-9])/gi;
+  for(let pageNo=1;pageNo<=doc.numPages;pageNo++){
+    const page=await doc.getPage(pageNo),tc=await page.getTextContent();
+    const items=tc.items.filter(i=>i.str&&i.str.trim()).map(i=>({x:i.transform[4],y:i.transform[5],str:i.str.trim()}));
+    const lines=[];
+    for(const item of items.sort((a,b)=>b.y-a.y||a.x-b.x)){
+      let line=lines.find(l=>Math.abs(l.y-item.y)<3);
+      if(!line){line={y:item.y,items:[]};lines.push(line);}
+      line.items.push(item);
     }
-    if (block) blocks.push(block);
-    // In pdf-parse's reading order the programme headings may appear after
-    // all the timetable blocks, rather than before each table.
-    const headings=[];
-    for(let i=0;i<lines.length;i++){
-      if (!headingRe.test(lines[i])) continue;
-      let heading=lines[i];
-      while(i+1<lines.length && !dateRe.test(lines[i+1]) && !/^DATE\b|^MANAV RACHNA|^SCHEDULE FOR|^SEMESTER\b|^CONTROLLER|^\d{2}-\d{2}-\d{2}/i.test(lines[i+1]) && !headingRe.test(lines[i+1]) && lines[i+1].length<105){
-        heading+=' '+lines[++i];
-      }
-      headings.push(heading);
-    }
-    // Do not assign a programme by table position when PDF extraction has
-    // omitted or reordered headings. An incorrect assignment corrupts COE
-    // school/department totals and uploaded-paper matching.
-    if (blocks.length !== headings.length) {
-      throw new Error('Datesheet PDF programme mapping is ambiguous on a page: '+blocks.length+
-        ' timetable blocks but '+headings.length+' programme headings. Import aborted; existing data preserved.');
-    }
-    for(let j=0;j<blocks.length;j++){
-      const program=headings[j] || (headings.length===1 ? headings[0] : '');
-      if (!program) continue;
-      const [school,department]=classify(program);
-      for(const row of blocks[j].rows){
-        const matches=[...row.text.matchAll(codeRe)];
-        for(let k=0;k<matches.length;k++){
-          const courseCode=matches[k][1].toUpperCase();
-          // Codes separated by "/" share the course-title cell; do not drop the first code.
-          const finalCode=matches[matches.length-1];
-          const sharedName=row.text.slice(finalCode.index+finalCode[0].length).trim();
-          const ownName=row.text.slice(matches[k].index+matches[k][0].length,k+1<matches.length?matches[k+1].index:undefined).trim();
-          const courseName=ownName.replace(/^[\\/\s]+$/,'').length>=3 ? ownName : sharedName;
-          if (!courseName || courseName.length<3) continue;
-          output.push({courseCode,courseName,school,department,program,semester:previousSemester,examType:'End Semester',paperDate:row.date});
-        }
+    for(const line of lines){line.items.sort((a,b)=>a.x-b.x);line.text=line.items.map(i=>i.str).join(' ');}
+    lines.sort((a,b)=>b.y-a.y);
+    const semLine=lines.find(l=>/SEMESTER\s*[-:]\s*(FIRST|THIRD|FIFTH|SEVENTH|NINTH|NINETH)/i.test(l.text));
+    if(!semLine)continue;
+    const semester=semesterWords[semLine.text.match(/SEMESTER\s*[-:]\s*(FIRST|THIRD|FIFTH|SEVENTH|NINTH|NINETH)/i)[1].toUpperCase()];
+    const headers=lines.filter(l=>/DATE\s+Timings?\s+Course\s*Code/i.test(l.text));
+    for(let h=0;h<headers.length;h++){
+      const header=headers[h],lower=headers[h+1]?.y??0;
+      const headingLines=lines.filter(l=>l.y>header.y&&l.y<header.y+85&&!/SEMESTER|SCHEDULE FOR|MANAV RACHNA|CONTROLLER|DATE\s+Timings/i.test(l.text));
+      const program=headingLines.reverse().map(l=>l.text).join(' ').trim();
+      if(!program)throw new Error('Missing programme above table on PDF page '+pageNo);
+      const dates=lines.filter(l=>l.y<header.y&&l.y>lower&&/\b\d{2}\.12\.2026\b/.test(l.text)&&/^\s*\d{2}\.12\.2026/.test(l.text));
+      for(let d=0;d<dates.length;d++){
+        const line=dates[d],date=line.text.match(/(\d{2})\.12\.2026/)[1];
+        const top=d===0?header.y:(dates[d-1].y+line.y)/2;
+        const bottom=d===dates.length-1?lower:(line.y+dates[d+1].y)/2;
+        const cell=lines.filter(l=>l.y<top&&l.y>=bottom).flatMap(l=>l.items).filter(i=>i.x>210).map(i=>i.str).join(' ');
+        const codes=[...new Set([...cell.matchAll(codeRe)].map(m=>m[0].toUpperCase()))];
+        if(!codes.length)throw new Error('No course code at PDF page '+pageNo+' date '+date);
+        for(const courseCode of codes)rows.push({courseCode,courseName:courseCode,school:null,department:null,program,semester,examType:'End Semester',paperDate:'2026-12-'+date});
       }
     }
   }
-  const unique=new Map();
-  for(const r of output) unique.set([r.courseCode,r.program,r.semester,r.examType,r.paperDate].join('|'),r);
-  return [...unique.values()];
+  if(rows.length<350)throw new Error('Incomplete PDF layout extraction: '+rows.length+' entries');
+  return rows;
 }
 
-async function syncDatesheetScheduleFromPdf(pdfText, uploadedBy) {
-  const parsed = parseDatesheetScheduleRows(pdfText);
+async function syncDatesheetScheduleFromPdf(pdfText, uploadedBy, pdfBuffer) {
+  const parsed = await parseDatesheetScheduleLayout(pdfBuffer);
   const datedRows = (String(pdfText || '').match(/\b\d{2}\.12\.2026\s+\d{2}\.\d{2}\s*(?:AM|PM)/gi) || []).length;
   // A partial parse must never silently overwrite or append a misleading schedule.
   if (!parsed.length || (datedRows >= 50 && parsed.length < datedRows * 0.8) ||
@@ -637,7 +599,7 @@ app.post("/api/notices", upload.single("file"), async (req, res) => {
       [type, title, req.file.originalname, req.file.mimetype, req.file.size, fileData, extractedText, req.body.uploaded_by || 'COE']);
     let scheduleImport = {count:0};
     if (extractedText && (String(type).toLowerCase().includes('datesheet') || String(title).toLowerCase().includes('datesheet') || req.file.originalname.toLowerCase().includes('datesheet'))) {
-      scheduleImport = await syncDatesheetScheduleFromPdf(extractedText, req.body.uploaded_by || 'COE');
+      scheduleImport = await syncDatesheetScheduleFromPdf(extractedText, req.body.uploaded_by || 'COE', fileData);
     }
     try { fs.unlinkSync(req.file.path); } catch {}
     res.status(201).json({ ok: true, notice: rows[0], scheduleImported: scheduleImport.count, scheduleImportMessage: scheduleImport.count ? `Imported ${scheduleImport.count} course/date rows from datesheet.` : 'PDF uploaded, but no course/date rows were detected. Check the PDF layout or OCR.' });
