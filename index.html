@@ -1129,6 +1129,7 @@ window.onload = function() {
                         result.user.mustChangePassword = false;
                         showToast('Password updated successfully.', 'success');
                     }
+                    window.qpmsFacultyDeleteToken = result.deleteToken || null;
                     handleLoginSuccess(result.user);
                     // Keep department/school aligned with the signed-in account wherever matching options exist.
                     const schoolSelect = document.getElementById('upload-school');
@@ -1211,6 +1212,7 @@ window.onload = function() {
 
         function handleLogout() {
             currentSession = null;
+            window.qpmsFacultyDeleteToken = null;
             document.getElementById('app-portal').classList.add('hidden');
             document.getElementById('view-login').classList.remove('hidden');
         }
@@ -1402,9 +1404,30 @@ window.onload = function() {
                             <a href="/api/papers/${encodeURIComponent(paper.id)}/view" target="_blank" rel="noopener" class="inline-flex items-center px-2.5 py-1 bg-brand-600 hover:bg-brand-700 text-white rounded text-xs font-semibold shadow-xs"><i class="fa-solid fa-eye mr-1"></i> View</a>
                             <a href="/api/papers/${encodeURIComponent(paper.id)}/file" class="inline-flex items-center px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold shadow-xs"><i class="fa-solid fa-download mr-1"></i> Download</a>
                         ` : ''}
+                        ${String(paper.ownerEmail || '').trim().toLowerCase() === myEmail &&
+                          ['SUBMITTED_TO_COE','SUBMITTED','UPLOADED'].includes(qpmsNormalizeStatus(paper.status)) &&
+                          !paper.moderationDetails ? `<button onclick="deleteMyPaper('${encodeURIComponent(paper.id)}')" class="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded text-xs font-semibold"><i class="fa-solid fa-trash mr-1"></i> Delete</button>` : ''}
+
                     </td>
                 </tr>
             `).join('');
+        }
+
+        async function deleteMyPaper(encodedId) {
+            if (currentSession?.role !== 'FACULTY') return;
+            if (!window.confirm('Delete this uploaded paper? This cannot be undone.')) return;
+            try {
+                const response = await fetch('/api/papers/' + encodedId, {
+                    method:'DELETE',
+                    headers:{'x-faculty-delete-token':window.qpmsFacultyDeleteToken || ''}
+                });
+                const result = await response.json();
+                if (!response.ok || !result.ok) throw new Error(result.error || 'Delete failed');
+                const id = decodeURIComponent(encodedId);
+                papersDatabase = papersDatabase.filter(p => String(p.id) !== id);
+                renderDashboard();
+                showToast('Paper deleted successfully.', 'success');
+            } catch (err) { showToast(err.message || 'Could not delete paper.', 'error'); }
         }
 
         // 2. COE VIEW & FILTER LOGIC
