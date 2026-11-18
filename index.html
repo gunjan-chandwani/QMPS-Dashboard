@@ -985,10 +985,26 @@
         function getDec2026EndSemesterSchedules() {
             return (datesheetSchedule || []).filter(qpmsIsDec2026EndSemester);
         }
+        function qpmsMatchSchedulesToPapers(schedules, papers) {
+            const usedPaperIds = new Set();
+            return (schedules || []).map(schedule => {
+                const paper = (papers || []).find(p =>
+                    !usedPaperIds.has(String(p.id)) && qpmsScheduleMatchesPaper(schedule, p)
+                ) || null;
+                if (paper) usedPaperIds.add(String(paper.id));
+                return {schedule, paper};
+            });
+        }
+        function getCoePendingPapers() {
+            // COE pending list is limited to December 2026 End Semester and each upload
+            // can satisfy only one schedule row, preventing duplicate over-matching.
+            return qpmsMatchSchedulesToPapers(getDec2026EndSemesterSchedules(), papersDatabase)
+                .filter(match => !match.paper)
+                .map(match => match.schedule);
+        }
         function getUnuploadedPapers() {
-            // COE active pending list is limited to the December 2026 End Semester datesheet.
-            const schedules = getDec2026EndSemesterSchedules();
-            return schedules.filter(sch => !(papersDatabase || []).some(p => qpmsScheduleMatchesPaper(sch, p)));
+            // Preserve the existing general/faculty pending calculation outside the COE report.
+            return (datesheetSchedule || []).filter(sch => !(papersDatabase || []).some(p => qpmsScheduleMatchesPaper(sch, p)));
         }
 
         // App Initializer
@@ -1462,7 +1478,7 @@ window.onload = function() {
             if (category === 'NOT_UPLOADED') {
                 const papers = (papersDatabase || []).filter(p => qpmsReportInScope(p, 'COE'));
                 const schedules = getDec2026EndSemesterSchedules().filter(s => qpmsReportInScope(s, 'COE') && String(s.school || '').trim() === school);
-                const missing = schedules.filter(s => !papers.some(p => qpmsScheduleMatchesPaper(s,p)));
+                const missing = qpmsMatchSchedulesToPapers(schedules, papers).filter(x => !x.paper).map(x => x.schedule);
                 const rows = [['School','Department','Programme','Semester','Course Code','Course Name','Exam Type','Exam Date','Faculty']];
                 missing.forEach(s => rows.push([qpmsSchoolFor(s),qpmsDepartmentFor(s),s.program||'',s.semester||'',s.courseCode||'',s.courseName||'',s.examType||'',s.paperDate||'',s.facultyName||'Faculty not assigned']));
                 if (!missing.length) { showToast('No missing datesheet papers found for this school.', 'warning'); return; }
@@ -1477,10 +1493,7 @@ window.onload = function() {
                 !currentSession?.schoolScope || (qpmsSchoolFor(item) === currentSession.schoolScope &&
                 (!currentSession.departmentScope || qpmsDepartmentFor(item).toUpperCase() === currentSession.departmentScope.toUpperCase()))
             );
-            const matchedBySchedule = schedules.map(schedule => ({
-                schedule,
-                paper: (papersDatabase || []).find(p => qpmsScheduleMatchesPaper(schedule, p)) || null
-            }));
+            const matchedBySchedule = qpmsMatchSchedulesToPapers(schedules, papersDatabase);
             const matchedPaperIds = new Set(matchedBySchedule.filter(x => x.paper).map(x => String(x.paper.id)));
             const papers = (papersDatabase || []).filter(p => matchedPaperIds.has(String(p.id)));
             const pending = matchedBySchedule.filter(x => !x.paper);
@@ -1569,7 +1582,7 @@ window.onload = function() {
                     </tr>
                 `;
 
-                const unuploaded = getUnuploadedPapers();
+                const unuploaded = getCoePendingPapers();
                 if (unuploaded.length === 0) {
                     container.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-emerald-600 font-semibold bg-emerald-50/50"><i class="fa-solid fa-circle-check text-lg mr-2"></i> All question papers scheduled in the datesheet have been submitted!</td></tr>`;
                     return;
@@ -1677,7 +1690,7 @@ window.onload = function() {
         }
 
         function sendBulkReminders() {
-            const unuploaded = getUnuploadedPapers();
+            const unuploaded = getCoePendingPapers();
             if (unuploaded.length === 0) return;
             showToast(`Bulk email reminders dispatched to all ${unuploaded.length} pending faculty members!`, 'success');
         }
