@@ -973,18 +973,49 @@
             const date = String(sch.paperDate || '').slice(0, 10);
             return date >= '2026-12-01' && date < '2027-01-01' && qpmsExamNorm(sch.examType) === 'end semester';
         }
+        // Reject corrupted PDF extraction records before computing COE totals.
+        function qpmsValidScheduledCode(value) {
+            const code = String(value || '').trim().toUpperCase();
+            return /^[A-Z0-9.]{5,24}$/.test(code) && /[A-Z]/.test(code) &&
+                /\d/.test(code) && !/^\d{1,2}\.\d{2}/.test(code) &&
+                !/^(?:AM|PM|NOON)/.test(code);
+        }
+        function qpmsProgramKey(value) {
+            const v = qpmsNorm(value).replace(/[^a-z0-9]/g, '');
+            if (!v) return '';
+            // Normalize harmless spelling/punctuation differences, but retain
+            // specializations so CSTI/FSD/AIML are not treated as one programme.
+            return v.replace(/bachelors?/g, 'bachelor')
+                .replace(/technology/g, 'tech')
+                .replace(/engineering/g, 'eng')
+                .replace(/specialisation/g, 'specialization')
+                .replace(/artifical/g, 'artificial');
+        }
         function qpmsScheduleMatchesPaper(sch, p) {
-            const same = (a,b) => qpmsNorm(a) === qpmsNorm(b);
-            // School and department come from the official datesheet for reporting.
-            // Faculty metadata can be inconsistent, so it must not create a false pending entry.
-            return same(p.courseCode, sch.courseCode) &&
+            const a = String(sch.courseCode || '').trim().toUpperCase();
+            const b = String(p.courseCode || p.course || '').trim().toUpperCase();
+            const schProgram = qpmsProgramKey(sch.program);
+            const paperProgram = qpmsProgramKey(p.program);
+            // The original PostgreSQL papers table stores course/exam, not
+            // course_code/exam_type. Never match a different programme.
+            return qpmsValidScheduledCode(a) && a === b &&
                 qpmsSemesterNorm(p.semester) === qpmsSemesterNorm(sch.semester) &&
-                qpmsExamNorm(p.examType) === qpmsExamNorm(sch.examType) &&
-                (!sch.program || !p.program || same(p.program, sch.program)) &&
+                qpmsExamNorm(p.examType || p.exam) === qpmsExamNorm(sch.examType) &&
+                !!schProgram && !!paperProgram && schProgram === paperProgram &&
                 p.hasFile !== false;
         }
         function getDec2026EndSemesterSchedules() {
-            return (datesheetSchedule || []).filter(qpmsIsDec2026EndSemester);
+            const records = (datesheetSchedule || []).filter(s =>
+                qpmsIsDec2026EndSemester(s) && qpmsValidScheduledCode(s.courseCode));
+            // Preserve distinct programmes; collapse only exact duplicate imports.
+            const seen = new Set();
+            return records.filter(s => {
+                const key = [String(s.courseCode).trim().toUpperCase(),
+                    qpmsNorm(s.program),qpmsSemesterNorm(s.semester),
+                    qpmsExamNorm(s.examType),String(s.paperDate || '').slice(0,10)].join('|');
+                if (seen.has(key)) return false;
+                seen.add(key); return true;
+            });
         }
         function qpmsMatchSchedulesToPapers(schedules, papers) {
             const usedPaperIds = new Set();
