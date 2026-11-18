@@ -243,6 +243,7 @@ function parseDatesheetScheduleRows(pdfText) {
 }
 
 async function parseDatesheetScheduleLayout(pdfBuffer) {
+  // Use the Node-compatible PDF.js legacy build (pinned to v3 in package.json).
   const pdfjs = require('pdfjs-dist/legacy/build/pdf.js');
   const doc = await pdfjs.getDocument({data:new Uint8Array(pdfBuffer),disableFontFace:true,useSystemFonts:true}).promise;
   const rows=[];
