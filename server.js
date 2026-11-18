@@ -407,6 +407,8 @@ async function validatePaperDateAgainstSchedule(data) {
   return { matched: true, dates: scheduledDates.length ? scheduledDates : [submittedDate], pdfVerified: true, documents: [...new Set(evidence.map(d => d.title || d.filename))] };
 }
 
+// Short-lived faculty sessions used for ownership-checked paper deletion.
+const facultyDeleteSessions = new Map();
 app.post("/api/auth/login", async (req, res) => {
   try {
     const email = String(req.body?.email || "").trim().toLowerCase();
@@ -425,7 +427,9 @@ app.post("/api/auth/login", async (req, res) => {
     if (actual.length !== expected.length || !crypto.timingSafeEqual(actual, expected)) {
       return res.status(401).json({ok:false,error:"Incorrect email or password."});
     }
-    return res.json({ok:true,user:{
+    const deleteToken = crypto.randomBytes(32).toString("hex");
+    facultyDeleteSessions.set(deleteToken, { email, expiresAt: Date.now() + 8 * 60 * 60 * 1000 });
+    return res.json({ok:true,deleteToken,user:{
       name:user.full_name, email:user.email, role:user.role, avatar:(user.full_name || "F").trim().charAt(0).toUpperCase(),
       dept:`${user.school} • ${user.department}`, schoolScope:user.school, departmentScope:user.department,
       departmentCode:user.department_code, mustChangePassword: user.must_change_password
@@ -947,18 +951,48 @@ app.patch("/api/papers/:id", async (req, res) => {
 
 app.delete("/api/papers/:id", async (req, res) => {
   try {
-    const { rows } = await pool.query(
-      "DELETE FROM papers WHERE id::text=$1 RETURNING file_path",
-      [req.params.id]
-    );
-    if (!rows.length) return res.status(404).json({ ok:false, error:"Paper not found" });
-
-    if (rows[0].file_path && fs.existsSync(rows[0].file_path)) {
-      try { fs.unlinkSync(rows[0].file_path); } catch {}
+    const token = String(req.headers["x-faculty-delete-token"] || "");
+    const session = facultyDeleteSessions.get(token);
+    if (!token || !session || session.expiresAt < Date.now()) {
+      return res.status(401).json({ok:false,error:"Please log in again before deleting a paper."});
     }
-    res.json({ ok:true });
+    const client = await pool.connect();
+    let deleted;
+    try {
+      await client.query("BEGIN");
+      const found = await client.query(
+        "SELECT id, owner_email, status, moderation_details, file_path FROM papers WHERE id::text=$1 FOR UPDATE",
+        [req.params.id]
+      );
+      if (!found.rows.length) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ok:false,error:"Paper not found"});
+      }
+      const paper = found.rows[0];
+      if (String(paper.owner_email || "").trim().toLowerCase() !== session.email) {
+        await client.query("ROLLBACK");
+        return res.status(403).json({ok:false,error:"You can delete only your own uploaded paper."});
+      }
+      const status = String(paper.status || "").trim().toUpperCase().replace(/[ -]+/g,"_");
+      if (!["SUBMITTED_TO_COE","SUBMITTED","UPLOADED"].includes(status) || paper.moderation_details != null) {
+        await client.query("ROLLBACK");
+        return res.status(409).json({ok:false,error:"Deletion is allowed only before the paper enters moderation."});
+      }
+      await client.query("DELETE FROM papers WHERE id=$1", [paper.id]);
+      await client.query("COMMIT");
+      deleted = paper;
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+    if (deleted.file_path && fs.existsSync(deleted.file_path)) {
+      try { fs.unlinkSync(deleted.file_path); } catch (err) { console.warn("Could not remove deleted paper file:",err.message); }
+    }
+    return res.json({ok:true});
   } catch (e) {
-    res.status(500).json({ ok:false, error:e.message });
+    res.status(500).json({ok:false,error:"Could not delete paper. Please contact the administrator."});
   }
 });
 
