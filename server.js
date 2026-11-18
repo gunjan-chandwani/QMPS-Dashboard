@@ -240,7 +240,7 @@ function parseDatesheetScheduleRows(pdfText) {
   const lines = String(pdfText || '').replace(/\r/g, '\n').split('\n').map(x => x.replace(/\s+/g, ' ').trim()).filter(Boolean);
   const rows = [];
   let currentProgram = '', currentSemester = '', currentExam = 'End Semester';
-  const semesterNames = {FIRST:'1st',SECOND:'2nd',THIRD:'3rd',FOURTH:'4th',FIFTH:'5th',SIXTH:'6th',SEVENTH:'7th',EIGHTH:'8th'};
+  const semesterNames = {FIRST:'1st',SECOND:'2nd',THIRD:'3rd',FOURTH:'4th',FIFTH:'5th',SIXTH:'6th',SEVENTH:'7th',EIGHTH:'8th',NINTH:'9th'};
   const dateRe = /^(\d{2})\.(\d{2})\.(20\d{2})\s+/;
   const codeRe = /(?:^|\s)(\d+(?:\.\d+)?[A-Z]{2}\d+[A-Z]\d+|[A-Z]{2,5}\d{2,4}[A-Z]?)\b/g;
   const classify = p => {
@@ -257,7 +257,7 @@ function parseDatesheetScheduleRows(pdfText) {
   };
   for (let i=0; i<lines.length; i++) {
     const line=lines[i];
-    const sem=line.match(/\bSEMESTER\s*[-:]\s*(FIRST|SECOND|THIRD|FOURTH|FIFTH|SIXTH|SEVENTH|EIGHTH)\b/i);
+    const sem=line.match(/\bSEMESTER\s*[-:]\s*(FIRST|SECOND|THIRD|FOURTH|FIFTH|SIXTH|SEVENTH|EIGHTH|NINTH)\b/i);
     if (sem) { currentSemester=semesterNames[sem[1].toUpperCase()]; currentProgram=''; }
     if (/SCHEDULE FOR .*EXAM/i.test(line)) currentExam=/MID\s*SEM/i.test(line)?'Mid Semester':/SUPPLEMENT/i.test(line)?'Supplementary':'End Semester';
     if (/^(?:Bachelor|Bachelors|Master|B\.?\s*Tech|M\.?\s*Tech|BCA|MCA|MBA|BBA|LLB|LLM|B\.?\s*Sc|M\.?\s*Sc)/i.test(line) && !dateRe.test(line)) {
