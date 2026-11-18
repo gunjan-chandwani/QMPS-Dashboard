@@ -242,7 +242,7 @@ function parseDatesheetScheduleRows(pdfText) {
   let currentProgram = '', currentSemester = '', currentExam = 'End Semester';
   const semesterNames = {FIRST:'1st',SECOND:'2nd',THIRD:'3rd',FOURTH:'4th',FIFTH:'5th',SIXTH:'6th',SEVENTH:'7th',EIGHTH:'8th',NINTH:'9th',NINETH:'9th'};
   const dateRe = /^(\d{2})\.(\d{2})\.(20\d{2})\s+/;
-  const codeRe = /(?:^|[\s/])(\d+(?:\.\d+)?[A-Z]{2}\d+[A-Z]\d+|[A-Z]{2,5}\d{2,4}[A-Z]?(?:-T)?)\b/g;
+  const codeRe = /(?:^|[\s/])(\d+(?:\.\d+)?[A-Z]{2}\d{2}[A-Z]\d{3}|[A-Z]{2,5}\d{2,4}[A-Z]?)(?=[\s/]|$)/g;
   const classify = p => {
     const v = p.toLowerCase();
     if (/\b(?:llb|llm|law)\b|legal studies/.test(v)) return ['School of Law','Law'];
