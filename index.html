@@ -961,18 +961,34 @@
             if (v.includes('supplement')) return 'supplementary';
             return v;
         }
+        function qpmsSemesterNorm(value) {
+            const raw = qpmsNorm(value).replace(/^sem(?:ester)?\\s*/, '').trim();
+            const numeric = raw.match(/\\d+/);
+            if (numeric) return String(Number(numeric[0]));
+            const words = {first:'1',second:'2',third:'3',fourth:'4',fifth:'5',sixth:'6',seventh:'7',eighth:'8',ninth:'9',tenth:'10'};
+            return words[raw.replace(/\\b(st|nd|rd|th)\\b/g, '').trim()] || raw;
+        }
+        function qpmsIsDec2026EndSemester(sch) {
+            const date = String(sch.paperDate || '').slice(0, 10);
+            return date >= '2026-12-01' && date < '2027-01-01' && qpmsExamNorm(sch.examType) === 'end semester';
+        }
         function qpmsScheduleMatchesPaper(sch, p) {
             const same = (a,b) => qpmsNorm(a) === qpmsNorm(b);
+            // School and department come from the official datesheet for reporting.
+            // Faculty metadata can be inconsistent, so it must not create a false pending entry.
             return same(p.courseCode, sch.courseCode) &&
-                same(qpmsDepartmentFor(p), qpmsDepartmentFor(sch)) &&
-                same(p.semester, sch.semester) &&
+                qpmsSemesterNorm(p.semester) === qpmsSemesterNorm(sch.semester) &&
                 qpmsExamNorm(p.examType) === qpmsExamNorm(sch.examType) &&
-                (!sch.program || !p.program || same(p.program, sch.program));
+                (!sch.program || !p.program || same(p.program, sch.program)) &&
+                p.hasFile !== false;
+        }
+        function getDec2026EndSemesterSchedules() {
+            return (datesheetSchedule || []).filter(qpmsIsDec2026EndSemester);
         }
         function getUnuploadedPapers() {
-            // A paper with Changes Required has still been uploaded; it is pending revision,
-            // not a missing upload. Compare the complete schedule identity, not course code alone.
-            return (datesheetSchedule || []).filter(sch => !(papersDatabase || []).some(p => qpmsScheduleMatchesPaper(sch, p)));
+            // COE active pending list is limited to the December 2026 End Semester datesheet.
+            const schedules = getDec2026EndSemesterSchedules();
+            return schedules.filter(sch => !(papersDatabase || []).some(p => qpmsScheduleMatchesPaper(sch, p)));
         }
 
         // App Initializer
@@ -1445,7 +1461,7 @@ window.onload = function() {
             if (!school) { showToast('Please select a school first.', 'warning'); return; }
             if (category === 'NOT_UPLOADED') {
                 const papers = (papersDatabase || []).filter(p => qpmsReportInScope(p, 'COE'));
-                const schedules = (datesheetSchedule || []).filter(s => qpmsReportInScope(s, 'COE') && String(s.school || '').trim() === school);
+                const schedules = getDec2026EndSemesterSchedules().filter(s => qpmsReportInScope(s, 'COE') && String(s.school || '').trim() === school);
                 const missing = schedules.filter(s => !papers.some(p => qpmsScheduleMatchesPaper(s,p)));
                 const rows = [['School','Department','Programme','Semester','Course Code','Course Name','Exam Type','Exam Date','Faculty']];
                 missing.forEach(s => rows.push([qpmsSchoolFor(s),qpmsDepartmentFor(s),s.program||'',s.semester||'',s.courseCode||'',s.courseName||'',s.examType||'',s.paperDate||'',s.facultyName||'Faculty not assigned']));
@@ -1457,16 +1473,25 @@ window.onload = function() {
         }
 
         function renderCoeReports() {
-            const inScope = item => !currentSession?.schoolScope || (qpmsSchoolFor(item) === currentSession.schoolScope && (!currentSession.departmentScope || qpmsDepartmentFor(item).toUpperCase() === currentSession.departmentScope.toUpperCase()));
-            const papers = (papersDatabase || []).filter(inScope);
-            const schedules = (datesheetSchedule || []).filter(inScope);
-            const pending = schedules.filter(s => !(papers || []).some(p => qpmsScheduleMatchesPaper(s, p)));
+            const schedules = getDec2026EndSemesterSchedules().filter(item =>
+                !currentSession?.schoolScope || (qpmsSchoolFor(item) === currentSession.schoolScope &&
+                (!currentSession.departmentScope || qpmsDepartmentFor(item).toUpperCase() === currentSession.departmentScope.toUpperCase()))
+            );
+            const matchedBySchedule = schedules.map(schedule => ({
+                schedule,
+                paper: (papersDatabase || []).find(p => qpmsScheduleMatchesPaper(schedule, p)) || null
+            }));
+            const matchedPaperIds = new Set(matchedBySchedule.filter(x => x.paper).map(x => String(x.paper.id)));
+            const papers = (papersDatabase || []).filter(p => matchedPaperIds.has(String(p.id)));
+            const pending = matchedBySchedule.filter(x => !x.paper);
             const normalizedStatus = p => String(p.status || '').toUpperCase().replace(/[ -]+/g, '_').replace(/^AUDIT:_?/, '');
-            const moderated = papers.filter(p => ['APPROVED','APPROVED_BY_MODERATOR','MODERATION_APPROVED'].includes(normalizedStatus(p)));
+            const moderatedStatuses = ['APPROVED','APPROVED_BY_MODERATOR','MODERATION_APPROVED'];
+            const finalStatuses = ['FINAL_APPROVED','FINAL_APPROVED_&_ARCHIVED'];
+            const moderated = papers.filter(p => moderatedStatuses.includes(normalizedStatus(p)));
             const changesRequired = papers.filter(p => ['CHANGES_REQUIRED','CHANGES_REQUIRED_BY_MODERATOR'].includes(normalizedStatus(p)));
-            const finalApproved = papers.filter(p => ['FINAL_APPROVED','FINAL_APPROVED_&_ARCHIVED'].includes(normalizedStatus(p)));
-            const totalCard = (label, value, cls) => `<div class="rounded-xl border p-3 ${cls}"><div class="text-xs font-semibold opacity-80">${label}</div><div class="text-2xl font-black mt-1">${value}</div></div>`;
+            const finalApproved = papers.filter(p => finalStatuses.includes(normalizedStatus(p)));
             const resubmitted = papers.filter(p => normalizedStatus(p) === 'RESUBMITTED_TO_COE');
+            const totalCard = (label, value, cls) => `<div class="rounded-xl border p-3 ${cls}"><div class="text-xs font-semibold opacity-80">${label}</div><div class="text-2xl font-black mt-1">${value}</div></div>`;
             const revisedSchoolSelect = document.getElementById('coe-revised-school');
             if (revisedSchoolSelect) {
                 const selectedSchool = revisedSchoolSelect.value;
@@ -1478,134 +1503,44 @@ window.onload = function() {
                     .map(([schoolValue, schoolLabel]) => `<option value="${escapeHtml(schoolValue)}">${escapeHtml(schoolLabel)}</option>`).join('');
                 if (revisedSchools.some(([schoolValue]) => schoolValue === selectedSchool)) revisedSchoolSelect.value = selectedSchool;
             }
-            document.getElementById('coe-report-summary').innerHTML = [totalCard('Papers Uploaded',papers.length,'border-slate-200 bg-slate-50 text-slate-900'),totalCard('Pending Datesheet Uploads',schedules.length ? pending.length : '—','border-rose-200 bg-rose-50 text-rose-900'),totalCard('Awaiting Faculty Revision',changesRequired.length,'border-amber-200 bg-amber-50 text-amber-900'),totalCard('Revised Papers Resubmitted to COE',resubmitted.length,'border-purple-200 bg-purple-50 text-purple-900'),totalCard('Approved by Moderation',moderated.length,'border-violet-200 bg-violet-50 text-violet-900'),totalCard('Final Approved by COE',finalApproved.length,'border-emerald-200 bg-emerald-50 text-emerald-900')].join('');
+            document.getElementById('coe-report-summary').innerHTML = [
+                totalCard('Dec 2026 End Semester Scheduled', schedules.length, 'border-slate-200 bg-slate-50 text-slate-900'),
+                totalCard('Papers Uploaded', papers.length, 'border-slate-200 bg-slate-50 text-slate-900'),
+                totalCard('Pending Datesheet Uploads', schedules.length ? pending.length : '—', 'border-rose-200 bg-rose-50 text-rose-900'),
+                totalCard('Awaiting Faculty Revision', changesRequired.length, 'border-amber-200 bg-amber-50 text-amber-900'),
+                totalCard('Revised Papers Resubmitted to COE', resubmitted.length, 'border-purple-200 bg-purple-50 text-purple-900'),
+                totalCard('Approved by Moderation', moderated.length, 'border-violet-200 bg-violet-50 text-violet-900'),
+                totalCard('Final Approved by COE', finalApproved.length, 'border-emerald-200 bg-emerald-50 text-emerald-900')
+            ].join('');
             const keys = new Map();
-            function row(school, dept, semester) { const key=[school,dept,semester].join('|||'); if(!keys.has(key)) keys.set(key,{school,dept,semester,scheduled:0,uploaded:0,pending:0,moderated:0,approved:0}); return keys.get(key); }
-            schedules.forEach(s=>{const r=row(qpmsSchoolFor(s),qpmsDepartmentFor(s),s.semester||'Not specified');r.scheduled++;if(!(papers || []).some(p=>qpmsScheduleMatchesPaper(s,p)))r.pending++;});
-            papers.forEach(p=>{const r=row(qpmsSchoolFor(p),qpmsDepartmentFor(p),p.semester||'Not specified');r.uploaded++;if(['APPROVED','APPROVED_BY_MODERATOR','MODERATION_APPROVED'].includes(String(p.status||'').toUpperCase().replace(/[ -]+/g,'_')))r.moderated++;if(['FINAL_APPROVED','FINAL_APPROVED_&_ARCHIVED'].includes(String(p.status||'').toUpperCase().replace(/[ -]+/g,'_')))r.approved++;});
-            document.getElementById('coe-school-report').innerHTML = [...keys.values()].sort((a,b)=>a.school.localeCompare(b.school)||a.dept.localeCompare(b.dept)||a.semester.localeCompare(b.semester)).map(r=>`<tr><td class="p-3 font-semibold text-slate-800">${escapeHtml(r.school)}</td><td class="p-3">${escapeHtml(r.dept)}</td><td class="p-3">${escapeHtml(r.semester)}</td><td class="p-3">${r.scheduled}</td><td class="p-3 font-bold">${r.uploaded}</td><td class="p-3 ${r.pending?'text-rose-700 font-bold':''}">${r.pending}</td><td class="p-3 text-violet-700 font-bold">${r.moderated}</td><td class="p-3 text-emerald-700 font-bold">${r.approved}</td></tr>`).join('');
+            function row(school, dept, semester) {
+                const key = [school, dept, semester].join('|||');
+                if (!keys.has(key)) keys.set(key, {school, dept, semester, scheduled:0, uploaded:0, pending:0, moderated:0, approved:0});
+                return keys.get(key);
+            }
+            matchedBySchedule.forEach(({schedule, paper}) => {
+                const r = row(qpmsSchoolFor(schedule), qpmsDepartmentFor(schedule), schedule.semester || 'Not specified');
+                r.scheduled++;
+                if (!paper) r.pending++;
+                else {
+                    r.uploaded++;
+                    if (moderatedStatuses.includes(normalizedStatus(paper))) r.moderated++;
+                    if (finalStatuses.includes(normalizedStatus(paper))) r.approved++;
+                }
+            });
+            document.getElementById('coe-school-report').innerHTML = [...keys.values()]
+                .sort((a,b) => a.school.localeCompare(b.school) || a.dept.localeCompare(b.dept) || a.semester.localeCompare(b.semester))
+                .map(r => `<tr><td class="p-3 font-semibold text-slate-800">${escapeHtml(r.school)}</td><td class="p-3">${escapeHtml(r.dept)}</td><td class="p-3">${escapeHtml(r.semester)}</td><td class="p-3">${r.scheduled}</td><td class="p-3 font-bold">${r.uploaded}</td><td class="p-3 ${r.pending?'text-rose-700 font-bold':''}">${r.pending}</td><td class="p-3 text-violet-700 font-bold">${r.moderated}</td><td class="p-3 text-emerald-700 font-bold">${r.approved}</td></tr>`).join('');
             document.getElementById('quick-moderated-count').textContent = moderated.length;
-            document.getElementById('quick-moderated-list').innerHTML=qpmsCoeSchoolDownloadControl('MODERATION_APPROVED', moderated) + (moderated.length?moderated.map(qpmsPaperLink).join(''):'<p class="text-xs text-slate-500">No papers currently approved by moderation.</p>');
+            document.getElementById('quick-moderated-list').innerHTML = qpmsCoeSchoolDownloadControl('MODERATION_APPROVED', moderated) + (moderated.length ? moderated.map(qpmsPaperLink).join('') : '<p class="text-xs text-slate-500">No papers currently approved by moderation.</p>');
             document.getElementById('quick-changes-count').textContent = changesRequired.length;
-            document.getElementById('quick-changes-list').innerHTML=qpmsCoeSchoolDownloadControl('CHANGES_REQUIRED', changesRequired) + (changesRequired.length?changesRequired.map(qpmsPaperLink).join(''):'<p class="text-xs text-slate-500">No papers are currently awaiting correction.</p>');
+            document.getElementById('quick-changes-list').innerHTML = qpmsCoeSchoolDownloadControl('CHANGES_REQUIRED', changesRequired) + (changesRequired.length ? changesRequired.map(qpmsPaperLink).join('') : '<p class="text-xs text-slate-500">No papers are currently awaiting correction.</p>');
             const moderationBadge = document.getElementById('coe-badge-moderation-approved'); if (moderationBadge) moderationBadge.textContent = moderated.length;
             const changesBadge = document.getElementById('coe-badge-changes-required'); if (changesBadge) changesBadge.textContent = changesRequired.length;
-            const resubmittedBadge = document.getElementById('coe-badge-resubmitted'); if (resubmittedBadge) resubmittedBadge.textContent = papers.filter(p => normalizedStatus(p) === 'RESUBMITTED_TO_COE').length;
+            const resubmittedBadge = document.getElementById('coe-badge-resubmitted'); if (resubmittedBadge) resubmittedBadge.textContent = resubmitted.length;
             document.getElementById('quick-approved-count').textContent = finalApproved.length;
-            document.getElementById('quick-approved-list').innerHTML=qpmsCoeSchoolDownloadControl('FINAL_APPROVED', finalApproved) + (finalApproved.length?finalApproved.map(qpmsPaperLink).join(''):'<p class="text-xs text-slate-500">No final-approved papers available yet.</p>');
-            document.getElementById('quick-pending-count').textContent = schedules.length ? pending.length : '—';
-            document.getElementById('quick-pending-list').innerHTML=qpmsCoeSchoolDownloadControl('NOT_UPLOADED', pending) + (pending.length ? pending.map(s=>`<div class="bg-white/80 border border-white rounded-lg p-2"><div class="font-semibold text-slate-800">${escapeHtml(s.courseName)}</div><div class="text-[10px] text-slate-500">${escapeHtml(s.courseCode)} · ${escapeHtml(qpmsSchoolFor(s))} · ${escapeHtml(qpmsDepartmentFor(s))} · ${escapeHtml(s.semester||'Semester not set')}</div><div class="text-[10px] text-rose-700 mt-1">Exam: ${escapeHtml(s.paperDate||'Date not set')} · ${escapeHtml(s.facultyName||'Faculty not assigned')}${qpmsSchoolFor(s)==='School mapping required' ? ' · COE school mapping required' : ''}</div></div>`).join('') : (schedules.length ? '<p class="text-xs text-emerald-700">All structured schedule entries have matching uploaded papers.</p>' : '<p class="text-xs text-amber-800">No structured datesheet schedule rows are loaded. Uploading a PDF alone does not create course-wise pending records; add/import the courses in COE Datesheet Schedule to calculate this count.</p>'));
+            document.getElementById('quick-approved-list').innerHTML = qpmsCoeSchoolDownloadControl('FINAL_APPROVED', finalApproved) + (finalApproved.length ? finalApproved.map(qpmsPaperLink).join('') : '<p class="text-xs text-slate-500">No papers currently approved by COE.</p>');
         }
-        function qpmsReportInScope(item, role) {
-            // Moderator reports must only include records assigned to that moderator's scope.
-            if (role === 'MODERATOR' && !currentSession?.schoolScope && !currentSession?.departmentScope) return true;
-            return !currentSession?.schoolScope || (qpmsSchoolFor(item) === currentSession.schoolScope && (!currentSession.departmentScope || qpmsDepartmentFor(item).toUpperCase() === currentSession.departmentScope.toUpperCase()));
-        }
-
-        function qpmsNormalizeStatus(value) {
-            return String(value || '').trim().toUpperCase().replace(/[ -]+/g, '_').replace(/^AUDIT:_?/, '').replace(/&/g, '_AND_');
-        }
-        function qpmsWorkflowCounts(papers) {
-            const statuses = papers.map(p => qpmsNormalizeStatus(p.status));
-            const finalApprovedStatuses = ['FINAL_APPROVED', 'FINAL_APPROVED_AND_ARCHIVED'];
-            const moderatorApprovedStatuses = ['APPROVED', 'MODERATION_APPROVED', 'APPROVED_BY_MODERATOR', ...finalApprovedStatuses];
-            const moderatedStatuses = [...moderatorApprovedStatuses, 'CHANGES_REQUIRED', 'CHANGES_REQUIRED_BY_MODERATOR'];
-            return {
-                uploaded: papers.length,
-                sentForModeration: statuses.filter(s => ['FORWARDED_FOR_MODERATION', 'RESUBMITTED_TO_COE', 'SENT_FOR_MODERATION'].includes(s)).length,
-                moderated: statuses.filter(s => moderatedStatuses.includes(s)).length,
-                // Final COE approval can only happen after moderator approval, so include it in the cumulative moderator-approved count.
-                moderationApproved: statuses.filter(s => moderatorApprovedStatuses.includes(s)).length,
-                changesRequired: statuses.filter(s => ['CHANGES_REQUIRED','CHANGES_REQUIRED_BY_MODERATOR'].includes(s)).length,
-                finalApproved: statuses.filter(s => finalApprovedStatuses.includes(s)).length,
-                pendingInitialVerification: statuses.filter(s => ['SUBMITTED_TO_COE', 'SUBMITTED TO COE', 'RESUBMITTED_TO_COE'].includes(s)).length
-            };
-        }
-
-        function renderWorkflowReportSummary(role) {
-            const targetId = role === 'MODERATOR' ? 'moderator-report-summary' : 'coe-report-summary';
-            const target = document.getElementById(targetId);
-            if (!target) return;
-            const papers = (papersDatabase || []).filter(p => qpmsReportInScope(p, role));
-            const c = qpmsWorkflowCounts(papers);
-            const card = (label, value, cls) => `<div class="rounded-xl border p-3 ${cls}"><div class="text-[11px] font-semibold opacity-80">${label}</div><div class="text-2xl font-black mt-1">${value}</div></div>`;
-            const cards = [
-                card('Papers Uploaded', c.uploaded, 'border-slate-200 bg-slate-50 text-slate-900'),
-                card('Sent for Moderation', c.sentForModeration, 'border-blue-200 bg-blue-50 text-blue-900'),
-                card('Moderation Completed', c.moderated, 'border-violet-200 bg-violet-50 text-violet-900'),
-                card('Approved by Moderator', c.moderationApproved, 'border-indigo-200 bg-indigo-50 text-indigo-900'),
-                card('Changes Required', c.changesRequired, 'border-amber-200 bg-amber-50 text-amber-900'),
-                ...(role === 'COE' ? [card('Final Approved by COE', c.finalApproved, 'border-emerald-200 bg-emerald-50 text-emerald-900')] : [])
-            ];
-            target.innerHTML = cards.join('');
-        }
-
-        function qpmsAuditDetails(p) {
-            const a = p.moderationDetails || p.moderation_details || p.auditForm || {};
-            const read = (key) => a[key] ?? a[key.toLowerCase()] ?? '';
-            return {
-                date: read('date') || p.moderationDate || '',
-                decision: p.status || '',
-                comments: read('comments') || p.comments || '',
-                q1: read('q1'), q2: read('q2'), q3: read('q3'), q4: read('q4'),
-                q5: read('q5'), q6: read('q6'), q7: read('q7'), q8: read('q8'),
-                q9: read('q9'), q10: read('q10'), q11: read('q11'), q12: read('q12')
-            };
-        }
-
-        function qpmsDownloadCsv(filename, rows) {
-            const csv = rows.map(row => row.map(v => '"' + String(v ?? '').replace(/"/g, '""').replace(/\r?\n/g, ' ') + '"').join(',')).join('\r\n');
-            const blobUrl = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' }));
-            const a = document.createElement('a'); a.href = blobUrl; a.download = filename;
-            document.body.appendChild(a); a.click(); a.remove();
-            setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-        }
-
-        function downloadWorkflowReport(role) {
-            const papers = (papersDatabase || []).filter(p => qpmsReportInScope(p, role));
-            const counts = qpmsWorkflowCounts(papers);
-            const reportRows = [
-                [`QPMS ${role === 'MODERATOR' ? 'MODERATOR' : 'COE'} WORKFLOW REPORT`],
-                ['Generated At', new Date().toLocaleString()],
-                ['Report Scope', role === 'MODERATOR' ? (currentSession?.departmentScope || currentSession?.schoolScope || 'Current moderator scope') : (currentSession?.schoolScope || 'All schools')],
-                [], ['SUMMARY METRIC', 'COUNT'],
-                ['Papers Uploaded', counts.uploaded],
-                ['Sent for Moderation / Re-submitted', counts.sentForModeration],
-                ['Moderation Completed', counts.moderated],
-                ['Approved by Moderator (awaiting COE or already final-approved)', counts.moderationApproved + counts.finalApproved],
-                ['Changes Required', counts.changesRequired],
-                ['Final Approved by COE', counts.finalApproved],
-                ['Pending Initial Verification', counts.pendingInitialVerification], [],
-                ['School','Department','Program','Semester','Course Code','Course Name','Faculty','Exam Type','Exam Date','Status','Version','Submitted On','Moderator Decision Date','Moderator Comments / Changes Required']
-            ];
-            papers.forEach(p => {
-                const a = qpmsAuditDetails(p);
-                reportRows.push([qpmsSchoolFor(p), qpmsDepartmentFor(p), p.program || '', p.semester || '', p.courseCode || '', p.courseName || '', p.facultyName || '', p.examType || '', p.paperDate || '', p.status || '', p.currentVersion ?? '', p.submissionDate || p.createdAt || '', a.date, a.comments]);
-            });
-            qpmsDownloadCsv(`QPMS_${role === 'MODERATOR' ? 'Moderator' : 'COE'}_Workflow_Report_${new Date().toISOString().slice(0,10)}.csv`, reportRows);
-        }
-
-        // COE bulk report includes every available paper and the full moderation checklist feedback.
-        function downloadAllWorkflowReport() {
-            const papers = (papersDatabase || []).filter(p => qpmsReportInScope(p, 'COE'));
-            const counts = qpmsWorkflowCounts(papers);
-            const rows = [
-                ['QPMS COE — ALL QUESTION PAPER & MODERATION RECORDS'],
-                ['Generated At', new Date().toLocaleString()],
-                ['Total Paper Records', papers.length],
-                ['Moderation Completed', counts.moderated],
-                ['Approved by Moderator', counts.moderationApproved],
-                ['Changes Required', counts.changesRequired],
-                ['Final Approved by COE', counts.finalApproved], [],
-                ['School','Department','Program','Semester','Course Code','Course Name','Faculty','Exam Type','Exam Date','Current Status','Version','Submitted On','Last Updated','Moderator Review Date','Moderator Comments / Required Changes','Audit Q1','Audit Q2','Audit Q3','Audit Q4','Audit Q5','Audit Q6','Audit Q7','Audit Q8','Audit Q9','Audit Q10','Audit Q11: Standard','Audit Q12: Coverage','File Available']
-            ];
-            papers.forEach(p => {
-                const a = qpmsAuditDetails(p);
-                rows.push([qpmsSchoolFor(p), qpmsDepartmentFor(p), p.program || '', p.semester || '', p.courseCode || '', p.courseName || '', p.facultyName || '', p.examType || '', p.paperDate || '', p.status || '', p.currentVersion ?? '', p.submissionDate || p.createdAt || '', p.updatedAt || '', a.date, a.comments, a.q1, a.q2, a.q3, a.q4, a.q5, a.q6, a.q7, a.q8, a.q9, a.q10, a.q11, a.q12, p.hasFile === false ? 'No' : 'Yes']);
-            });
-            qpmsDownloadCsv(`QPMS_COE_All_Records_With_Moderator_Feedback_${new Date().toISOString().slice(0,10)}.csv`, rows);
-        }
-
         // Backwards-compatible name for any existing UI references.
         function downloadRevisedPapersBySchool() {
             const select = document.getElementById('coe-revised-school');
