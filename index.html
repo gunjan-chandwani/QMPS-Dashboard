@@ -989,6 +989,7 @@
             return qpmsValidScheduledCode(a) && a === b &&
                 qpmsSemesterNorm(p.semester) === qpmsSemesterNorm(sch.semester) &&
                 qpmsExamNorm(p.examType) === qpmsExamNorm(sch.examType) &&
+                (!sch.program || !p.program || qpmsNorm(sch.program) === qpmsNorm(p.program)) &&
                 p.hasFile !== false;
         }
         function getDec2026EndSemesterSchedules() {
