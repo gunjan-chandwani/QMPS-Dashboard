@@ -653,8 +653,17 @@ app.get("/api/papers/:id/file", async (req, res) => {
     if (!rows.length) return res.status(404).send("Paper not found");
     const p = rows[0];
     const filename = p.original_filename || "question-paper";
-    res.setHeader("Content-Type", p.file_mimetype || "application/octet-stream");
+    const extension = path.extname(filename).toLowerCase();
+    const wordMimeTypes = {
+      ".doc": "application/msword",
+      ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    };
+    // Prefer the standards-based Word MIME type when older uploads were stored
+    // with a generic or incorrect content type. Keep PDF and other types intact.
+    const contentType = wordMimeTypes[extension] || p.file_mimetype || "application/octet-stream";
+    res.setHeader("Content-Type", contentType);
     res.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
+    res.setHeader("X-Content-Type-Options", "nosniff");
     if (p.file_data) return res.end(p.file_data);
     if (p.file_path && fs.existsSync(p.file_path)) return fs.createReadStream(p.file_path).pipe(res);
     return res.status(404).send("File not found");
