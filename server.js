@@ -291,6 +291,13 @@ function parseDatesheetScheduleRows(pdfText) {
       }
       headings.push(heading);
     }
+    // Do not assign a programme by table position when PDF extraction has
+    // omitted or reordered headings. An incorrect assignment corrupts COE
+    // school/department totals and uploaded-paper matching.
+    if (blocks.length !== headings.length) {
+      throw new Error('Datesheet PDF programme mapping is ambiguous on a page: '+blocks.length+
+        ' timetable blocks but '+headings.length+' programme headings. Import aborted; existing data preserved.');
+    }
     for(let j=0;j<blocks.length;j++){
       const program=headings[j] || (headings.length===1 ? headings[0] : '');
       if (!program) continue;
