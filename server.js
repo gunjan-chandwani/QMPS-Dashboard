@@ -489,7 +489,7 @@ app.get("/api/papers", async (req, res) => {
   try {
     const viewerEmail = String(req.query.email || '').trim().toLowerCase();
     const viewerRole = String(req.query.role || '').trim().toUpperCase();
-    const canSeeAll = viewerRole === 'COE' || viewerRole === 'MODERATOR' || viewerEmail === 'gunjan@mru.edu.in';
+    const canSeeAll = viewerRole === 'COE' || viewerRole === 'MODERATOR';
     const { rows } = await pool.query(`
       SELECT id::text AS id, paper_no, title, school, program, department, semester,
              course, subject, faculty, exam, submission_date, status, expected,
