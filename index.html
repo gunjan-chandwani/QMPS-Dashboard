@@ -1004,8 +1004,8 @@
                 .map(match => match.schedule);
         }
         function getUnuploadedPapers() {
-            // Preserve the existing general/faculty pending calculation outside the COE report.
-            return (datesheetSchedule || []).filter(sch => !(papersDatabase || []).some(p => qpmsScheduleMatchesPaper(sch, p)));
+            // Count only December 2026 End Semester datesheet rows. Mid-Term and other periods remain stored but are excluded.
+            return getDec2026EndSemesterSchedules().filter(sch => !(papersDatabase || []).some(p => qpmsScheduleMatchesPaper(sch, p)));
         }
 
         // App Initializer
