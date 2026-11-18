@@ -240,44 +240,53 @@ function parseDatesheetScheduleRows(pdfText) {
   const lines = String(pdfText || '').replace(/\r/g, '\n').split('\n').map(x => x.replace(/\s+/g, ' ').trim()).filter(Boolean);
   const rows = [];
   let currentProgram = '', currentSemester = '', currentExam = 'End Semester';
-  const dateRe = /\b(\d{1,2})[.\/-](\d{1,2})[.\/-](20\d{2})\b/;
-  // A course code must contain letters AND digits, and must not be a time/date.
-  // Supports 4.5CS02O001, ECS306B, ECH445B, LWH501, CDO314.
-  const codeRe = /(?:^|\s)([A-Z0-9]+(?:\.[0-9]+)?[A-Z][A-Z0-9]{2,})(?=\s|[A-Z]{2,}|$)/g;
-  const validCode = x => /[A-Z]/.test(x) && /\d/.test(x) && !/^\d{1,2}\.\d{2}(?:AM|PM)?$/i.test(x)
-    && !/^\d{2}\.\d{2}\.20\d{2}$/.test(x) && x.length >= 5;
-  const semNames = {FIRST:'1st',SECOND:'2nd',THIRD:'3rd',FOURTH:'4th',FIFTH:'5th',SIXTH:'6th',SEVENTH:'7th',EIGHTH:'8th'};
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const sem = line.match(/SEMESTER\s*[-:]?\s*(FIRST|SECOND|THIRD|FOURTH|FIFTH|SIXTH|SEVENTH|EIGHTH|[1-8](?:ST|ND|RD|TH)?)/i);
-    if (sem) currentSemester = semNames[sem[1].toUpperCase()] || sem[1].replace(/(?:ST|ND|RD|TH)$/i,'') + 'th';
-    if (/SCHEDULE FOR .*EXAM/i.test(line)) {
-      currentExam = /SUPPLEMENT/i.test(line) ? 'Supplementary' : /MID\s*SEM/i.test(line) ? 'Mid Semester' : 'End Semester';
+  const semesterNames = {FIRST:'1st',SECOND:'2nd',THIRD:'3rd',FOURTH:'4th',FIFTH:'5th',SIXTH:'6th',SEVENTH:'7th',EIGHTH:'8th'};
+  const dateRe = /^(\d{2})\.(\d{2})\.(20\d{2})\s+/;
+  const codeRe = /(?:^|\s)(\d+(?:\.\d+)?[A-Z]{2}\d+[A-Z]\d+|[A-Z]{2,5}\d{2,4}[A-Z]?)\b/g;
+  const classify = p => {
+    const v = p.toLowerCase();
+    if (/\b(?:llb|llm|law)\b|legal studies/.test(v)) return ['School of Law','Law'];
+    if (/\b(?:bba|mba)\b|business administration|business analytics/.test(v)) return ['School of Business','Business'];
+    if (/b\.?\s*ed|education|itep|bachelor of arts.*bed/.test(v)) return ['School of Education & Humanities','Education'];
+    if (/chemistry|physics|mathematics|biotechnology|microbiology|life sciences/.test(v)) return ['School of Sciences','Sciences'];
+    if (/robotics|artificial intelligence/.test(v) && !/computer science/.test(v)) return ['School of Engineering','Robotics & AI'];
+    if (/mechanical|manufacturing/.test(v)) return ['School of Engineering','Mechanical Engineering'];
+    if (/electronics|communication engineering|vlsi/.test(v)) return ['School of Engineering','Electronics & Communication'];
+    if (/computer|bca|mca|technology|engineering/.test(v)) return ['School of Engineering','Computer Science & Technology'];
+    return ['Unmapped / Other','Unmapped Department'];
+  };
+  for (let i=0; i<lines.length; i++) {
+    const line=lines[i];
+    const sem=line.match(/\bSEMESTER\s*[-:]\s*(FIRST|SECOND|THIRD|FOURTH|FIFTH|SIXTH|SEVENTH|EIGHTH)\b/i);
+    if (sem) { currentSemester=semesterNames[sem[1].toUpperCase()]; currentProgram=''; }
+    if (/SCHEDULE FOR .*EXAM/i.test(line)) currentExam=/MID\s*SEM/i.test(line)?'Mid Semester':/SUPPLEMENT/i.test(line)?'Supplementary':'End Semester';
+    if (/^(?:Bachelor|Bachelors|Master|B\.?\s*Tech|M\.?\s*Tech|BCA|MCA|MBA|BBA|LLB|LLM|B\.?\s*Sc|M\.?\s*Sc)/i.test(line) && !dateRe.test(line)) {
+      currentProgram=line;
+      // Some programme headings wrap to the next line.
+      if (i+1<lines.length && !dateRe.test(lines[i+1]) && !/^DATE\b|^Course Code\b/i.test(lines[i+1]) && !/^(?:Bachelor|Master|Bachelors)/i.test(lines[i+1]) && lines[i+1].length<110)
+        currentProgram+=' '+lines[i+1];
     }
-    // The programme is the heading, not the course name. It can wrap onto next line.
-    if (/^(Bachelor|Master|B\.?\s?Tech|M\.?\s?Tech|BCA|MCA|MBA|BBA|LLB|LLM|B\.?\s?Sc|M\.?\s?Sc)/i.test(line)
-        && !dateRe.test(line) && !/course code|course name/i.test(line)) currentProgram = line;
-    const dm = line.match(dateRe);
-    if (!dm || !currentProgram || !currentSemester) continue;
-    const date = `${dm[3]}-${dm[2].padStart(2,'0')}-${dm[1].padStart(2,'0')}`;
-    if (date < '2026-12-01' || date > '2026-12-31') continue;
-    // Date row can be split by pdf-parse into several adjacent lines.
-    const segment = [line, ...lines.slice(i+1,i+4).filter(x => !dateRe.test(x) && !/SEMESTER|SCHEDULE FOR|CONTROLLER OF EXAMINATIONS/i.test(x))].join(' ');
-    const withoutDateTime = segment.replace(dateRe,' ').replace(/\b\d{1,2}\.\d{2}\s*(?:AM|PM)?\s*[-–]\s*\d{1,2}\.\d{2}\s*(?:AM|PM|NOON)?/ig,' ');
-    const matches = [...withoutDateTime.matchAll(codeRe)].filter(m => validCode(m[1]));
-    for (let j = 0; j < matches.length; j++) {
-      const code = matches[j][1].toUpperCase();
-      const start = matches[j].index + matches[j][0].length;
-      const end = j+1 < matches.length ? matches[j+1].index : withoutDateTime.length;
-      const name = withoutDateTime.slice(start,end).trim().replace(/^[|:;, -]+|[|:;, -]+$/g,'');
-      if (!name || name.length < 3) continue;
-      rows.push({courseCode:code,courseName:name,school:'Unmapped / Other',
-        department:'Unmapped Department',program:currentProgram,semester:currentSemester,
-        examType:currentExam,paperDate:date});
+    const dm=line.match(dateRe);
+    if (!dm || !currentProgram || !currentSemester || currentExam!=='End Semester') continue;
+    const paperDate=dm[3]+'-'+dm[2]+'-'+dm[1];
+    if (paperDate<'2026-12-01'||paperDate>'2026-12-31') continue;
+    const remainder=line.slice(dm[0].length);
+    // Only read codes AFTER the timetable time column; do not parse date/time as codes.
+    const tm=remainder.match(/^\d{2}\.\d{2}\s*(?:AM|PM)\s*-\s*\d{2}\.\d{2}\s*(?:AM|PM|NOON)\s*/i);
+    if (!tm) continue;
+    const courseText=remainder.slice(tm[0].length);
+    const matches=[...courseText.matchAll(codeRe)];
+    for(let j=0;j<matches.length;j++){
+      const code=matches[j][1].toUpperCase();
+      let name=courseText.slice(matches[j].index+matches[j][0].length,j+1<matches.length?matches[j+1].index:undefined).trim();
+      if (!name && j===matches.length-1 && i+1<lines.length && !dateRe.test(lines[i+1]) && !/^DATE\b|^Course Code\b/i.test(lines[i+1])) name=lines[i+1];
+      if (!name || name.length<3) continue;
+      const [school,department]=classify(currentProgram);
+      rows.push({courseCode:code,courseName:name,school,department,program:currentProgram,semester:currentSemester,examType:currentExam,paperDate});
     }
   }
-  const unique = new Map();
-  for (const r of rows) unique.set([r.courseCode,r.program,r.semester,r.examType,r.paperDate].join('|'),r);
+  const unique=new Map();
+  for(const r of rows) unique.set([r.courseCode,r.program,r.semester,r.examType,r.paperDate].join('|'),r);
   return [...unique.values()];
 }
 
