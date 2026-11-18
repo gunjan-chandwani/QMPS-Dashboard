@@ -1553,6 +1553,11 @@ window.onload = function() {
             const resubmittedBadge = document.getElementById('coe-badge-resubmitted'); if (resubmittedBadge) resubmittedBadge.textContent = resubmitted.length;
             document.getElementById('quick-approved-count').textContent = finalApproved.length;
             document.getElementById('quick-approved-list').innerHTML = qpmsCoeSchoolDownloadControl('FINAL_APPROVED', finalApproved) + (finalApproved.length ? finalApproved.map(qpmsPaperLink).join('') : '<p class="text-xs text-slate-500">No papers currently approved by COE.</p>');
+            const pendingSchedules = pending.map(item => item.schedule);
+            document.getElementById('quick-pending-count').textContent = schedules.length ? pendingSchedules.length : '—';
+            document.getElementById('quick-pending-list').innerHTML = qpmsCoeSchoolDownloadControl('NOT_UPLOADED', pendingSchedules) + (pendingSchedules.length
+                ? pendingSchedules.map(s => `<div class="bg-white/80 border border-white rounded-lg p-2"><div class="font-semibold text-slate-800">${escapeHtml(s.courseName)}</div><div class="text-[10px] text-slate-500">${escapeHtml(s.courseCode)} · ${escapeHtml(qpmsSchoolFor(s))} · ${escapeHtml(qpmsDepartmentFor(s))} · ${escapeHtml(s.semester || 'Semester not set')}</div><div class="text-[10px] text-rose-700 mt-1">Exam: ${escapeHtml(s.paperDate || 'Date not set')} · ${escapeHtml(s.facultyName || 'Faculty not assigned')}${qpmsSchoolFor(s) === 'School mapping required' ? ' · COE school mapping required' : ''}</div></div>`).join('')
+                : (schedules.length ? '<p class="text-xs text-emerald-700">All December 2026 End Semester schedule entries have matching uploaded papers.</p>' : '<p class="text-xs text-amber-800">No December 2026 End Semester schedule rows are loaded.</p>'));
         }
         function qpmsReportInScope(item, role) {
             // Moderator reports must only include records assigned to that moderator's scope.
