@@ -215,6 +215,15 @@ async function initDb() {
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_datesheet_schedule_lookup ON datesheet_schedule (UPPER(course_code), LOWER(department), LOWER(semester), LOWER(exam_type))`);
 }
 
+// December 2026 End Semester source files contain some dates mistyped as 2029.
+// Normalize for matching/import only; retain original COE documents unchanged.
+function normalizeEndTerm2026Date(value, examType = 'End Semester') {
+  const raw = String(value || '');
+  if (!/end\\s*(?:semester|term)/i.test(String(examType))) return raw;
+  return raw.replace(/\\b2029-12-(\\d{2})\\b/g, '2026-12-$1')
+    .replace(/\\b(\\d{1,2}[.\\/-]12[.\\/-])2029\\b/g, '$12026');
+}
+
 function dateVariants(isoDate) {
   const value = String(isoDate || '').slice(0, 10);
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
@@ -269,7 +278,7 @@ function parseDatesheetScheduleRows(pdfText) {
     if (!dateMatch && i+1 < lines.length) { dateMatch = lines[i+1].match(dateRe); dateLine = i+1; }
     if (!dateMatch) continue;
     const dd = String(dateMatch[1]).padStart(2,'0'), mm = String(dateMatch[2]).padStart(2,'0'), yyyy = dateMatch[3];
-    const paperDate = `${yyyy}-${mm}-${dd}`;
+    const paperDate = normalizeEndTerm2026Date(`${yyyy}-${mm}-${dd}`, currentExam);
     let name = cleanName(line.replace(code, ''));
     if (!name || name.length < 3 || /^\d/.test(name)) {
       const candidates = [lines[i+1], lines[i-1], lines[i+2]].filter(Boolean).filter(x => !dateRe.test(x) && !codeRe.test(x) && !isHeader(x) && !/^(manav rachna|schedule for|controller of examination)/i.test(x));
@@ -344,7 +353,7 @@ async function validatePaperDateAgainstSchedule(data) {
   // before comparing with PostgreSQL DATE values (avoids timezone-dependent parsing).
   const rawSubmittedDate = String(data.paperDate || data.paper_date || data.exam_date || data.submission_date || '').trim();
   const isoMatch = /^(\d{4})-(\d{2})-(\d{2})/.exec(rawSubmittedDate);
-  const submittedDate = isoMatch ? `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}` : rawSubmittedDate.slice(0, 10);
+  const submittedDate = normalizeEndTerm2026Date(isoMatch ? `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}` : rawSubmittedDate.slice(0, 10), exam);
   if (!courseCode || !department || !semester || !exam || !program || !submittedDate) {
     const error = new Error('Course code, department, programme, semester, examination type and paper date are required.');
     error.statusCode = 400;
@@ -369,7 +378,7 @@ async function validatePaperDateAgainstSchedule(data) {
       AND LOWER(TRIM(exam_type))=LOWER(TRIM($4))
       AND (COALESCE(TRIM(program),'')='' OR LOWER(TRIM(program))=LOWER(TRIM($5)))
     ORDER BY updated_at DESC`, [courseCode, department, semester, exam, program]);
-  const scheduledDates = [...new Set(rows.map(r => r.paper_date).filter(Boolean))];
+  const scheduledDates = [...new Set(rows.map(r => normalizeEndTerm2026Date(r.paper_date, exam)).filter(Boolean))];
   if (scheduledDates.length && !scheduledDates.includes(submittedDate)) {
     const error = new Error(`Date mismatch: COE schedule record shows ${scheduledDates.join(', ')}. Please use the official date or ask COE to correct the schedule/PDF.`);
     error.statusCode = 400;
@@ -380,7 +389,7 @@ async function validatePaperDateAgainstSchedule(data) {
   const codeNeedle = courseCode.toLowerCase();
   const evidence = [];
   for (const doc of documents) {
-    const text = doc.text || '';
+    const text = normalizeEndTerm2026Date(doc.text || '', exam);
     let from = 0;
     while (from < text.length) {
       const codeIndex = text.indexOf(codeNeedle, from);
