@@ -553,12 +553,13 @@
 
                 <!-- Drag & Drop Upload Zone -->
                 <div>
-                    <label class="block font-medium text-slate-700 mb-1">Upload Question Paper (PDF Only) *</label>
+                    <label class="block font-medium text-slate-700 mb-1">Upload Question Paper (PDF / Word) *</label>
                     <div class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer relative" onclick="document.getElementById('upload-file-input').click()">
-                        <i class="fa-solid fa-file-pdf text-red-500 text-3xl mb-2"></i>
-                        <p class="text-xs text-slate-600 font-medium">Click to select PDF or drag and drop file here</p>
+                        <i class="fa-solid fa-file-arrow-up text-brand-600 text-3xl mb-2"></i>
+                        <p class="text-xs text-slate-600 font-medium">Click to select or drag and drop a PDF, DOC or DOCX file</p>
+                        <p class="text-[11px] text-slate-500 mt-1">Accepted formats: .pdf, .doc, .docx</p>
                         <p id="file-chosen-name" class="text-xs text-brand-600 font-semibold mt-1">No file selected</p>
-                        <input type="file" id="upload-file-input" accept=".pdf" class="hidden" onchange="updateFileName(this)" />
+                        <input type="file" id="upload-file-input" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="hidden" onchange="updateFileName(this)" />
                     </div>
                 </div>
 
@@ -2054,8 +2055,21 @@ window.onload = function() {
                 showToast('Please fill Course Name, Course Code and Paper Date.', 'warning');
                 return false;
             }
-            if (!file) { showToast('Please select the question paper PDF.', 'warning'); return false; }
-            if (file.type && file.type !== 'application/pdf') { showToast('Only PDF files are allowed.', 'warning'); return false; }
+            if (!file) { showToast('Please select the question paper file.', 'warning'); return false; }
+            const fileExtension = (file.name.split('.').pop() || '').toLowerCase();
+            const allowedQuestionPaperExtensions = ['pdf', 'doc', 'docx'];
+            const allowedQuestionPaperMimes = [
+                'application/pdf',
+                'application/x-pdf',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/octet-stream'
+            ];
+            if (!allowedQuestionPaperExtensions.includes(fileExtension) ||
+                (file.type && !allowedQuestionPaperMimes.includes(file.type))) {
+                showToast('Please upload a PDF (.pdf), Word (.doc), or Word Document (.docx) file.', 'warning');
+                return false;
+            }
             if (!window.QPMS) { showToast('Upload service is still loading. Please refresh once and try again.', 'warning'); return false; }
 
             // Refresh the list before checking, so a paper uploaded in another tab/session is detected.

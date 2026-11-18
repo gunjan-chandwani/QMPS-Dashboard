@@ -28,6 +28,20 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
+// Question-paper uploads accept PDF and Microsoft Word documents.
+// Keep this validation local to question-paper routes; COE notice rules remain unchanged.
+function isAllowedQuestionPaperFile(file) {
+  const ext = path.extname(String(file?.originalname || '')).toLowerCase();
+  const allowedMime = {
+    '.pdf': ['application/pdf', 'application/x-pdf'],
+    '.doc': ['application/msword'],
+    '.docx': ['application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+  };
+  if (!allowedMime[ext]) return false;
+  const mime = String(file?.mimetype || '').toLowerCase();
+  return !mime || mime === 'application/octet-stream' || allowedMime[ext].includes(mime);
+}
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
@@ -817,9 +831,9 @@ app.post("/api/papers", upload.single("file"), async (req, res) => {
     const b = req.body || {};
     const f = req.file;
     if (!f) return res.status(400).json({ok:false,error:"Please attach the question paper PDF."});
-    if (!(f.mimetype === 'application/pdf' || f.originalname.toLowerCase().endsWith('.pdf'))) {
+    if (!isAllowedQuestionPaperFile(f)) {
       try { fs.unlinkSync(f.path); } catch {}
-      return res.status(400).json({ok:false,error:"Only PDF question papers are accepted."});
+      return res.status(400).json({ok:false,error:"Upload a PDF (.pdf), Word 97–2003 (.doc), or Word Document (.docx) question paper."});
     }
     await validatePaperDateAgainstSchedule(b);
 
@@ -867,9 +881,9 @@ app.post("/api/papers", upload.single("file"), async (req, res) => {
 app.post("/api/papers/:id/replace-file", upload.single("file"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ok:false, error:"No file uploaded"});
-    if (!(req.file.mimetype === 'application/pdf' || req.file.originalname.toLowerCase().endsWith('.pdf'))) {
+    if (!isAllowedQuestionPaperFile(req.file)) {
       try { fs.unlinkSync(req.file.path); } catch {}
-      return res.status(400).json({ok:false,error:"Only PDF question papers are accepted."});
+      return res.status(400).json({ok:false,error:"Upload a PDF (.pdf), Word 97–2003 (.doc), or Word Document (.docx) question paper."});
     }
     const b = req.body || {};
     await validatePaperDateAgainstSchedule(b);
