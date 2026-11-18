@@ -1446,36 +1446,51 @@ window.onload = function() {
         }
 
         const QPMS_SCHOOL_DEPARTMENTS = {}; // Report groups are derived from live records
+        // December 2026 programme/school mapping is taken from the official COE
+        // "End TERM DATE SHEET December 2026_20261113.xlsx" (School, Program Name, Semester).
+        // Never classify by subject/course title or course-code prefix: common courses
+        // (e.g. Chemistry in B.Sc.B.Ed) belong to the programme's school.
+        function qpmsOfficialProgrammeGroup(item) {
+            const p = String(item.program || item.programme || '').toLowerCase()
+                .replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+            if (!p) return null;
+            const has = x => p.includes(x);
+            if (/\b(b sc b ed|b a b ed|b ed|itep)\b/.test(p)) return ['School of Education & Humanities','Education'];
+            if (/\b(b a ll b|bb a ll b|bba ll b|ll b|llm|l l m)\b/.test(p)) return ['School of Law','Law'];
+            if (/\b(m sc chemistry|masters of science.*chemistry)\b/.test(p)) return ['School of Sciences','Chemistry'];
+            if (/\b(bba|mba)\b/.test(p) || has('business administration') || has('business analytics') && has('master')) return ['School of Business','Business'];
+            if (has('computer applications') || /\bbca\b/.test(p)) return ['School of Engineering','CST'];
+            if (has('robotics') && has('artif') || has('robotics ai')) return ['School of Engineering','Robotics & AI'];
+            if (has('computer science') || has('computer engineering') || /\bcse\b/.test(p)) return ['School of Engineering','CST'];
+            if (has('mechanical') || has('smart manufacturing') || has('ev technology') || /\bm tech me\b/.test(p)) return ['School of Engineering','ME'];
+            if (has('electronics') || has('communication engineering') || has('vlsi') || has('chip design') || /\bece\b/.test(p)) return ['School of Engineering','ECE'];
+            if (has('technology') && /\bme\b/.test(p)) return ['School of Engineering','ME'];
+            return null;
+        }
         function qpmsSchoolFor(item) {
-            const schoolValue = String(item.school || '').trim();
-            const school = schoolValue.toLowerCase();
-            // Trust a valid explicit school value first; do not display placeholder values as real schools.
-            if (school.includes('school of law')) return 'School of Law';
-            if (school.includes('school of science')) return 'School of Sciences';
-            if (school.includes('school of education')) return 'School of Education';
-            if (school.includes('school of business')) return 'School of Business';
-            if (school.includes('school of engineering')) return 'School of Engineering';
-            const raw = `${item.department || ''} ${item.program || ''} ${item.courseName || ''} ${item.courseCode || ''}`.toLowerCase();
-            if (raw.includes('law') || /(^|[^a-z])lw\w*/.test(String(item.courseCode || '').toLowerCase())) return 'School of Law';
-            if (raw.includes('physics') || raw.includes('chemistry') || raw.includes('chem') || raw.includes('mathematics') || raw.includes('math')) return 'School of Sciences';
-            if (raw.includes('education') || raw.includes('b.ed') || raw.includes('itep') || /(^|[^a-z])ed\w*/.test(String(item.courseCode || '').toLowerCase())) return 'School of Education';
-            if (raw.includes('business') || raw.includes('management') || raw.includes('mba') || raw.includes('bba')) return 'School of Business';
-            if (raw.includes('engineering') || raw.includes('computer science') || raw.includes('cst') || raw.includes('mechanical') || raw.includes('robotics') || raw.includes('artificial intelligence') || raw.includes('ece') || raw.includes('electronics')) return 'School of Engineering';
-            return 'School mapping required';
+            const mapped = qpmsOfficialProgrammeGroup(item);
+            if (mapped) return mapped[0];
+            // For unmatched programme labels, do not fabricate a school from course subjects.
+            const school = String(item.school || '').trim().toLowerCase();
+            const official = ['School of Engineering','School of Business','School of Law',
+                'School of Education & Humanities','School of Sciences'];
+            return official.find(x => x.toLowerCase() === school) || 'School mapping required';
         }
         function qpmsDepartmentFor(item) {
-            const raw = `${item.department || ''} ${item.program || ''}`.toLowerCase();
-            if (raw.includes('robot') || raw.includes('artificial intelligence') || raw.includes('robotics & ai')) return 'Robotics & AI';
-            if (raw.includes('computer') || raw.includes('cst') || raw.includes('computing')) return 'CST';
-            if (raw.includes('mechanical') || raw === ' me') return 'ME';
-            if (raw.includes('ece') || raw.includes('electronics') || raw.includes('electrical')) return 'ECE';
-            if (raw.includes('physics')) return 'Physics';
-            if (raw.includes('chem')) return 'Chemistry';
-            if (raw.includes('math')) return 'Mathematics';
-            if (raw.includes('law')) return item.program || 'Law';
-            if (raw.includes('education')) return 'Education';
-            if (raw.includes('business') || raw.includes('management') || raw.includes('mba') || raw.includes('bba')) return item.department || 'Business';
-            return item.department || item.program || 'Not specified';
+            const mapped = qpmsOfficialProgrammeGroup(item);
+            if (mapped) return mapped[1];
+            const school = qpmsSchoolFor(item);
+            const raw = String(item.department || '').trim();
+            const allowed = {
+                'School of Engineering': {'cst':'CST','computer science & technology':'CST',
+                    'me':'ME','mechanical engineering':'ME','ece':'ECE',
+                    'electronics and communication':'ECE','robotics & ai':'Robotics & AI'},
+                'School of Business': {'business':'Business'},
+                'School of Law': {'law':'Law'},
+                'School of Education & Humanities': {'education':'Education'},
+                'School of Sciences': {'chemistry':'Chemistry'}
+            };
+            return (allowed[school] || {})[raw.toLowerCase()] || 'Department mapping required';
         }
         function qpmsPaperLink(p) {
             const id = encodeURIComponent(p.id);
