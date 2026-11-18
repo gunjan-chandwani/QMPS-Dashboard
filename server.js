@@ -288,7 +288,7 @@ async function syncDatesheetScheduleFromPdf(pdfText, uploadedBy, pdfBuffer) {
   const parsed = await parseDatesheetScheduleLayout(pdfBuffer);
   const datedRows = (String(pdfText || '').match(/\b\d{2}\.12\.2026\s+\d{2}\.\d{2}\s*(?:AM|PM)/gi) || []).length;
   // A partial parse must never silently overwrite or append a misleading schedule.
-  if (!parsed.length || (datedRows >= 50 && parsed.length < datedRows * 0.8) ||
+  if (parsed.some(r => !r.school || !r.department) || !parsed.length || (datedRows >= 50 && parsed.length < datedRows * 0.8) ||
       parsed.some(r => !/[A-Z]/.test(r.courseCode) || !/\d/.test(r.courseCode))) {
     throw new Error('Datesheet extraction is incomplete or invalid; no schedule rows were written. Check PDF layout before importing.');
   }
