@@ -299,7 +299,11 @@ function parseDatesheetScheduleRows(pdfText) {
         const matches=[...row.text.matchAll(codeRe)];
         for(let k=0;k<matches.length;k++){
           const courseCode=matches[k][1].toUpperCase();
-          const courseName=row.text.slice(matches[k].index+matches[k][0].length,k+1<matches.length?matches[k+1].index:undefined).trim();
+          // Codes separated by "/" share the course-title cell; do not drop the first code.
+          const finalCode=matches[matches.length-1];
+          const sharedName=row.text.slice(finalCode.index+finalCode[0].length).trim();
+          const ownName=row.text.slice(matches[k].index+matches[k][0].length,k+1<matches.length?matches[k+1].index:undefined).trim();
+          const courseName=ownName.replace(/^[\\/\s]+$/,'').length>=3 ? ownName : sharedName;
           if (!courseName || courseName.length<3) continue;
           output.push({courseCode,courseName,school,department,program,semester:previousSemester,examType:'End Semester',paperDate:row.date});
         }
