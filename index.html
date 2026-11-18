@@ -962,11 +962,11 @@
             return v;
         }
         function qpmsSemesterNorm(value) {
-            const raw = qpmsNorm(value).replace(/^sem(?:ester)?\\s*/, '').trim();
-            const numeric = raw.match(/\\d+/);
+            const raw = qpmsNorm(value).replace(/^sem(?:ester)?\s*/, '').trim();
+            const numeric = raw.match(/\d+/);
             if (numeric) return String(Number(numeric[0]));
             const words = {first:'1',second:'2',third:'3',fourth:'4',fifth:'5',sixth:'6',seventh:'7',eighth:'8',ninth:'9',tenth:'10'};
-            return words[raw.replace(/\\b(st|nd|rd|th)\\b/g, '').trim()] || raw;
+            return words[raw.replace(/\b(st|nd|rd|th)\b/g, '').trim()] || raw;
         }
         function qpmsIsDec2026EndSemester(sch) {
             const date = String(sch.paperDate || '').slice(0, 10);
