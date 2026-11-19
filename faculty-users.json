@@ -1668,5 +1668,15 @@
     "salt": "134586ec4d8cc3f70b0da6f5d5c139d7",
     "passwordHash": "5000b67b3b67a469b259390b48c98cc3c70c8bfd1dce3afb39c8fee1068a37746ddcd4779cb6e1712c16f8d7cc76eb3181ab99bbb6091446bbe92061a3671e15",
     "role": "FACULTY"
+  },
+  {
+    "email": "registrar@mru.edu.in",
+    "name": "Registrar",
+    "departmentCode": "BUSINESS",
+    "department": "Business",
+    "school": "School of Business",
+    "salt": "f8432e2faa2d2be5fdef46e82f990ccd",
+    "passwordHash": "5b06f126b7577452a5a6ccc1b144dc6e3ee6b505b633655898b314353ad999cbb51a8240141c47df4e0e7474a46badfd741ec3a5071f3e49ccb4bc44f6715d89",
+    "role": "FACULTY"
   }
 ]
