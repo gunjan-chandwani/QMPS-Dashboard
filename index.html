@@ -2475,7 +2475,7 @@ window.QPMS = {
     const r = await fetch('/api/papers', {method:'POST', body:fd});
     const j = await r.json();
     if (!r.ok) throw new Error(j.error || 'Upload failed');
-    return j.paper;
+    return Array.isArray(j.papers) && j.papers.length > 1 ? {papers:j.papers} : j.paper;
   },
   async replacePaperFile(id, data, file) {
     const fd = new FormData();
