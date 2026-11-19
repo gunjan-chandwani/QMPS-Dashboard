@@ -858,7 +858,14 @@ app.post("/api/papers", upload.single("file"), async (req, res) => {
       try { fs.unlinkSync(f.path); } catch {}
       return res.status(400).json({ok:false,error:"Upload a PDF (.pdf), Word 97–2003 (.doc), or Word Document (.docx) question paper."});
     }
-    await validatePaperDateAgainstSchedule(b);
+    let programs;
+    try { programs = b.programs ? JSON.parse(b.programs) : [b.program]; }
+    catch { return res.status(400).json({ok:false,error:'Invalid programme selection.'}); }
+    if (!Array.isArray(programs) || !programs.length || programs.length > 30 || programs.some(p => typeof p !== 'string' || !p.trim()))
+      return res.status(400).json({ok:false,error:'Select between 1 and 30 valid programmes.'});
+    programs = [...new Set(programs.map(p => p.trim()))];
+    // Validate every selected programme against the official datesheet before writing anything.
+    for (const program of programs) await validatePaperDateAgainstSchedule({...b, program});
 
     // Serialize uploads for the same faculty/course/session, including simultaneous clicks.
     // Do not block different programmes, semesters or exam types sharing a course code.
@@ -866,10 +873,12 @@ app.post("/api/papers", upload.single("file"), async (req, res) => {
     const norm = v => String(v || '').trim().toLowerCase().replace(/\\s+/g, ' ');
     const semesterKey = v => String(v || '').toLowerCase().replace(/\\bsemester\\b|\\bsem\\b|st\\b|nd\\b|rd\\b|th\\b/g, '').replace(/[^0-9]/g, '') || norm(v);
     const examKey = v => /end\\s*(?:semester|term)/i.test(v || '') ? 'end semester' : /mid\\s*(?:semester|term)/i.test(v || '') ? 'mid semester' : norm(v);
-    const key = [ownerEmail, norm(b.course), norm(b.program), semesterKey(b.semester), examKey(b.exam)].join('|');
+    const keys = programs.map(program => [ownerEmail, norm(b.course), norm(program), semesterKey(b.semester), examKey(b.exam)].join('|')).sort();
     uploadClient = await pool.connect();
     await uploadClient.query('BEGIN');
-    await uploadClient.query('SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))', ['qpms-upload', key]);
+    for (const key of keys) await uploadClient.query('SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))', ['qpms-upload', key]);
+    const created = [];
+    for (const program of programs) {
     const existing = await uploadClient.query(`
       SELECT id, status FROM papers
       WHERE LOWER(TRIM(COALESCE(owner_email,''))) = $1
@@ -880,7 +889,7 @@ app.post("/api/papers", upload.single("file"), async (req, res) => {
                   WHEN LOWER(COALESCE(exam,'')) ~ 'mid[[:space:]]*(semester|term)' THEN 'mid semester'
                   ELSE LOWER(TRIM(COALESCE(exam,''))) END) = $5
       ORDER BY id DESC LIMIT 1
-    `, [ownerEmail, norm(b.course), norm(b.program), semesterKey(b.semester), examKey(b.exam)]);
+    `, [ownerEmail, norm(b.course), norm(program), semesterKey(b.semester), examKey(b.exam)]);
     if (existing.rows.length) {
       await uploadClient.query('ROLLBACK');
       uploadClient.release(); uploadClient = null;
@@ -899,7 +908,7 @@ app.post("/api/papers", upload.single("file"), async (req, res) => {
       b.paper_no || null,
       b.title || b.subject || "Question Paper",
       b.school || null,
-      b.program || null,
+      program,
       b.department || null,
       b.semester || null,
       b.course || null,
@@ -919,9 +928,11 @@ app.post("/api/papers", upload.single("file"), async (req, res) => {
       f ? fs.readFileSync(f.path) : null
     ]);
 
+    created.push(rows[0]);
+    }
     await uploadClient.query('COMMIT');
     uploadClient.release(); uploadClient = null;
-    res.status(201).json({ ok: true, paper: rows[0] });
+    res.status(201).json({ ok: true, paper: created[0], papers: created });
   } catch (e) {
     if (uploadClient) { try { await uploadClient.query('ROLLBACK'); } catch {} uploadClient.release(); }
     if (req.file?.path) {
