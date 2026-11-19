@@ -1612,15 +1612,23 @@ window.onload = function() {
                 if (!keys.has(key)) keys.set(key, {school, dept, semester, scheduled:0, uploaded:0, pending:0, moderated:0, approved:0});
                 return keys.get(key);
             }
+            // Scheduled/pending columns describe datesheet rows; uploaded/workflow columns
+            // describe actual database paper records. Never hide uploaded papers simply
+            // because their programme labels do not exactly match the PDF parser.
             matchedBySchedule.forEach(({schedule, paper}) => {
                 const r = row(qpmsSchoolFor(schedule), qpmsDepartmentFor(schedule), schedule.semester || 'Not specified');
                 r.scheduled++;
                 if (!paper) r.pending++;
-                else {
-                    r.uploaded++;
-                    if (moderatedStatuses.includes(normalizedStatus(paper))) r.moderated++;
-                    if (finalStatuses.includes(normalizedStatus(paper))) r.approved++;
-                }
+            });
+            const matchedScheduleForPaper = new Map(matchedBySchedule
+                .filter(x => x.paper).map(x => [String(x.paper.id), x.schedule]));
+            papers.forEach(paper => {
+                const schedule = matchedScheduleForPaper.get(String(paper.id));
+                const source = schedule || paper;
+                const r = row(qpmsSchoolFor(source), qpmsDepartmentFor(source), source.semester || 'Not specified');
+                r.uploaded++;
+                if (moderatedStatuses.includes(normalizedStatus(paper))) r.moderated++;
+                if (finalStatuses.includes(normalizedStatus(paper))) r.approved++;
             });
             document.getElementById('coe-school-report').innerHTML = [...keys.values()]
                 .sort((a,b) => a.school.localeCompare(b.school) || a.dept.localeCompare(b.dept) || a.semester.localeCompare(b.semester))
