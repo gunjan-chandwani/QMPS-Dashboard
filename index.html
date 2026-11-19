@@ -1301,7 +1301,12 @@ window.onload = function() {
             document.getElementById('stat-unuploaded').textContent = unuploaded.length;
             document.getElementById('coe-badge-unuploaded').textContent = unuploaded.length;
             document.getElementById('stat-total').textContent = metricPapers.length;
-            document.getElementById('stat-pending').textContent = metricPapers.filter(p => ['SUBMITTED_TO_COE', 'FORWARDED_FOR_MODERATION', 'RESUBMITTED_TO_COE'].includes(p.status)).length;
+            // COE "In Review" means currently forwarded to moderation, not merely submitted to COE.
+            // Faculty's own "In Review" continues to include papers submitted to COE.
+            const reviewStatuses = isFaculty
+                ? ['SUBMITTED_TO_COE', 'FORWARDED_FOR_MODERATION', 'SENT_FOR_MODERATION', 'RESUBMITTED_TO_COE']
+                : ['FORWARDED_FOR_MODERATION', 'SENT_FOR_MODERATION'];
+            document.getElementById('stat-pending').textContent = metricPapers.filter(p => reviewStatuses.includes(qpmsNormalizeStatus(p.status))).length;
             document.getElementById('stat-action').textContent = metricPapers.filter(p => ['CHANGES_REQUIRED', 'CHANGES_REQUIRED_BY_MODERATOR'].includes(String(p.status || '').toUpperCase())).length;
             document.getElementById('stat-approved').textContent = metricPapers.filter(p => p.status === 'FINAL_APPROVED').length;
         }
