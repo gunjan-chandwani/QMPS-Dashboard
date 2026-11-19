@@ -515,9 +515,8 @@
                     </div>
                     <div>
                         <label class="block font-medium text-slate-700 mb-1">Program / Degree *</label>
-<select id="upload-program" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none" required>
-                            <option value="">Select department first</option>
-                        </select>
+<div id="upload-program-list" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg max-h-44 overflow-y-auto text-sm" role="group" aria-label="Select one or more programmes">Select department first</div>
+                        <input type="hidden" id="upload-program" value="">
                     </div>
                 </div>
 
@@ -1043,25 +1042,44 @@
             "MBA (Business Analytics)"
           ]}
         };
+        function selectedUploadPrograms() {
+          return [...document.querySelectorAll('#upload-program-list input[type="checkbox"]:checked')].map(x => x.value);
+        }
+        function setUploadPrograms(choices, selected = []) {
+          const list = document.getElementById('upload-program-list');
+          if (!list) return;
+          list.replaceChildren();
+          if (!choices.length) { list.textContent = 'Select department first'; return; }
+          choices.forEach((name, i) => {
+            const label = document.createElement('label');
+            label.className = 'flex items-start gap-2 py-1 cursor-pointer';
+            const input = document.createElement('input');
+            input.type = 'checkbox'; input.value = name; input.name = 'upload-program-choice';
+            input.checked = selected.includes(name);
+            input.className = 'mt-1';
+            input.addEventListener('change', () => {
+              document.getElementById('upload-program').value = selectedUploadPrograms()[0] || '';
+            });
+            label.append(input, document.createTextNode(name));
+            list.appendChild(label);
+          });
+          document.getElementById('upload-program').value = selectedUploadPrograms()[0] || '';
+        }
         function refreshAcademicHierarchy() {
           const school = document.getElementById('upload-school');
           const dept = document.getElementById('upload-dept');
-          const program = document.getElementById('upload-program');
-          if (!school || !dept || !program) return;
-          const oldDept = dept.value, oldProgram = program.value;
+          if (!school || !dept) return;
+          const oldDept = dept.value, selected = selectedUploadPrograms();
           const departments = Object.keys(MRU_PROGRAMS[school.value] || {});
           dept.innerHTML = '<option value="">Select department</option>' + departments.map(d=>`<option value="${d}">${d}</option>`).join('');
           if (departments.includes(oldDept)) dept.value = oldDept;
-          // Auto-select the department when the selected school has one department grouping.
           if (!dept.value && departments.length === 1) dept.value = departments[0];
           const choices = (MRU_PROGRAMS[school.value] || {})[dept.value] || [];
-          program.innerHTML = '<option value="">Select programme</option>' + choices.map(p=>`<option value="${p.replace(/&/g,'&amp;')}">${p}</option>`).join('');
-          if (choices.includes(oldProgram)) program.value = oldProgram;
-          const schoolInput = document.getElementById('upload-school');
-          if (schoolInput) schoolInput.dataset.selected = schoolInput.value;
+          setUploadPrograms(choices, selected);
+          school.dataset.selected = school.value;
           if (typeof refreshUploadPrograms === 'function') refreshUploadPrograms();
         }
-        document.addEventListener('DOMContentLoaded', () => {
+                document.addEventListener('DOMContentLoaded', () => {
           ['upload-school','upload-dept'].forEach(id => {
             const el=document.getElementById(id); if(el) el.addEventListener('change', refreshAcademicHierarchy);
           });
@@ -1919,8 +1937,7 @@ window.onload = function() {
             const code = document.getElementById('upload-course-code');
             const semester = document.getElementById('upload-semester');
             const exam = document.getElementById('upload-exam');
-            const program = document.getElementById('upload-program');
-            if (!code || !semester || !exam || !program) return;
+            if (!code || !semester || !exam) return;
             const matches = (datesheetSchedule || []).filter(s =>
                 qpmsNorm(s.courseCode) === qpmsNorm(code.value) &&
                 qpmsNorm(s.semester) === qpmsNorm(semester.value) &&
@@ -1955,12 +1972,10 @@ window.onload = function() {
         }
 
         function populateScheduleProgramOptions() {
-            const source = document.getElementById('upload-program');
             const target = document.getElementById('sch-program');
-            if (!source || !target) return;
+            if (!target) return;
             const seen = new Set();
-            [...source.options].forEach(option => {
-                const value = (option.value || option.textContent || '').trim();
+            Object.values(MRU_PROGRAMS).flatMap(depts => Object.values(depts).flat()).forEach(value => {
                 if (!value || /select (programme|program|department)/i.test(value) || seen.has(value.toLowerCase())) return;
                 seen.add(value.toLowerCase());
                 const clone = document.createElement('option'); clone.value = value; clone.textContent = value; target.appendChild(clone);
@@ -2037,6 +2052,7 @@ window.onload = function() {
             document.getElementById('upload-paper-id').value = '';
             document.getElementById('revision-feedback-box').classList.add('hidden');
             document.getElementById('form-upload').reset();
+            refreshAcademicHierarchy();
             document.getElementById('file-chosen-name').textContent = 'No file selected';
             document.getElementById('btn-submit-paper').textContent = 'Submit Paper to COE';
             openModal('modal-upload');
@@ -2061,7 +2077,7 @@ window.onload = function() {
             document.getElementById('upload-course-name').value = paper.courseName;
             document.getElementById('upload-course-code').value = paper.courseCode;
             document.getElementById('upload-dept').value = paper.department;
-            document.getElementById('upload-program').value = paper.program;
+            setUploadPrograms((MRU_PROGRAMS[document.getElementById('upload-school').value] || {})[paper.department] || [paper.program], [paper.program]);
             document.getElementById('upload-semester').value = paper.semester;
             document.getElementById('upload-exam').value = paper.examType;
             document.getElementById('upload-paper-date').value = paper.paperDate;
@@ -2109,6 +2125,9 @@ window.onload = function() {
             const courseName = document.getElementById('upload-course-name').value.trim();
             const courseCode = document.getElementById('upload-course-code').value.trim();
             const paperDate = document.getElementById('upload-paper-date').value;
+            const chosenPrograms = selectedUploadPrograms();
+            if (!chosenPrograms.length) { showToast('Select at least one programme.', 'warning'); return false; }
+            if (paperId && chosenPrograms.length !== 1) { showToast('Revisions must select only the original programme.', 'warning'); return false; }
             if (!courseName || !courseCode || !paperDate) {
                 showToast('Please fill Course Name, Course Code and Paper Date.', 'warning');
                 return false;
@@ -2138,14 +2157,14 @@ window.onload = function() {
                 } catch (refreshError) {
                     console.warn('Could not refresh papers before duplicate check:', refreshError);
                 }
-                const duplicate = findExistingFacultyPaper({
+                const duplicate = chosenPrograms.map(program => findExistingFacultyPaper({
                     paperId: '', courseCode,
                     facultyName: currentSession?.name || 'Unknown Faculty',
                     department: document.getElementById('upload-dept').value,
-                    program: document.getElementById('upload-program').value,
+                    program,
                     semester: document.getElementById('upload-semester').value,
                     examType: document.getElementById('upload-exam').value
-                });
+                })).find(Boolean);
                 if (duplicate) {
                     const status = String(duplicate.status || '').toUpperCase().replace(/[ -]+/g, '_');
                     const message = status === 'CHANGES_REQUIRED'
@@ -2160,7 +2179,8 @@ window.onload = function() {
                 paper_no: paperId || undefined,
                 title: courseName,
                 school: qpmsSchoolFor({department: document.getElementById('upload-dept').value, program: document.getElementById('upload-program').value}),
-                program: document.getElementById('upload-program').value,
+                program: chosenPrograms[0],
+                programs: JSON.stringify(chosenPrograms),
                 department: document.getElementById('upload-dept').value,
                 semester: document.getElementById('upload-semester').value,
                 course: document.getElementById('upload-course-code').value.toUpperCase(),
@@ -2180,8 +2200,9 @@ window.onload = function() {
                 document.getElementById('btn-submit-paper').disabled = true;
                 if (!paperId) {
                     const saved = await window.QPMS.createPaper(data, file);
-                    papersDatabase.unshift(window.QPMS.toUiPaper(saved));
-                    showToast(`Paper for "${data.course}" submitted successfully to COE!`, 'success');
+                    const created = Array.isArray(saved.papers) ? saved.papers : [saved];
+                    created.forEach(p => papersDatabase.unshift(window.QPMS.toUiPaper(p)));
+                    showToast(`Paper for "${data.course}" submitted for ${created.length} programme(s)!`, 'success');
                 } else {
                     const saved = await window.QPMS.replacePaperFile(paperId, data, file);
                     const idx = papersDatabase.findIndex(p => String(p.id) === String(paperId));
