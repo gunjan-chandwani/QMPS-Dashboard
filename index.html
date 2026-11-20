@@ -1615,7 +1615,7 @@ window.onload = function() {
             function row(school, dept, semester) {
                 // Canonicalize Sem 1 / Semester First / 1st into the same report row.
                 const normalized = qpmsSemesterNorm(semester);
-                const displaySemester = /^\\d+$/.test(normalized)
+                const displaySemester = /^\d+$/.test(normalized)
                     ? normalized + ({'1':'st','2':'nd','3':'rd'}[normalized] || 'th')
                     : (semester || 'Not specified');
                 const key = [school.trim().toLowerCase(), dept.trim().toLowerCase(), normalized].join('|||');
