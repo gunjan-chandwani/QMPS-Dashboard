@@ -287,8 +287,9 @@ function parseDatesheetScheduleRows(pdfText) {
     }
     if (!name || name.length < 3) name = code;
     const program = currentProgram || 'Unmapped Programme';
-    const low = `${program} ${name}`.toLowerCase();
-    let department = /robot|artificial intelligence/i.test(low) ? 'Robotics & AI' : /electronics|electrical|vlsi/i.test(low) ? 'Electronics & Communication' : /mechanical|manufacturing/i.test(low) ? 'Mechanical Engineering' : /computer science|csti|aiml|gen ai|quantum computing/i.test(low) ? 'Computer Science & Technology' : /law|llb|llm/i.test(low) ? 'Law' : /business|management|mba|bba/i.test(low) ? 'Business' : /education|itep|b\.ed/i.test(low) ? 'Education & Humanities' : /physics|chemistry|mathematics|science/i.test(low) ? 'Sciences' : 'Unmapped Department';
+    // Academic ownership comes from the PDF programme heading, never the subject title.
+    const low = program.toLowerCase();
+    let department = /b\.?\s*sc\.?\s*b\.?\s*ed|b\.?\s*ed|education/i.test(low) ? 'Education & Humanities' : /robot|artificial intelligence/i.test(low) ? 'Robotics & AI' : /electronics|electrical|vlsi/i.test(low) ? 'Electronics & Communication' : /mechanical|manufacturing/i.test(low) ? 'Mechanical Engineering' : /computer science|csti|aiml|gen ai|quantum computing/i.test(low) ? 'Computer Science & Technology' : /law|llb|llm/i.test(low) ? 'Law' : /business|management|mba|bba/i.test(low) ? 'Business' : /education|itep|b\.ed/i.test(low) ? 'Education & Humanities' : /physics|chemistry|mathematics|science/i.test(low) ? 'Sciences' : 'Unmapped Department';
     const school = ['Computer Science & Technology','Robotics & AI','Electronics & Communication','Mechanical Engineering'].includes(department) ? 'School of Engineering' : department === 'Law' ? 'School of Law' : department === 'Business' ? 'School of Business' : department === 'Sciences' ? 'School of Sciences' : department === 'Education & Humanities' ? 'School of Education & Humanities' : 'Unmapped / Other';
     rows.push({courseCode:code,courseName:name,school,department,program,semester:currentSemester || 'Not specified',examType:currentExam,paperDate});
   }
