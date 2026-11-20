@@ -16,7 +16,7 @@ function owner(program) {
     /electronics|electrical|vlsi/.test(s)?'Electronics & Communication':
     /mechanical|manufacturing|automation/.test(s)?'Mechanical Engineering':
     /computer science|csti|aiml|gen ai|quantum computing|full stack/.test(s)?'Computer Science & Technology':
-    /law|llb|llm/.test(s)?'Law':
+    /law|llb|llm|l\\.?l\\.?b/.test(s)?'Law':
     /business|management|mba|bba/.test(s)?'Business':
     /chemistry|physics|mathematics|m\.?\s*sc|science/.test(s)?'Sciences':'Unmapped Department';
   const school = ['Computer Science & Technology','Robotics & AI','Electronics & Communication','Mechanical Engineering'].includes(department)?'School of Engineering':
@@ -71,10 +71,14 @@ pdf(fs.readFileSync(filename),{
       const courseItems=l.items.filter(x=>x.x>=240 && x.x<400);
       // Some PDF rows put code on a line below date, or in same text item as title.
       let code='',codeLine=i;
-      // Text baselines can place the code ABOVE the date, or BELOW it.\n      // Inspect a narrow vertical band, but never cross another dated row.\n      const nearby=lines.map((v,k)=>({v,k})).filter(({v,k})=>Math.abs(v.y-l.y)<=12 && (k===i || !dateRe.test(v.text)));\n      nearby.sort((a,b)=>Math.abs(a.v.y-l.y)-Math.abs(b.v.y-l.y));\n      for(const {v:candidate,k:j} of nearby){
-        const candidate=lines[j];
-        if(j>i && (dateRe.test(candidate.text)||isHeading(candidate.text)||/^DATE\b/i.test(candidate.text)))break;
-        const codeText=candidate.items.filter(x=>x.x>=235 && x.x<405).map(x=>x.text).join(' ');
+      // Match codes by their actual PDF x/y coordinates. Text baselines can be
+      // slightly above or below the date, including split EDH307C / MAH301C.
+      const nearby=lines.map((v,k)=>({v,k}))
+        .filter(({v,k})=>Math.abs(v.y-l.y)<=12 && (k===i || !dateRe.test(v.text)))
+        .sort((a,b)=>Math.abs(a.v.y-l.y)-Math.abs(b.v.y-l.y));
+      for(const {v:candidate,k:j} of nearby){
+        if(isHeading(candidate.text)||/^DATE\b/i.test(candidate.text))continue;
+        const codeText=candidate.items.filter(x=>x.x>=235 && x.x<320).map(x=>x.text).join(' ');
         const found=codeText.match(codeRe);
         if(found){code=found[0].toUpperCase();codeLine=j;break}
       }
