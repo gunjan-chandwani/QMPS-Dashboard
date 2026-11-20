@@ -1629,10 +1629,10 @@ window.onload = function() {
             const keys = new Map();
             // The COE PDF uses a combined BBA heading, whereas faculty choose a
             // particular specialization. Both belong to one official report group.
-            function officialReportProgramme(school, dept, programme) {
+            function officialReportProgramme(school, dept, semester, programme) {
                 const name = String(programme || '').trim();
                 const n = qpmsNorm(name);
-                if (school === 'School of Business' && dept === 'Business' &&
+                if (school === 'School of Business' && dept === 'Business' && qpmsSemesterNorm(semester) === '1' &&
                     (n.includes('bachelor of business administration') || /^bba\b/.test(n))) {
                     if (n.includes('business analytics') && !n.includes('efb/faa/gom/ba/ai')) {
                         // BBA BA is part of the combined heading for the first semester.
@@ -1647,7 +1647,7 @@ window.onload = function() {
                 const displaySemester = /^\d+$/.test(normalized)
                     ? normalized + ({'1':'st','2':'nd','3':'rd'}[normalized] || 'th')
                     : (semester || 'Not specified');
-                const displayProgramme = officialReportProgramme(school, dept, programme) || 'Programme not mapped';
+                const displayProgramme = officialReportProgramme(school, dept, semester, programme) || 'Programme not mapped';
                 const key = [school.trim().toLowerCase(), dept.trim().toLowerCase(), normalized, qpmsNorm(displayProgramme)].join('|||');
                 if (!keys.has(key)) keys.set(key, {school, dept, semester:displaySemester, programme:displayProgramme, scheduled:0, uploaded:0, pending:0, moderated:0, approved:0});
                 return keys.get(key);
