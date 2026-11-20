@@ -385,27 +385,31 @@ async function validatePaperDateAgainstSchedule(data) {
     throw error;
   }
 
-  const variants = dateVariants(submittedDate);
-  const codeNeedle = courseCode.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const variants = new Set(dateVariants(submittedDate));
+  const codeNeedle = courseCode.toUpperCase().replace(/[^A-Z0-9]/g, '');
   const evidence = [];
-  // pdf-parse often merges table cells: "14.12.202601.00PM" has no
-  // word boundary between the year and the time. Capture the date even
-  // when a time follows immediately.
+  // PDF text may merge date + time + code (07.12.202601.00PM5.0CH01O009),
+  // or split combined codes over lines. Work from date-to-next-date spans.
   const datePattern = /(?:^|[^0-9])(\d{1,2}[.\/-]\d{1,2}[.\/-]\d{4}|\d{4}-\d{2}-\d{2})(?=\d{2}[.:]\d{2}|[^0-9]|$)/gm;
-  const codePattern = /\d+(?:\s*\.\s*\d+)?\s*[a-z]{2}\s*\d+\s*[a-z]\s*\d+|\b[a-z]{2,5}\s*\d{2,5}\b/g;
+  const canonicalDate = value => {
+    const m = /^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})$/.exec(value);
+    return m ? `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}` : value;
+  };
+  // Support both ECH303C and 5.0CH01O009 (including wrapped combined codes).
+  const codePattern = /\d+(?:\s*\.\s*\d+)?\s*[a-z]{2,5}\s*\d+\s*[a-z]\s*\d+|[a-z]{2,5}\s*\d{2,5}\s*[a-z]?/gi;
   for (const doc of documents) {
-    const pdfText = normalizeEndTerm2026Date(doc.text || '', exam).toLowerCase();
+    const pdfText = normalizeEndTerm2026Date(doc.text || '', exam);
     const dates = [...pdfText.matchAll(datePattern)].map(m => ({
-      date: m[1], index: m.index + m[0].indexOf(m[1]), length: m[1].length
+      date: canonicalDate(m[1]), index: m.index + m[0].indexOf(m[1]), length: m[1].length
     }));
     for (let i = 0; i < dates.length; i++) {
       const date = dates[i];
-      if (!variants.includes(date.date)) continue;
+      if (date.date !== submittedDate) continue;
       const start = date.index + date.length;
-      const end = Math.min(pdfText.length, start + 800, dates[i + 1]?.index ?? pdfText.length);
+      const end = Math.min(pdfText.length, start + 1400, dates[i + 1]?.index ?? pdfText.length);
       const row = pdfText.slice(start, end);
       const candidates = row.match(codePattern) || [];
-      if (candidates.some(candidate => candidate.replace(/[^a-z0-9]/g, '') === codeNeedle)) {
+      if (candidates.some(candidate => candidate.toUpperCase().replace(/[^A-Z0-9]/g, '') === codeNeedle)) {
         evidence.push(doc);
         break;
       }
