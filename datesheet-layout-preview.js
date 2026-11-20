@@ -96,7 +96,8 @@ pdf(fs.readFileSync(filename),{
       }
       if(!title && codeLine+1<lines.length && !dateRe.test(lines[codeLine+1].text) && !isHeading(lines[codeLine+1].text))
         title=clean(lines[codeLine+1].items.filter(x=>x.x>=300).map(x=>x.text).join(' '));
-      const paperDate=date[3]+'-'+date[2]+'-'+date[1];\n      if(paperDate<'2026-12-01'||paperDate>'2026-12-31'){warnings.push('Out-of-scope PDF date page '+page.number+' y='+l.y+': '+paperDate+' code '+code);continue}
+      const paperDate=date[3]+'-'+date[2]+'-'+date[1];
+      if(paperDate<'2026-12-01'||paperDate>'2026-12-31'){warnings.push('Out-of-scope PDF date page '+page.number+' y='+l.y+': '+paperDate+' code '+code);continue}
       const {school,department}=owner(program);
       rows.push({page:page.number,program,semester:sem,courseCode:code,courseName:title,school,department,examType:'End Semester',paperDate});
       sectionCount++;
