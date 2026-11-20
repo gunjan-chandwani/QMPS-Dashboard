@@ -1613,8 +1613,13 @@ window.onload = function() {
             ].join('');
             const keys = new Map();
             function row(school, dept, semester) {
-                const key = [school, dept, semester].join('|||');
-                if (!keys.has(key)) keys.set(key, {school, dept, semester, scheduled:0, uploaded:0, pending:0, moderated:0, approved:0});
+                // Canonicalize Sem 1 / Semester First / 1st into the same report row.
+                const normalized = qpmsSemesterNorm(semester);
+                const displaySemester = /^\\d+$/.test(normalized)
+                    ? normalized + ({'1':'st','2':'nd','3':'rd'}[normalized] || 'th')
+                    : (semester || 'Not specified');
+                const key = [school.trim().toLowerCase(), dept.trim().toLowerCase(), normalized].join('|||');
+                if (!keys.has(key)) keys.set(key, {school, dept, semester:displaySemester, scheduled:0, uploaded:0, pending:0, moderated:0, approved:0});
                 return keys.get(key);
             }
             // Scheduled/pending columns describe datesheet rows; uploaded/workflow columns
