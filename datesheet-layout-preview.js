@@ -109,6 +109,17 @@ pdf(fs.readFileSync(filename),{
   }
   const keys=new Set();const duplicates=[];
   for(const r of rows){const k=[r.program,r.semester,r.courseCode,r.paperDate].join('|');if(keys.has(k))duplicates.push(k);keys.add(k)}
+  const duplicateAudit=[];
+  const grouped=new Map();
+  for(const r of rows){
+    const key=[r.program,r.semester,r.courseCode,r.paperDate].join('|');
+    if(!grouped.has(key))grouped.set(key,[]);
+    grouped.get(key).push({page:r.page,school:r.school,department:r.department,courseName:r.courseName});
+  }
+  for(const [key,occurrences] of grouped)if(occurrences.length>1)duplicateAudit.push({key,occurrences});
+  fs.writeFileSync('datesheet_duplicate_audit.json',JSON.stringify(duplicateAudit,null,2));
+  console.log('SCHOOL COUNTS:',JSON.stringify(rows.reduce((a,r)=>(a[r.school]=(a[r.school]||0)+1,a),{}),null,2));
+  console.log('DUPLICATE AUDIT:',JSON.stringify(duplicateAudit,null,2));
   fs.writeFileSync('datesheet_layout_preview.json',JSON.stringify({rows,warnings,duplicates},null,2));
   const cols=['page','program','semester','courseCode','courseName','school','department','examType','paperDate'];
   fs.writeFileSync('datesheet_layout_preview.csv',[cols.join(','),...rows.map(r=>cols.map(c=>esc(r[c])).join(','))].join('\r\n'));
