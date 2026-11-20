@@ -71,7 +71,7 @@ pdf(fs.readFileSync(filename),{
       const courseItems=l.items.filter(x=>x.x>=240 && x.x<400);
       // Some PDF rows put code on a line below date, or in same text item as title.
       let code='',codeLine=i;
-      for(let j=i;j<Math.min(lines.length,i+4);j++){
+      // Text baselines can place the code ABOVE the date, or BELOW it.\n      // Inspect a narrow vertical band, but never cross another dated row.\n      const nearby=lines.map((v,k)=>({v,k})).filter(({v,k})=>Math.abs(v.y-l.y)<=12 && (k===i || !dateRe.test(v.text)));\n      nearby.sort((a,b)=>Math.abs(a.v.y-l.y)-Math.abs(b.v.y-l.y));\n      for(const {v:candidate,k:j} of nearby){
         const candidate=lines[j];
         if(j>i && (dateRe.test(candidate.text)||isHeading(candidate.text)||/^DATE\b/i.test(candidate.text)))break;
         const codeText=candidate.items.filter(x=>x.x>=235 && x.x<405).map(x=>x.text).join(' ');
@@ -92,7 +92,7 @@ pdf(fs.readFileSync(filename),{
       }
       if(!title && codeLine+1<lines.length && !dateRe.test(lines[codeLine+1].text) && !isHeading(lines[codeLine+1].text))
         title=clean(lines[codeLine+1].items.filter(x=>x.x>=300).map(x=>x.text).join(' '));
-      const paperDate=date[3]+'-'+date[2]+'-'+date[1];
+      const paperDate=date[3]+'-'+date[2]+'-'+date[1];\n      if(paperDate<'2026-12-01'||paperDate>'2026-12-31'){warnings.push('Out-of-scope PDF date page '+page.number+' y='+l.y+': '+paperDate+' code '+code);continue}
       const {school,department}=owner(program);
       rows.push({page:page.number,program,semester:sem,courseCode:code,courseName:title,school,department,examType:'End Semester',paperDate});
       sectionCount++;
