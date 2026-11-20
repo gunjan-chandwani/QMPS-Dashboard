@@ -189,6 +189,7 @@ async function initDb() {
     )
   `);
   await pool.query(`ALTER TABLE papers ADD COLUMN IF NOT EXISTS file_data BYTEA`);
+  await pool.query(`ALTER TABLE papers ADD COLUMN IF NOT EXISTS exam_date DATE`);
   await pool.query(`ALTER TABLE papers ADD COLUMN IF NOT EXISTS owner_email TEXT`);
   // All pre-existing question-paper records belong to the original administrator account.
   await pool.query(`UPDATE papers SET owner_email='gunjan@mru.edu.in' WHERE owner_email IS NULL OR TRIM(owner_email)=''`);
@@ -513,7 +514,7 @@ app.get("/api/papers", async (req, res) => {
     const canSeeAll = viewerRole === 'COE' || viewerRole === 'MODERATOR';
     const { rows } = await pool.query(`
       SELECT id::text AS id, paper_no, title, school, program, department, semester,
-             course, subject, faculty, exam, submission_date, status, expected,
+             course, subject, faculty, exam, submission_date, TO_CHAR(exam_date,'YYYY-MM-DD') AS exam_date, status, expected,
              original_filename, file_mimetype, file_size, comments, moderation_details,
              owner_email, created_at, updated_at, (file_data IS NOT NULL OR file_path IS NOT NULL) AS has_file
       FROM papers
@@ -907,10 +908,10 @@ app.post("/api/papers", upload.single("file"), async (req, res) => {
     const { rows } = await uploadClient.query(`
       INSERT INTO papers (
         paper_no, title, school, program, department, semester, course,
-        subject, faculty, exam, submission_date, status, expected, owner_email, original_filename,
+        subject, faculty, exam, submission_date, exam_date, status, expected, owner_email, original_filename,
         stored_filename, file_path, file_mimetype, file_size, comments, file_data
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,COALESCE(NULLIF($11,'')::timestamptz,NOW()),$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,COALESCE(NULLIF($11,'')::timestamptz,NOW()),NULLIF($22,'')::date,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
       RETURNING *
     `, [
       b.paper_no || null,
@@ -933,7 +934,8 @@ app.post("/api/papers", upload.single("file"), async (req, res) => {
       f?.mimetype || null,
       f?.size || null,
       b.comments || null,
-      f ? fs.readFileSync(f.path) : null
+      f ? fs.readFileSync(f.path) : null,
+      String(b.paperDate || b.paper_date || b.exam_date || b.submission_date || '').slice(0,10)
     ]);
 
     created.push(rows[0]);
@@ -965,13 +967,14 @@ app.post("/api/papers/:id/replace-file", upload.single("file"), async (req, res)
         semester=COALESCE($5,semester), course=COALESCE($6,course), subject=COALESCE($7,subject),
         faculty=COALESCE($8,faculty), exam=COALESCE($9,exam), status='RESUBMITTED_TO_COE',
         original_filename=$10, stored_filename=$11, file_path=$12, file_mimetype=$13, file_size=$14,
-        file_data=$15, updated_at=NOW()
+        file_data=$15, exam_date=NULLIF($16,'')::date, updated_at=NOW()
       WHERE id::text=$1 RETURNING *
     `, [
       String(req.params.id), b.title || null, b.program || null, b.department || null,
       b.semester || null, b.course || null, b.subject || null, b.faculty || null, b.exam || null,
       req.file.originalname, req.file.filename, req.file.path, req.file.mimetype,
-      req.file.size, fs.readFileSync(req.file.path)
+      req.file.size, fs.readFileSync(req.file.path),
+      String(b.paperDate || b.paper_date || b.exam_date || b.submission_date || '').slice(0,10)
     ]);
     if (!rows.length) return res.status(404).json({ok:false,error:"Paper not found"});
     res.json({ok:true,paper:rows[0]});
