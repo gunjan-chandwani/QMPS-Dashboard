@@ -110,6 +110,9 @@ pdf(fs.readFileSync(filename),{
   fs.writeFileSync('datesheet_layout_preview.csv',[cols.join(','),...rows.map(r=>cols.map(c=>esc(r[c])).join(','))].join('\r\n'));
   console.log('PDF pages:',pages.length,'Extracted rows:',rows.length,'Missing-code warnings:',warnings.length,'Duplicate keys:',duplicates.length);
   console.log('Programme sections:',new Set(rows.map(r=>r.page+'|'+r.program)).size);
+  console.log('WARNINGS:',JSON.stringify(warnings,null,2));
+  console.log('DUPLICATES:',JSON.stringify(duplicates,null,2));
+  console.log('LAW ROWS:',rows.filter(r=>/LL\\.?B/i.test(r.program)).length);
   console.log('Sample rows:',JSON.stringify(rows.slice(0,6),null,2));
   console.log('Saved datesheet_layout_preview.csv and datesheet_layout_preview.json (READ ONLY)');
 }).catch(e=>{console.error(e.stack||e.message);process.exitCode=1});
