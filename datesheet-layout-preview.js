@@ -16,7 +16,7 @@ function owner(program) {
     /electronics|electrical|vlsi/.test(s)?'Electronics & Communication':
     /mechanical|manufacturing|automation|master of technology\s*-\s*me\b/.test(s)?'Mechanical Engineering':
     /computer science|computer applications|cloud computing|fintech|csti|aiml|gen ai|quantum computing|full stack/.test(s)?'Computer Science & Technology':
-    /law|llb|llm|l\\.?l\\.?b/.test(s)?'Law':
+    /law|llb|llm|ll\.?b/.test(s)?'Law':
     /business|management|mba|bba/.test(s)?'Business':
     /chemistry|physics|mathematics|m\.?\s*sc|science/.test(s)?'Sciences':'Unmapped Department';
   const school = ['Computer Science & Technology','Robotics & AI','Electronics & Communication','Mechanical Engineering'].includes(department)?'School of Engineering':
