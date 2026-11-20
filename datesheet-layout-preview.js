@@ -6,7 +6,7 @@ const filename = process.argv[2] || 'EndTerm_Dec2026_Original.pdf';
 const months = {FIRST:'1st',SECOND:'2nd',THIRD:'3rd',FOURTH:'4th',FIFTH:'5th',SIXTH:'6th',SEVENTH:'7th',EIGHTH:'8th',NINTH:'9th',TENTH:'10th'};
 const dateRe = /\b(\d{2})[.\/-](\d{2})[.\/-](20\d{2})\b/;
 const codeRe = /(?:\d+(?:\.\d+)?[A-Z]{2,5}\d+[A-Z]\d+|[A-Z]{2,5}\d{2,5}[A-Z]?)(?![0-9])/i;
-const isHeading = s => /^(?:Bachelor|Master|B\.?\s?Tech|M\.?\s?Tech|B\.?\s?Sc|M\.?\s?Sc|B\.?\s?A\.?|M\.?\s?A\.?|BBA|MBA|MCA|BCA|LLB|LLM|B\.?\s?Ed)/i.test(s.trim());
+const isHeading = s => /^(?:Bachelor|Bachelors|Master|B\.?\s?Tech|M\.?\s?Tech|B\.?\s?Sc|M\.?\s?Sc|B\.?\s?A\.?|M\.?\s?A\.?|BBA|MBA|MCA|BCA|LLB|LLM|B\.?\s?Ed)/i.test(s.trim());
 const clean = s => String(s||'').replace(/\s+/g,' ').trim();
 const esc = v => '"'+String(v??'').replace(/"/g,'""')+'"';
 function owner(program) {
@@ -14,8 +14,8 @@ function owner(program) {
   const department = /b\.?\s*sc\.?\s*b\.?\s*ed|b\.?\s*a\.?\s*b\.?\s*ed|b\.?\s*ed|education|itep/.test(s)?'Education & Humanities':
     /robotics|robot|artifical intelligence/.test(s)?'Robotics & AI':
     /electronics|electrical|vlsi/.test(s)?'Electronics & Communication':
-    /mechanical|manufacturing|automation/.test(s)?'Mechanical Engineering':
-    /computer science|csti|aiml|gen ai|quantum computing|full stack/.test(s)?'Computer Science & Technology':
+    /mechanical|manufacturing|automation|master of technology\s*-\s*me\b/.test(s)?'Mechanical Engineering':
+    /computer science|computer applications|cloud computing|fintech|csti|aiml|gen ai|quantum computing|full stack/.test(s)?'Computer Science & Technology':
     /law|llb|llm|l\\.?l\\.?b/.test(s)?'Law':
     /business|management|mba|bba/.test(s)?'Business':
     /chemistry|physics|mathematics|m\.?\s*sc|science/.test(s)?'Sciences':'Unmapped Department';
@@ -50,7 +50,7 @@ pdf(fs.readFileSync(filename),{
     let program=''; let sectionStart=-1; let sectionCount=0;
     for(let i=0;i<lines.length;i++){
       const l=lines[i],t=l.text;
-      if(isHeading(t)){
+      if(isHeading(t) && !/^[A-Z]{2,5}\d{2,5}[A-Z]?\s/.test(t)){
         program=t;sectionStart=i;sectionCount=0;
         // Some headings wrap to a second line (e.g. CSE specializations).
         for(let j=i+1;j<Math.min(lines.length,i+3);j++){
@@ -63,6 +63,7 @@ pdf(fs.readFileSync(filename),{
         lastSection=program;
         continue;
       }
+      if(/^MANAV RACHNA UNIVERSITY$/i.test(t))continue;
       const date=t.match(dateRe);
       if(!date)continue;
       // Only actual course rows: date appears in the left-most column.
