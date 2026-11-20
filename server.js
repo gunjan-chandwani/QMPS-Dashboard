@@ -219,9 +219,9 @@ async function initDb() {
 // Normalize for matching/import only; retain original COE documents unchanged.
 function normalizeEndTerm2026Date(value, examType = 'End Semester') {
   const raw = String(value || '');
-  if (!/end\\s*(?:semester|term)/i.test(String(examType))) return raw;
-  return raw.replace(/\\b2029-12-(\\d{2})\\b/g, '2026-12-$1')
-    .replace(/\\b(\\d{1,2}[.\\/-]12[.\\/-])2029\\b/g, '$12026');
+  if (!/end\s*(?:semester|term)/i.test(String(examType))) return raw;
+  return raw.replace(/2029-12-(\d{2})/g, '2026-12-$1')
+    .replace(/(\d{1,2}[.\/-]12[.\/-])2029/g, '$12026');
 }
 
 function dateVariants(isoDate) {
@@ -388,19 +388,22 @@ async function validatePaperDateAgainstSchedule(data) {
   const variants = dateVariants(submittedDate);
   const codeNeedle = courseCode.toLowerCase().replace(/[^a-z0-9]/g, '');
   const evidence = [];
-  const datePattern = /\b(?:\d{1,2}[.\/-]\d{1,2}[.\/-]\d{2,4}|\d{4}-\d{2}-\d{2})\b/g;
-  // Keep date and course code within one PDF table row. Wrapped code cells can
-  // contain spaces/newlines, so extract all full codes from the row.
+  // pdf-parse often merges table cells: "14.12.202601.00PM" has no
+  // word boundary between the year and the time. Capture the date even
+  // when a time follows immediately.
+  const datePattern = /(?:^|[^0-9])(\d{1,2}[.\/-]\d{1,2}[.\/-]\d{4}|\d{4}-\d{2}-\d{2})(?=\d{2}[.:]\d{2}|[^0-9]|$)/gm;
   const codePattern = /\d+(?:\s*\.\s*\d+)?\s*[a-z]{2}\s*\d+\s*[a-z]\s*\d+|\b[a-z]{2,5}\s*\d{2,5}\b/g;
   for (const doc of documents) {
-    const text = normalizeEndTerm2026Date(doc.text || '', exam).toLowerCase();
-    const dates = [...text.matchAll(datePattern)];
+    const pdfText = normalizeEndTerm2026Date(doc.text || '', exam).toLowerCase();
+    const dates = [...pdfText.matchAll(datePattern)].map(m => ({
+      date: m[1], index: m.index + m[0].indexOf(m[1]), length: m[1].length
+    }));
     for (let i = 0; i < dates.length; i++) {
-      const match = dates[i];
-      if (!variants.includes(match[0])) continue;
-      const start = match.index + match[0].length;
-      const end = Math.min(text.length, start + 650, dates[i + 1]?.index ?? text.length);
-      const row = text.slice(start, end);
+      const date = dates[i];
+      if (!variants.includes(date.date)) continue;
+      const start = date.index + date.length;
+      const end = Math.min(pdfText.length, start + 800, dates[i + 1]?.index ?? pdfText.length);
+      const row = pdfText.slice(start, end);
       const candidates = row.match(codePattern) || [];
       if (candidates.some(candidate => candidate.replace(/[^a-z0-9]/g, '') === codeNeedle)) {
         evidence.push(doc);
