@@ -1004,13 +1004,23 @@
             // One consistent, one-to-one reconciliation for COE cards and school/programme reports.
             // Prefer exact programme matches; only accept a shared/broad PDF heading
             // when the school, department, semester, exam and code also agree.
-            const candidates = (papers || []).filter(p => p.hasFile !== false);
+            const candidates = (papers || []).filter(p => p.hasFile !== false && qpmsExamNorm(p.examType || p.exam) === 'end semester');
             const usedPaperIds = new Set();
             const normCode = x => String(x || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
             const programmeCompatible = (sch, p) => {
                 const sp = qpmsNorm(sch.program || sch.programme);
                 const pp = qpmsNorm(p.program || p.programme);
                 if (!sp || !pp || sp === pp) return true;
+                // Normalize equivalent academic programme labels without ignoring specialization.
+                const canonical = value => qpmsNorm(value)
+                    .replace(/\\b(bachelor of technology|b\\s*tech)\\b/g, 'btech')
+                    .replace(/\\b(bachelor of business administration|bba)\\b/g, 'bba')
+                    .replace(/\\b(bachelor of arts|b\\s*a)\\b/g, 'ba')
+                    .replace(/\\b(bachelor of science|b\\s*sc)\\b/g, 'bsc')
+                    .replace(/\\b(bachelor of education|b\\s*ed)\\b/g, 'bed')
+                    .replace(/\\bwith specialization in\\b|\\bspecialization in\\b|\\bspecialisation in\\b/g, '')
+                    .replace(/\\s+/g, ' ').trim();
+                if (canonical(sp) === canonical(pp)) return true;
                 const combinedBba = /efb.*faa.*gom.*ba.*ai/.test(sp) &&
                     (pp.includes('business administration') || pp.startsWith('bba'));
                 return combinedBba;
