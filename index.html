@@ -1627,21 +1627,21 @@ window.onload = function() {
                 totalCard('Final Approved by COE', finalApproved.length, 'border-emerald-200 bg-emerald-50 text-emerald-900')
             ].join('');
             const keys = new Map();
-            function row(school, dept, semester) {
-                // Canonicalize Sem 1 / Semester First / 1st into the same report row.
+            function row(school, dept, semester, programme) {
                 const normalized = qpmsSemesterNorm(semester);
                 const displaySemester = /^\d+$/.test(normalized)
                     ? normalized + ({'1':'st','2':'nd','3':'rd'}[normalized] || 'th')
                     : (semester || 'Not specified');
-                const key = [school.trim().toLowerCase(), dept.trim().toLowerCase(), normalized].join('|||');
-                if (!keys.has(key)) keys.set(key, {school, dept, semester:displaySemester, scheduled:0, uploaded:0, pending:0, moderated:0, approved:0});
+                const displayProgramme = String(programme || '').trim() || 'Programme not mapped';
+                const key = [school.trim().toLowerCase(), dept.trim().toLowerCase(), normalized, qpmsNorm(displayProgramme)].join('|||');
+                if (!keys.has(key)) keys.set(key, {school, dept, semester:displaySemester, programme:displayProgramme, scheduled:0, uploaded:0, pending:0, moderated:0, approved:0});
                 return keys.get(key);
             }
             // Scheduled/pending columns describe datesheet rows; uploaded/workflow columns
             // describe actual database paper records. Never hide uploaded papers simply
             // because their programme labels do not exactly match the PDF parser.
             matchedBySchedule.forEach(({schedule, paper}) => {
-                const r = row(qpmsSchoolFor(schedule), qpmsDepartmentFor(schedule), schedule.semester || 'Not specified');
+                const r = row(qpmsSchoolFor(schedule), qpmsDepartmentFor(schedule), schedule.semester || 'Not specified', schedule.program || schedule.programme);
                 r.scheduled++;
                 if (!paper) r.pending++;
             });
@@ -1650,14 +1650,14 @@ window.onload = function() {
             papers.forEach(paper => {
                 const schedule = matchedScheduleForPaper.get(String(paper.id));
                 const source = schedule || paper;
-                const r = row(qpmsSchoolFor(source), qpmsDepartmentFor(source), source.semester || 'Not specified');
+                const r = row(qpmsSchoolFor(source), qpmsDepartmentFor(source), source.semester || 'Not specified', source.program || source.programme);
                 r.uploaded++;
                 if (moderatedStatuses.includes(normalizedStatus(paper))) r.moderated++;
                 if (finalStatuses.includes(normalizedStatus(paper))) r.approved++;
             });
             document.getElementById('coe-school-report').innerHTML = [...keys.values()]
-                .sort((a,b) => a.school.localeCompare(b.school) || a.dept.localeCompare(b.dept) || a.semester.localeCompare(b.semester))
-                .map(r => `<tr><td class="p-3 font-semibold text-slate-800">${escapeHtml(r.school)}</td><td class="p-3">${escapeHtml(r.dept)}</td><td class="p-3">${escapeHtml(r.semester)}</td><td class="p-3">${r.scheduled}</td><td class="p-3 font-bold">${r.uploaded}</td><td class="p-3 ${r.pending?'text-rose-700 font-bold':''}">${r.pending}</td><td class="p-3 text-violet-700 font-bold">${r.moderated}</td><td class="p-3 text-emerald-700 font-bold">${r.approved}</td></tr>`).join('');
+                .sort((a,b) => a.school.localeCompare(b.school) || a.dept.localeCompare(b.dept) || a.semester.localeCompare(b.semester) || a.programme.localeCompare(b.programme))
+                .map(r => `<tr><td class="p-3 font-semibold text-slate-800">${escapeHtml(r.school)}</td><td class="p-3">${escapeHtml(r.dept)}<div class="text-xs text-slate-500 mt-1">${escapeHtml(r.programme)}</div></td><td class="p-3">${escapeHtml(r.semester)}</td><td class="p-3">${r.scheduled}</td><td class="p-3 font-bold">${r.uploaded}</td><td class="p-3 ${r.pending?'text-rose-700 font-bold':''}">${r.pending}</td><td class="p-3 text-violet-700 font-bold">${r.moderated}</td><td class="p-3 text-emerald-700 font-bold">${r.approved}</td></tr>`).join('');
             document.getElementById('quick-moderated-count').textContent = moderated.length;
             document.getElementById('quick-moderated-list').innerHTML = qpmsCoeSchoolDownloadControl('MODERATION_APPROVED', moderated) + (moderated.length ? moderated.map(qpmsPaperLink).join('') : '<p class="text-xs text-slate-500">No papers currently approved by moderation.</p>');
             document.getElementById('quick-changes-count').textContent = changesRequired.length;
