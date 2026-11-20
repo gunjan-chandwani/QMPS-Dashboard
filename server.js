@@ -388,22 +388,20 @@ async function validatePaperDateAgainstSchedule(data) {
   const variants = dateVariants(submittedDate);
   const codeNeedle = courseCode.toLowerCase().replace(/[^a-z0-9]/g, '');
   const evidence = [];
-  // PDF tables frequently wrap combined course codes across lines, e.g.
-  // 6.5CH040011/6.5CH040007. Normalize whitespace/punctuation only inside
-  // the course-code cell, while requiring the immediately preceding row date.
-  const datePattern = /\\b(?:\\d{1,2}[.\\/-]\\d{1,2}[.\\/-]\\d{2,4}|\\d{4}-\\d{2}-\\d{2})\\b/g;
+  const datePattern = /\b(?:\d{1,2}[.\/-]\d{1,2}[.\/-]\d{2,4}|\d{4}-\d{2}-\d{2})\b/g;
+  // Keep date and course code within one PDF table row. Wrapped code cells can
+  // contain spaces/newlines, so extract all full codes from the row.
+  const codePattern = /\d+(?:\s*\.\s*\d+)?\s*[a-z]{2}\s*\d+\s*[a-z]\s*\d+|\b[a-z]{2,5}\s*\d{2,5}\b/g;
   for (const doc of documents) {
     const text = normalizeEndTerm2026Date(doc.text || '', exam).toLowerCase();
-    const dateMatches = [...text.matchAll(datePattern)];
-    for (let i = 0; i < dateMatches.length; i++) {
-      const match = dateMatches[i];
+    const dates = [...text.matchAll(datePattern)];
+    for (let i = 0; i < dates.length; i++) {
+      const match = dates[i];
       if (!variants.includes(match[0])) continue;
       const start = match.index + match[0].length;
-      const end = Math.min(text.length, start + 550, dateMatches[i + 1]?.index ?? text.length);
+      const end = Math.min(text.length, start + 650, dates[i + 1]?.index ?? text.length);
       const row = text.slice(start, end);
-      // Match a full code even when PDF extraction inserts spaces/newlines
-      // within it. Do not match a partial code or an adjacent unrelated code.
-      const candidates = row.match(/\\d+(?:\\s*\\.\\s*\\d+)?\\s*[a-z]{2}\\s*\\d+\\s*[a-z]\\s*\\d+|\\b[a-z]{2,5}\\s*\\d{2,5}\\b/g) || [];
+      const candidates = row.match(codePattern) || [];
       if (candidates.some(candidate => candidate.replace(/[^a-z0-9]/g, '') === codeNeedle)) {
         evidence.push(doc);
         break;
