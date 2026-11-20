@@ -973,14 +973,29 @@
             return date >= '2026-12-01' && date < '2027-01-01' && qpmsExamNorm(sch.examType) === 'end semester';
         }
         function qpmsScheduleMatchesPaper(sch, p) {
-            const same = (a,b) => qpmsNorm(a) === qpmsNorm(b);
-            // School and department come from the official datesheet for reporting.
-            // Faculty metadata can be inconsistent, so it must not create a false pending entry.
-            return same(p.courseCode, sch.courseCode) &&
-                qpmsSemesterNorm(p.semester) === qpmsSemesterNorm(sch.semester) &&
-                qpmsExamNorm(p.examType) === qpmsExamNorm(sch.examType) &&
-                (!sch.program || !p.program || same(p.program, sch.program)) &&
-                p.hasFile !== false;
+            // Match the official datesheet entry to an actual uploaded question paper.
+            const code = x => String(x || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+            const paperCode = p.courseCode || p.course || p.course_code;
+            const scheduleCode = sch.courseCode || sch.course || sch.course_code;
+            if (!paperCode || !scheduleCode || code(paperCode) !== code(scheduleCode)) return false;
+            if (qpmsSemesterNorm(p.semester) !== qpmsSemesterNorm(sch.semester)) return false;
+            if (qpmsExamNorm(p.examType || p.exam) !== qpmsExamNorm(sch.examType || sch.exam)) return false;
+            if (p.hasFile === false) return false;
+            // Never match papers across different schools or departments.
+            const schSchool = qpmsSchoolFor(sch), paperSchool = qpmsSchoolFor(p);
+            if (schSchool !== 'School mapping required' && paperSchool !== 'School mapping required' && schSchool !== paperSchool) return false;
+            const schDept = qpmsDepartmentFor(sch), paperDept = qpmsDepartmentFor(p);
+            if (schDept !== 'Department mapping required' && paperDept !== 'Department mapping required' && schDept !== paperDept) return false;
+            // Programme-specific rows must match a programme. Some imported PDF headings
+            // represent several specializations; allow a shared course within that
+            // department without equating unrelated school/department entries.
+            const sp = qpmsNorm(sch.program || sch.programme);
+            const pp = qpmsNorm(p.program || p.programme);
+            if (sp && pp && sp !== pp) {
+                const broadHeading = /\\/|\band\b|\bwith specialization\b|\bspecializations\b/.test(sp);
+                if (!broadHeading) return false;
+            }
+            return true;
         }
         function getDec2026EndSemesterSchedules() {
             return (datesheetSchedule || []).filter(qpmsIsDec2026EndSemester);
