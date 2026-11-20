@@ -1702,7 +1702,10 @@ window.onload = function() {
             reportMatches.forEach(({schedule, paper}) => {
                 const r = row(qpmsSchoolFor(schedule), qpmsDepartmentFor(schedule), schedule.semester || 'Not specified', schedule.program || schedule.programme);
                 r.scheduled++;
-                if (!paper) r.pending++;
+                // Programme-level pending is reconciled after uploaded totals are
+                // aggregated, rather than counted before uploads are attributed.
+                // This avoids showing all scheduled entries as pending when uploads
+                // are grouped under a combined official programme heading.
             });
             const matchedScheduleForPaper = new Map(reportMatches
                 .filter(x => x.paper).map(x => [String(x.paper.id), x.schedule]));
@@ -1731,6 +1734,10 @@ window.onload = function() {
                 if (moderatedStatuses.includes(normalizedStatus(paper))) r.moderated++;
                 if (finalStatuses.includes(normalizedStatus(paper))) r.approved++;
             });
+            // This report is an aggregate programme-level count. Keep unmatched
+            // uploads visible (including groups with zero scheduled entries).
+            // Exact course-by-course reconciliation remains in the pending list.
+            keys.forEach(r => { r.pending = Math.max(0, r.scheduled - r.uploaded); });
             document.getElementById('coe-school-report').innerHTML = [...keys.values()]
                 .sort((a,b) => a.school.localeCompare(b.school) || a.dept.localeCompare(b.dept) || a.semester.localeCompare(b.semester) || a.programme.localeCompare(b.programme))
                 .map(r => `<tr><td class="p-3 font-semibold text-slate-800">${escapeHtml(r.school)}</td><td class="p-3">${escapeHtml(r.dept)}<div class="text-xs text-slate-500 mt-1">${escapeHtml(r.programme)}</div></td><td class="p-3">${escapeHtml(r.semester)}</td><td class="p-3">${r.scheduled}</td><td class="p-3 font-bold">${r.uploaded}</td><td class="p-3 ${r.pending?'text-rose-700 font-bold':''}">${r.pending}</td><td class="p-3 text-violet-700 font-bold">${r.moderated}</td><td class="p-3 text-emerald-700 font-bold">${r.approved}</td></tr>`).join('');
