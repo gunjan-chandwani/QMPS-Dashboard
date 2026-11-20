@@ -119,6 +119,8 @@ pdf(fs.readFileSync(filename),{
   }
   for(const [key,occurrences] of grouped)if(occurrences.length>1)duplicateAudit.push({key,occurrences});
   fs.writeFileSync('datesheet_duplicate_audit.json',JSON.stringify(duplicateAudit,null,2));
+  console.log('UNMAPPED PROGRAMMES:',JSON.stringify(rows.filter(r=>r.school==='Unmapped / Other').reduce((a,r)=>(a[r.program]=(a[r.program]||0)+1,a),{}),null,2));
+  console.log('UNMAPPED ROWS:',JSON.stringify(rows.filter(r=>r.school==='Unmapped / Other').map(r=>({page:r.page,program:r.program,code:r.courseCode,semester:r.semester})),null,2));
   console.log('SCHOOL COUNTS:',JSON.stringify(rows.reduce((a,r)=>(a[r.school]=(a[r.school]||0)+1,a),{}),null,2));
   console.log('DUPLICATE AUDIT:',JSON.stringify(duplicateAudit,null,2));
   fs.writeFileSync('datesheet_layout_preview.json',JSON.stringify({rows,warnings,duplicates},null,2));
