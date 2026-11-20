@@ -42,9 +42,12 @@ function isAllowedQuestionPaperFile(file) {
   return !mime || mime === 'application/octet-stream' || allowedMime[ext].includes(mime);
 }
 
+const databaseUrl = process.env.DATABASE_URL || "";
+const isLocalDatabase = /(?:localhost|127\\.0\\.0\\.1|\\[::1\\])(?::\\d+)?(?:\\/|$)/i.test(databaseUrl);
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
+  connectionString: databaseUrl,
+  ssl: databaseUrl && !isLocalDatabase ? { rejectUnauthorized: false } : false,
+  connectionTimeoutMillis: 10000
 });
 
 async function initDb() {
@@ -1076,9 +1079,13 @@ app.get("*", (_req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
+// Start HTTP independently of database migrations so the portal never remains
+// unreachable just because an existing PostgreSQL table is locked.
+const server = app.listen(PORT, () => {
+  console.log(`QPMS server listening on ${PORT}`);
+});
+server.on("error", err => console.error("QPMS HTTP startup failed:", err));
+
 initDb()
-  .then(() => app.listen(PORT, () => console.log(`QPMS server listening on ${PORT}`)))
-  .catch(err => {
-    console.error("Database initialization failed:", err);
-    app.listen(PORT, () => console.log(`QPMS server listening on ${PORT} (DB unavailable)`));
-  });
+  .then(() => console.log("QPMS database initialization completed."))
+  .catch(err => console.error("Database initialization failed:", err));
