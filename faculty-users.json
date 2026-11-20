@@ -1688,5 +1688,35 @@
     "salt": "8a9e7439d16a6b07a401f517fea89d62",
     "passwordHash": "6342842bd05e7eea45d6440551e63883dfbe0c8aa4f7af9fe79e5dc8bb219e71ff6fb893ba3b5bb1f97b20c4e396c5884ad1fefb2a403b1e878201d5dfc6b529",
     "role": "FACULTY"
+  },
+  {
+    "email": "upadhyayriya165@gmail.com",
+    "name": "Ms. Riya Upadhyay",
+    "departmentCode": "EDUCATION & HUMANITIES",
+    "department": "Education & Humanities",
+    "school": "School of Education & Humanities",
+    "salt": "e3246d1830ebbb3464dab5aa6f42dc05",
+    "passwordHash": "3c181ee64bd05a2c308d905e9593fd9506612aa7ace43f87a2f2a3b45149e9df78de95b8fb718f96fb2bdc43522f6d29781c3a621e371c650163a00367aa720c",
+    "role": "FACULTY"
+  },
+  {
+    "email": "aggarwalkshefali@gmail.com",
+    "name": "Ms. Shefali Aggarwal",
+    "departmentCode": "EDUCATION & HUMANITIES",
+    "department": "Education & Humanities",
+    "school": "School of Education & Humanities",
+    "salt": "7fc7eac30ff3b7f1ccc1f4583502387d",
+    "passwordHash": "49bc00484a4c20fcecdbc18ee2ec500eecca16dab12d725e643a61d8336f36b9df5d3e3fa0c2578fd8578eee62bc4463f0c335af70c1520fab5de0f3e97670c6",
+    "role": "FACULTY"
+  },
+  {
+    "email": "makkarsurabhi@gmail.com",
+    "name": "Ms. Surbhi Makkar",
+    "departmentCode": "EDUCATION & HUMANITIES",
+    "department": "Education & Humanities",
+    "school": "School of Education & Humanities",
+    "salt": "3ea86cc10f94088cc100e06511097243",
+    "passwordHash": "8d657492ea3142e9acc38fbc36a7dee0d2914bfe40781b70e7f9c932eedd6d27ea31ea93480069fbcd5840b883aa1f437599fd5db2a26153df167d4c5f2ab29f",
+    "role": "FACULTY"
   }
 ]
