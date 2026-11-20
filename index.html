@@ -992,7 +992,7 @@
             const sp = qpmsNorm(sch.program || sch.programme);
             const pp = qpmsNorm(p.program || p.programme);
             if (sp && pp && sp !== pp) {
-                const broadHeading = /\\/|\band\b|\bwith specialization\b|\bspecializations\b/.test(sp);
+                const broadHeading = sp.includes('/') || sp.includes(' and ') || sp.includes('with specialization') || sp.includes('specializations');
                 if (!broadHeading) return false;
             }
             return true;
