@@ -43,7 +43,7 @@ function isAllowedQuestionPaperFile(file) {
 }
 
 const databaseUrl = process.env.DATABASE_URL || "";
-const isLocalDatabase = /(?:localhost|127\\.0\\.0\\.1|\\[::1\\])(?::\\d+)?(?:\\/|$)/i.test(databaseUrl);
+const isLocalDatabase = databaseUrl.includes("localhost") || databaseUrl.includes("127.0.0.1") || databaseUrl.includes("[::1]");
 const pool = new Pool({
   connectionString: databaseUrl,
   ssl: databaseUrl && !isLocalDatabase ? { rejectUnauthorized: false } : false,
