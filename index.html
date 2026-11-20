@@ -1001,14 +1001,48 @@
             return (datesheetSchedule || []).filter(qpmsIsDec2026EndSemester);
         }
         function qpmsMatchSchedulesToPapers(schedules, papers) {
+            // One consistent, one-to-one reconciliation for COE cards and school/programme reports.
+            // Prefer exact programme matches; only accept a shared/broad PDF heading
+            // when the school, department, semester, exam and code also agree.
+            const candidates = (papers || []).filter(p => p.hasFile !== false);
             const usedPaperIds = new Set();
-            return (schedules || []).map(schedule => {
-                const paper = (papers || []).find(p =>
-                    !usedPaperIds.has(String(p.id)) && qpmsScheduleMatchesPaper(schedule, p)
-                ) || null;
-                if (paper) usedPaperIds.add(String(paper.id));
-                return {schedule, paper};
-            });
+            const normCode = x => String(x || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+            const programmeCompatible = (sch, p) => {
+                const sp = qpmsNorm(sch.program || sch.programme);
+                const pp = qpmsNorm(p.program || p.programme);
+                if (!sp || !pp || sp === pp) return true;
+                const combinedBba = /efb.*faa.*gom.*ba.*ai/.test(sp) &&
+                    (pp.includes('business administration') || pp.startsWith('bba'));
+                return combinedBba;
+            };
+            const scored = (s, p) => {
+                if (!normCode(s.courseCode || s.course) ||
+                    normCode(s.courseCode || s.course) !== normCode(p.courseCode || p.course)) return -1;
+                if (qpmsSemesterNorm(s.semester) !== qpmsSemesterNorm(p.semester)) return -1;
+                if (qpmsExamNorm(s.examType || s.exam) !== qpmsExamNorm(p.examType || p.exam)) return -1;
+                if (qpmsSchoolFor(s) !== qpmsSchoolFor(p) ||
+                    qpmsDepartmentFor(s) !== qpmsDepartmentFor(p)) return -1;
+                if (!programmeCompatible(s, p)) return -1;
+                const sp = qpmsNorm(s.program || s.programme);
+                const pp = qpmsNorm(p.program || p.programme);
+                return sp && pp && sp === pp ? 3 : sp && pp ? 1 : 2;
+            };
+            const results = (schedules || []).map(schedule => ({schedule, paper:null}));
+            // Match specific programme entries before broad or missing programme entries.
+            const priorities = [];
+            results.forEach((entry, i) => candidates.forEach((paper, j) => {
+                const score = scored(entry.schedule, paper);
+                if (score >= 0) priorities.push({i,j,score});
+            }));
+            priorities.sort((a,b) => b.score-a.score || a.i-b.i || a.j-b.j);
+            for (const {i,j} of priorities) {
+                const id = String(candidates[j].id);
+                if (!results[i].paper && !usedPaperIds.has(id)) {
+                    results[i].paper = candidates[j];
+                    usedPaperIds.add(id);
+                }
+            }
+            return results;
         }
         function getCoePendingPapers() {
             // COE pending list is limited to December 2026 End Semester and each upload
@@ -1652,31 +1686,9 @@ window.onload = function() {
                 if (!keys.has(key)) keys.set(key, {school, dept, semester:displaySemester, programme:displayProgramme, scheduled:0, uploaded:0, pending:0, moderated:0, approved:0});
                 return keys.get(key);
             }
-            // Scheduled/pending columns describe datesheet rows; uploaded/workflow columns
-            // describe actual database paper records. Never hide uploaded papers simply
-            // because their programme labels do not exactly match the PDF parser.
-            // Reconcile within each school + semester + course code. Imported
-            // programme labels can differ from the faculty specialization labels.
-            // A paper can satisfy at most one scheduled entry; unmatched uploads
-            // remain visible but must not falsely reduce pending.
-            const claimedPapers = new Set();
-            const reportMatches = schedules.map(schedule => {
-                const original = matchedBySchedule.find(x => x.schedule === schedule)?.paper;
-                let paper = original && !claimedPapers.has(String(original.id)) ? original : null;
-                if (!paper) {
-                    const norm = x => String(x || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-                    const matches = papers.filter(p =>
-                        !claimedPapers.has(String(p.id)) &&
-                        norm(p.courseCode || p.course) === norm(schedule.courseCode || schedule.course) &&
-                        norm(schedule.courseCode || schedule.course) &&
-                        qpmsSemesterNorm(p.semester) === qpmsSemesterNorm(schedule.semester) &&
-                        qpmsExamNorm(p.examType || p.exam) === qpmsExamNorm(schedule.examType) &&
-                        qpmsSchoolFor(p) === qpmsSchoolFor(schedule));
-                    if (matches.length === 1) paper = matches[0];
-                }
-                if (paper) claimedPapers.add(String(paper.id));
-                return {schedule, paper};
-            });
+            // Use exactly the same reconciliation for the top cards and programme rows.
+            // Do not silently relax programme matching for school-wise reports.
+            const reportMatches = matchedBySchedule;
             reportMatches.forEach(({schedule, paper}) => {
                 const r = row(qpmsSchoolFor(schedule), qpmsDepartmentFor(schedule), schedule.semester || 'Not specified', schedule.program || schedule.programme);
                 r.scheduled++;
