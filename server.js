@@ -386,25 +386,28 @@ async function validatePaperDateAgainstSchedule(data) {
   }
 
   const variants = dateVariants(submittedDate);
-  const codeNeedle = courseCode.toLowerCase();
+  const codeNeedle = courseCode.toLowerCase().replace(/[^a-z0-9]/g, '');
   const evidence = [];
+  // PDF tables frequently wrap combined course codes across lines, e.g.
+  // 6.5CH040011/6.5CH040007. Normalize whitespace/punctuation only inside
+  // the course-code cell, while requiring the immediately preceding row date.
+  const datePattern = /\\b(?:\\d{1,2}[.\\/-]\\d{1,2}[.\\/-]\\d{2,4}|\\d{4}-\\d{2}-\\d{2})\\b/g;
   for (const doc of documents) {
-    const text = normalizeEndTerm2026Date(doc.text || '', exam);
-    let from = 0;
-    while (from < text.length) {
-      const codeIndex = text.indexOf(codeNeedle, from);
-      if (codeIndex < 0) break;
-      // Check the same table row/nearby wrapped lines around every occurrence,
-      // rather than just the first occurrence of the course code in the PDF.
-      const left = Math.max(0, text.lastIndexOf('\n', codeIndex) - 220, codeIndex - 180);
-      const rightNewline = text.indexOf('\n', codeIndex);
-      const right = Math.min(text.length, codeIndex + 900, rightNewline >= 0 ? rightNewline + 500 : text.length);
-      const nearby = text.slice(left, right);
-      if (variants.some(v => nearby.includes(v))) {
+    const text = normalizeEndTerm2026Date(doc.text || '', exam).toLowerCase();
+    const dateMatches = [...text.matchAll(datePattern)];
+    for (let i = 0; i < dateMatches.length; i++) {
+      const match = dateMatches[i];
+      if (!variants.includes(match[0])) continue;
+      const start = match.index + match[0].length;
+      const end = Math.min(text.length, start + 550, dateMatches[i + 1]?.index ?? text.length);
+      const row = text.slice(start, end);
+      // Match a full code even when PDF extraction inserts spaces/newlines
+      // within it. Do not match a partial code or an adjacent unrelated code.
+      const candidates = row.match(/\\d+(?:\\s*\\.\\s*\\d+)?\\s*[a-z]{2}\\s*\\d+\\s*[a-z]\\s*\\d+|\\b[a-z]{2,5}\\s*\\d{2,5}\\b/g) || [];
+      if (candidates.some(candidate => candidate.replace(/[^a-z0-9]/g, '') === codeNeedle)) {
         evidence.push(doc);
         break;
       }
-      from = codeIndex + codeNeedle.length;
     }
   }
   if (!evidence.length) {
