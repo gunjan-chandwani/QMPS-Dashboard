@@ -6,7 +6,7 @@ const filename = process.argv[2] || 'EndTerm_Dec2026_Original.pdf';
 const months = {FIRST:'1st',SECOND:'2nd',THIRD:'3rd',FOURTH:'4th',FIFTH:'5th',SIXTH:'6th',SEVENTH:'7th',EIGHTH:'8th',NINTH:'9th',TENTH:'10th'};
 const dateRe = /\b(\d{2})[.\/-](\d{2})[.\/-](20\d{2})\b/;
 const codeRe = /(?:\d+(?:\.\d+)?[A-Z]{2,5}\d+[A-Z]\d+|[A-Z]{2,5}\d{2,5}[A-Z]?)(?![0-9])/i;
-const isHeading = s => /^(?:Bachelor|Bachelors|Master|B\.?\s?Tech|M\.?\s?Tech|B\.?\s?Sc|M\.?\s?Sc|B\.?\s?A\.?|M\.?\s?A\.?|BBA|MBA|MCA|BCA|LLB|LLM|B\.?\s?Ed)/i.test(s.trim());
+const isHeading = s => /^(?:Bachelor|Bachelors|Master|B\.?\s?Tech|M\.?\s?Tech|B\.?\s?Sc|M\.?\s?Sc|B\.?\s?A\.?|M\.?\s?A\.?(?=\s|$|\()|BBA|MBA|MCA|BCA|LLB|LLM|B\.?\s?Ed)/i.test(s.trim());
 const clean = s => String(s||'').replace(/\s+/g,' ').trim();
 const esc = v => '"'+String(v??'').replace(/"/g,'""')+'"';
 function owner(program) {
@@ -47,10 +47,10 @@ pdf(fs.readFileSync(filename),{
     }));
     const header=lines.map(l=>l.text).find(t=>/SEMESTER\s*[-:]\s*(FIRST|SECOND|THIRD|FOURTH|FIFTH|SIXTH|SEVENTH|EIGHTH|NINTH|TENTH)/i.test(t));
     if(header){const m=header.match(/SEMESTER\s*[-:]\s*(FIRST|SECOND|THIRD|FOURTH|FIFTH|SIXTH|SEVENTH|EIGHTH|NINTH|TENTH)/i);sem=months[m[1].toUpperCase()]}
-    let program=''; let sectionStart=-1; let sectionCount=0;
+    let program=lastSection; let sectionStart=-1; let sectionCount=0;
     for(let i=0;i<lines.length;i++){
       const l=lines[i],t=l.text;
-      if(isHeading(t) && !/^[A-Z]{2,5}\d{2,5}[A-Z]?\s/.test(t)){
+      if(isHeading(t) && !/^MANAV RACHNA UNIVERSITY\b/i.test(t) && !/^[A-Z]{2,5}\d{2,5}[A-Z]?\s/.test(t)){
         program=t;sectionStart=i;sectionCount=0;
         // Some headings wrap to a second line (e.g. CSE specializations).
         for(let j=i+1;j<Math.min(lines.length,i+3);j++){
