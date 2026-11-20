@@ -2281,6 +2281,7 @@ window.onload = function() {
                 status: paperId ? 'RESUBMITTED_TO_COE' : 'SUBMITTED_TO_COE',
                 expected: true,
                 comments: '',
+                paperDate: paperDate,
                 submission_date: paperDate
             };
 
@@ -2543,7 +2544,7 @@ window.QPMS = {
     return {
       id, courseName: p.title || p.subject || 'Question Paper', courseCode: (p.course || '').toUpperCase(), school: p.school || '',
       department: p.department || '', program: p.program || '', semester: p.semester || '',
-      examType: p.exam || '', paperDate: p.submission_date ? new Date(p.submission_date).toISOString().slice(0,10) : '',
+      examType: p.exam || '', paperDate: p.exam_date ? String(p.exam_date).slice(0,10) : '',
       facultyName: p.faculty || p.faculty_name || p.owner_email || '', ownerEmail: p.owner_email || p.ownerEmail || '', currentVersion: 1, status: ({'Submitted by Faculty':'SUBMITTED_TO_COE','Submitted to COE':'SUBMITTED_TO_COE','Approved by Moderator':'APPROVED','Approved by Moderation':'APPROVED','Moderation Approved':'APPROVED','APPROVED_BY_MODERATOR':'APPROVED','Changes Required':'CHANGES_REQUIRED','Resubmitted to COE':'RESUBMITTED_TO_COE','Final Approved':'FINAL_APPROVED','Final Approved & Archived':'FINAL_APPROVED'}[p.status] || p.status || 'SUBMITTED_TO_COE'), hasFile: p.has_file !== false,
       versions: [{version: 1, filename, uploadTime: p.created_at ? new Date(p.created_at).toLocaleString() : '', uploadedBy: p.faculty || ''}],
       auditForm: p.moderation_details || p.moderationDetails || (p.comments ? {comments: p.comments} : null), moderationDetails: p.moderation_details || p.moderationDetails || null, comments: p.comments || '', updatedAt: p.updated_at || '', submissionDate: p.submission_date || '', hasFile: p.has_file !== false, auditTrail: [{action: 'Uploaded Version 1', role: 'Faculty', user: p.faculty || '', timestamp: p.created_at ? new Date(p.created_at).toLocaleString() : '', details: 'Submitted question paper to COE'}]
