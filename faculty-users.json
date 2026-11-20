@@ -1678,5 +1678,15 @@
     "salt": "f8432e2faa2d2be5fdef46e82f990ccd",
     "passwordHash": "5b06f126b7577452a5a6ccc1b144dc6e3ee6b505b633655898b314353ad999cbb51a8240141c47df4e0e7474a46badfd741ec3a5071f3e49ccb4bc44f6715d89",
     "role": "FACULTY"
+  },
+  {
+    "email": "renu.setia1702@gmail.com",
+    "name": "Renu Setia",
+    "departmentCode": "LAW",
+    "department": "Law",
+    "school": "School of Law",
+    "salt": "8a9e7439d16a6b07a401f517fea89d62",
+    "passwordHash": "6342842bd05e7eea45d6440551e63883dfbe0c8aa4f7af9fe79e5dc8bb219e71ff6fb893ba3b5bb1f97b20c4e396c5884ad1fefb2a403b1e878201d5dfc6b529",
+    "role": "FACULTY"
   }
 ]
