@@ -410,7 +410,18 @@ async function validatePaperDateAgainstSchedule(data) {
       const end = Math.min(pdfText.length, start + 1400, dates[i + 1]?.index ?? pdfText.length);
       const row = pdfText.slice(start, end);
       const candidates = row.match(codePattern) || [];
-      if (candidates.some(candidate => candidate.toUpperCase().replace(/[^A-Z0-9]/g, '') === codeNeedle)) {
+      // pdf-parse often joins a time and course code without spaces:
+      // e.g. "01.00PMEDH421B". A regex may read PMEDH421B as one token.
+      // Also allow whitespace/newline splits within a course code, but only
+      // inside the matching exam-date row (never across a different date).
+      const compactRow = row.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const codePos = compactRow.indexOf(codeNeedle);
+      const embeddedCode = codePos >= 0 &&
+        (codePos + codeNeedle.length === compactRow.length ||
+         !/[A-Z0-9]/.test(compactRow.charAt(codePos + codeNeedle.length)) ||
+         // Following text may be a course title; the course code itself is exact.
+         /[A-Z]/.test(compactRow.charAt(codePos + codeNeedle.length)));
+      if (candidates.some(candidate => candidate.toUpperCase().replace(/[^A-Z0-9]/g, '') === codeNeedle) || embeddedCode) {
         evidence.push(doc);
         break;
       }
