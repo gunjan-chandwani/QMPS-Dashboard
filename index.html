@@ -1647,8 +1647,25 @@ window.onload = function() {
             });
             const matchedScheduleForPaper = new Map(matchedBySchedule
                 .filter(x => x.paper).map(x => [String(x.paper.id), x.schedule]));
+            const normCode = x => String(x || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
             papers.forEach(paper => {
-                const schedule = matchedScheduleForPaper.get(String(paper.id));
+                let schedule = matchedScheduleForPaper.get(String(paper.id));
+                // Datesheet headings can combine specializations (e.g. BBA EFB/FAA/GOM/BA/AI)
+                // while faculty upload records name one specialization. Attribute each
+                // uploaded paper to its official heading using school, semester and course.
+                if (!schedule) {
+                    const candidates = schedules.filter(sch =>
+                        qpmsSchoolFor(sch) === qpmsSchoolFor(paper) &&
+                        qpmsSemesterNorm(sch.semester) === qpmsSemesterNorm(paper.semester) &&
+                        qpmsExamNorm(sch.examType) === qpmsExamNorm(paper.examType || paper.exam) &&
+                        normCode(sch.courseCode || sch.course) === normCode(paper.courseCode || paper.course));
+                    if (candidates.length === 1) schedule = candidates[0];
+                    else if (candidates.length > 1) {
+                        const matching = candidates.filter(sch => qpmsNorm(sch.program || sch.programme) === qpmsNorm(paper.program || paper.programme));
+                        if (matching.length === 1) schedule = matching[0];
+                        else if (new Set(candidates.map(sch => qpmsNorm(sch.program || sch.programme))).size === 1) schedule = candidates[0];
+                    }
+                }
                 const source = schedule || paper;
                 const r = row(qpmsSchoolFor(source), qpmsDepartmentFor(source), source.semester || 'Not specified', source.program || source.programme);
                 r.uploaded++;
