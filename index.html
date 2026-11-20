@@ -1627,12 +1627,27 @@ window.onload = function() {
                 totalCard('Final Approved by COE', finalApproved.length, 'border-emerald-200 bg-emerald-50 text-emerald-900')
             ].join('');
             const keys = new Map();
+            // The COE PDF uses a combined BBA heading, whereas faculty choose a
+            // particular specialization. Both belong to one official report group.
+            function officialReportProgramme(school, dept, programme) {
+                const name = String(programme || '').trim();
+                const n = qpmsNorm(name);
+                if (school === 'School of Business' && dept === 'Business' &&
+                    (n.includes('bachelor of business administration') || /^bba\b/.test(n))) {
+                    if (n.includes('business analytics') && !n.includes('efb/faa/gom/ba/ai')) {
+                        // BBA BA is part of the combined heading for the first semester.
+                        return 'Bachelor of Business Administration - EFB/FAA/GOM/BA/AI';
+                    }
+                    return 'Bachelor of Business Administration - EFB/FAA/GOM/BA/AI';
+                }
+                return name;
+            }
             function row(school, dept, semester, programme) {
                 const normalized = qpmsSemesterNorm(semester);
                 const displaySemester = /^\d+$/.test(normalized)
                     ? normalized + ({'1':'st','2':'nd','3':'rd'}[normalized] || 'th')
                     : (semester || 'Not specified');
-                const displayProgramme = String(programme || '').trim() || 'Programme not mapped';
+                const displayProgramme = officialReportProgramme(school, dept, programme) || 'Programme not mapped';
                 const key = [school.trim().toLowerCase(), dept.trim().toLowerCase(), normalized, qpmsNorm(displayProgramme)].join('|||');
                 if (!keys.has(key)) keys.set(key, {school, dept, semester:displaySemester, programme:displayProgramme, scheduled:0, uploaded:0, pending:0, moderated:0, approved:0});
                 return keys.get(key);
@@ -1640,12 +1655,34 @@ window.onload = function() {
             // Scheduled/pending columns describe datesheet rows; uploaded/workflow columns
             // describe actual database paper records. Never hide uploaded papers simply
             // because their programme labels do not exactly match the PDF parser.
-            matchedBySchedule.forEach(({schedule, paper}) => {
+            // Reconcile within each school + semester + course code. Imported
+            // programme labels can differ from the faculty specialization labels.
+            // A paper can satisfy at most one scheduled entry; unmatched uploads
+            // remain visible but must not falsely reduce pending.
+            const claimedPapers = new Set();
+            const reportMatches = schedules.map(schedule => {
+                const original = matchedBySchedule.find(x => x.schedule === schedule)?.paper;
+                let paper = original && !claimedPapers.has(String(original.id)) ? original : null;
+                if (!paper) {
+                    const norm = x => String(x || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+                    const matches = papers.filter(p =>
+                        !claimedPapers.has(String(p.id)) &&
+                        norm(p.courseCode || p.course) === norm(schedule.courseCode || schedule.course) &&
+                        norm(schedule.courseCode || schedule.course) &&
+                        qpmsSemesterNorm(p.semester) === qpmsSemesterNorm(schedule.semester) &&
+                        qpmsExamNorm(p.examType || p.exam) === qpmsExamNorm(schedule.examType) &&
+                        qpmsSchoolFor(p) === qpmsSchoolFor(schedule));
+                    if (matches.length === 1) paper = matches[0];
+                }
+                if (paper) claimedPapers.add(String(paper.id));
+                return {schedule, paper};
+            });
+            reportMatches.forEach(({schedule, paper}) => {
                 const r = row(qpmsSchoolFor(schedule), qpmsDepartmentFor(schedule), schedule.semester || 'Not specified', schedule.program || schedule.programme);
                 r.scheduled++;
                 if (!paper) r.pending++;
             });
-            const matchedScheduleForPaper = new Map(matchedBySchedule
+            const matchedScheduleForPaper = new Map(reportMatches
                 .filter(x => x.paper).map(x => [String(x.paper.id), x.schedule]));
             const normCode = x => String(x || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
             papers.forEach(paper => {
