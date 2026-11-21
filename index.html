@@ -1072,8 +1072,18 @@
                 .replace(/\\b(btech|bba|bsc|bed|ba|llb)(?:\\s+\\1)+\\b/g, '$1')
                 .replace(/\\s+/g, ' ').trim();
             const programmeTokens = value => {
-                const stop = new Set(['bachelor','of','technology','tech','with','specialization','specialisation','in','and','engineering','degree','the','program','programme','hons']);
-                return new Set(qpmsNorm(value).replace(/[^a-z0-9]+/g, ' ').split(' ')
+                // Datesheet degree labels ("Bachelor of Technology (B. Tech.)")
+                // must not overwhelm the actual branch/specialization evidence.
+                const normalized = programmeIdentity(value)
+                    .replace(/\\bcomputer science\\b/g, 'cse')
+                    .replace(/\\bartificial intelligence and machine learning\\b/g, 'aiml')
+                    .replace(/\\bglobal operations? management\\b/g, 'gom')
+                    .replace(/\\bfinance (?:and|&) accounts?\\b/g, 'faa')
+                    .replace(/\\bentrepreneurship (?:and|&) family business\\b/g, 'efb')
+                    .replace(/\\bbusiness analytics\\b/g, 'baanalytics')
+                    .replace(/\\bsmart manufacturing (?:and|&) automation\\b/g, 'sma');
+                const stop = new Set(['bachelor','bachelors','master','masters','of','technology','tech','btech','bba','bsc','ba','bed','llb','with','specialization','specialisation','in','and','engineering','degree','the','program','programme','hons','science']);
+                return new Set(normalized.replace(/[^a-z0-9]+/g, ' ').split(' ')
                     .filter(t => t.length > 1 && !stop.has(t)));
             };
             const scored = (s, p) => {
@@ -1090,8 +1100,19 @@
                 const officialCount = officialOptions.get(key)?.size || 0;
                 const st = programmeTokens(sp), pt = programmeTokens(pp);
                 const overlap = [...pt].filter(t => st.has(t)).length;
-                // When a code occurs in several programmes, accept only
-                // programme-compatible or evidence-backed same-discipline pairs.
+                // Reject cross-discipline matches even when a shared course code
+                // appears in multiple branches. Only unique official programme
+                // keys can use the existing programme-label fallback.
+                const discipline = value => {
+                    const v = programmeIdentity(value);
+                    if (/\\b(robotics|robotic)\\b/.test(v)) return 'robotics';
+                    if (/\\b(mechanical|smart manufacturing)\\b/.test(v)) return 'mechanical';
+                    if (/\\b(electronics|communication|ece|vlsi)\\b/.test(v)) return 'ece';
+                    if (/\\b(computer science|cse|csti|aiml|fsd|gen ai)\\b/.test(v)) return 'cse';
+                    return '';
+                };
+                const sd = discipline(sp), pd = discipline(pp);
+                if (sd && pd && sd !== pd) return -1;
                 if (!compatible && officialCount !== 1 && overlap < 2) return -1;
                 const sameSchool = qpmsSchoolFor(s) === qpmsSchoolFor(p);
                 const sameDept = qpmsDepartmentFor(s) === qpmsDepartmentFor(p);
@@ -1100,7 +1121,7 @@
                 // heading; do not let unrelated programmes win through school metadata.
                 const extraOfficialTokens = [...st].filter(t => !pt.has(t)).length;
                 return (sp && pp && sp === pp ? 1200 : normalizedExact ? 1100 : compatible ? 600 : officialCount === 1 ? 200 : 100) +
-                    Math.min(overlap, 12) * 12 - Math.min(extraOfficialTokens, 10) +
+                    Math.min(overlap, 12) * 25 - Math.min(extraOfficialTokens, 10) * 3 +
                     (sameSchool ? 4 : 0) + (sameDept ? 2 : 0);
             };
             const results = (schedules || []).map(schedule => ({schedule, paper:null}));
