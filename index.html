@@ -354,7 +354,15 @@
                         </div>
                         <section class="border border-amber-200 rounded-xl p-4 mb-4 bg-amber-50"><h3 class="font-semibold text-amber-900 mb-2">Faculty Password Reset Requests</h3><p class="text-xs text-amber-900 mb-3">Verify faculty identity before approving. Deliver the temporary password privately; it is displayed only once.</p><button type="button" onclick="qpmsLoadResetRequests()" class="bg-amber-800 text-white px-3 py-2 rounded-lg text-sm">View Pending Reset Requests</button><div id="qpms-reset-list" class="mt-3 space-y-2 text-sm"></div></section>
                         <div id="coe-report-summary" class="grid grid-cols-2 lg:grid-cols-5 gap-3"></div>
-                        <div class="overflow-x-auto border border-slate-100 rounded-xl"><table class="w-full text-xs text-left"><thead class="bg-slate-50 uppercase text-slate-500"><tr><th class="p-3">School</th><th class="p-3">Department / Programme</th><th class="p-3">Semester</th><th class="p-3">Scheduled</th><th class="p-3">Uploaded</th><th class="p-3">Pending Upload</th><th class="p-3">Moderated</th><th class="p-3">Final Approved</th></tr></thead><tbody id="coe-school-report" class="divide-y divide-slate-100"></tbody></table></div>
+                        <div id="coe-school-report-filters" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2">
+<select id="coe-rpt-school" aria-label="Filter school" class="border rounded-lg p-2 text-xs"><option value="">All Schools</option></select>
+<select id="coe-rpt-dept" aria-label="Filter department" class="border rounded-lg p-2 text-xs"><option value="">All Departments</option></select>
+<select id="coe-rpt-program" aria-label="Filter programme" class="border rounded-lg p-2 text-xs"><option value="">All Programmes</option></select>
+<select id="coe-rpt-sem" aria-label="Filter semester" class="border rounded-lg p-2 text-xs"><option value="">All Semesters</option></select>
+<select id="coe-rpt-status" aria-label="Filter paper status" class="border rounded-lg p-2 text-xs"><option value="">All Statuses</option><option value="pending">Pending Upload</option><option value="uploaded">Uploaded</option><option value="review">In Review</option><option value="changes">Changes Required</option><option value="moderated">Moderated</option><option value="approved">Final Approved</option></select>
+<button type="button" onclick="['school','dept','program','sem','status'].forEach(k=>{const e=document.getElementById('coe-rpt-'+k);if(e)e.value=''});qpmsFilterCoeSchoolReport()" class="border rounded-lg p-2 text-xs font-semibold">Clear Filters</button>
+</div><div id="coe-rpt-visible-count" class="text-xs text-slate-500" aria-live="polite"></div>
+<div class="overflow-x-auto border border-slate-100 rounded-xl"><table class="w-full text-xs text-left"><thead class="bg-slate-50 uppercase text-slate-500"><tr><th class="p-3">School</th><th class="p-3">Department / Programme</th><th class="p-3">Semester</th><th class="p-3">Scheduled</th><th class="p-3">Uploaded</th><th class="p-3">Pending Upload</th><th class="p-3">In Review</th><th class="p-3">Changes Required</th><th class="p-3">Moderated</th><th class="p-3">Final Approved</th></tr></thead><tbody id="coe-school-report" class="divide-y divide-slate-100"></tbody></table></div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
                             <div class="rounded-xl border border-violet-200 bg-violet-50/60 p-3"><div class="flex justify-between items-center gap-2"><div><h4 class="font-bold text-violet-900 text-sm">Approved by Moderation</h4><p class="text-[11px] text-violet-700">Papers approved by the moderation committee and awaiting COE final approval.</p></div><span id="quick-moderated-count" class="text-xl font-black text-violet-800">0</span></div><div id="quick-moderated-list" class="mt-3 space-y-2 max-h-56 overflow-auto"></div></div>
                             <div class="rounded-xl border border-amber-200 bg-amber-50/60 p-3"><div class="flex justify-between items-center gap-2"><div><h4 class="font-bold text-amber-900 text-sm">Changes Required</h4><p class="text-[11px] text-amber-700">Papers returned to faculty for correction; count excludes missing uploads.</p></div><span id="quick-changes-count" class="text-xl font-black text-amber-800">0</span></div><div id="quick-changes-list" class="mt-3 space-y-2 max-h-56 overflow-auto"></div></div>
@@ -1021,6 +1029,41 @@
             // Preserve all official datesheet rows for the Scheduled card.
             // The matching function separately consolidates course requirements.
             return (datesheetSchedule || []).filter(qpmsIsDec2026EndSemester);
+        }
+        let qpmsCoeSchoolReportRows = [];
+        function qpmsRefreshCoeSchoolReportFilters() {
+            const fields = {school:'school',dept:'dept',program:'programme',sem:'semester'};
+            for (const [id,field] of Object.entries(fields)) {
+                const el=document.getElementById('coe-rpt-'+id);
+                if (!el) continue;
+                const old=el.value;
+                const first=el.options[0].textContent;
+                const vals=[...new Set(qpmsCoeSchoolReportRows.map(r=>r[field]).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+                el.replaceChildren(new Option(first,''));
+                vals.forEach(v=>el.add(new Option(v,v)));
+                if(vals.includes(old))el.value=old;
+            }
+            const controls=document.getElementById('coe-school-report-filters');
+            if(controls && !controls.dataset.bound) {
+                controls.addEventListener('change',qpmsFilterCoeSchoolReport);
+                controls.dataset.bound='1';
+            }
+        }
+        function qpmsFilterCoeSchoolReport() {
+            const val=id=>document.getElementById('coe-rpt-'+id)?.value||'';
+            const status=val('status');
+            const rows=qpmsCoeSchoolReportRows.filter(r=>
+                (!val('school')||r.school===val('school'))&&
+                (!val('dept')||r.dept===val('dept'))&&
+                (!val('program')||r.programme===val('program'))&&
+                (!val('sem')||r.semester===val('sem'))&&
+                (!status||r[status]>0)
+            );
+            const body=document.getElementById('coe-school-report');
+            if(!body)return;
+            body.innerHTML=rows.map(r=>`<tr><td class="p-3 font-semibold text-slate-800">${escapeHtml(r.school)}</td><td class="p-3">${escapeHtml(r.dept)}<div class="text-xs text-slate-500 mt-1">${escapeHtml(r.programme)}</div></td><td class="p-3">${escapeHtml(r.semester)}</td><td class="p-3">${r.scheduled}</td><td class="p-3 font-bold">${r.uploaded}</td><td class="p-3 ${r.pending?'text-rose-700 font-bold':''}">${r.pending}</td><td class="p-3">${r.review}</td><td class="p-3">${r.changes}</td><td class="p-3 text-violet-700 font-bold">${r.moderated}</td><td class="p-3 text-emerald-700 font-bold">${r.approved}</td></tr>`).join('') || '<tr><td colspan="10" class="p-4 text-center text-slate-500">No matching records</td></tr>';
+            const count=document.getElementById('coe-rpt-visible-count');
+            if(count)count.textContent=rows.length+' programme rows shown · '+rows.reduce((n,r)=>n+r.scheduled,0)+' scheduled · '+rows.reduce((n,r)=>n+r.uploaded,0)+' matched uploads';
         }
         function qpmsMatchSchedulesToPapers(schedules, papers) {
             // Preserve every official schedule row. A single uploaded course paper
@@ -1700,7 +1743,7 @@ window.onload = function() {
                     : (semester || 'Not specified');
                 const displayProgramme = officialReportProgramme(school, dept, semester, programme) || 'Programme not mapped';
                 const key = [school.trim().toLowerCase(), dept.trim().toLowerCase(), normalized, qpmsNorm(displayProgramme)].join('|||');
-                if (!keys.has(key)) keys.set(key, {school, dept, semester:displaySemester, programme:displayProgramme, scheduled:0, uploaded:0, pending:0, moderated:0, approved:0});
+                if (!keys.has(key)) keys.set(key, {school, dept, semester:displaySemester, programme:displayProgramme, scheduled:0, uploaded:0, pending:0, review:0, changes:0, moderated:0, approved:0});
                 return keys.get(key);
             }
             // All row counts are sourced from the same one-to-one schedule reconciliation.
@@ -1711,6 +1754,8 @@ window.onload = function() {
                 r.scheduled++;
                 if (paper) {
                     r.uploaded++;
+                    if (normalizedStatus(paper) === "CHANGES_REQUIRED") r.changes++;
+                    else if (!moderatedStatuses.includes(normalizedStatus(paper)) && !finalStatuses.includes(normalizedStatus(paper))) r.review++;
                     if (moderatedStatuses.includes(normalizedStatus(paper))) r.moderated++;
                     if (finalStatuses.includes(normalizedStatus(paper))) r.approved++;
                 } else {
@@ -1718,9 +1763,10 @@ window.onload = function() {
                 }
             });
             // Invariant: across all programme rows, scheduled = matched + pending.
-            document.getElementById('coe-school-report').innerHTML = [...keys.values()]
-                .sort((a,b) => a.school.localeCompare(b.school) || a.dept.localeCompare(b.dept) || a.semester.localeCompare(b.semester) || a.programme.localeCompare(b.programme))
-                .map(r => `<tr><td class="p-3 font-semibold text-slate-800">${escapeHtml(r.school)}</td><td class="p-3">${escapeHtml(r.dept)}<div class="text-xs text-slate-500 mt-1">${escapeHtml(r.programme)}</div></td><td class="p-3">${escapeHtml(r.semester)}</td><td class="p-3">${r.scheduled}</td><td class="p-3 font-bold">${r.uploaded}</td><td class="p-3 ${r.pending?'text-rose-700 font-bold':''}">${r.pending}</td><td class="p-3 text-violet-700 font-bold">${r.moderated}</td><td class="p-3 text-emerald-700 font-bold">${r.approved}</td></tr>`).join('');
+            qpmsCoeSchoolReportRows = [...keys.values()]
+                .sort((a,b) => a.school.localeCompare(b.school) || a.dept.localeCompare(b.dept) || a.semester.localeCompare(b.semester) || a.programme.localeCompare(b.programme));
+            qpmsRefreshCoeSchoolReportFilters();
+            qpmsFilterCoeSchoolReport();
             document.getElementById('quick-moderated-count').textContent = moderated.length;
             document.getElementById('quick-moderated-list').innerHTML = qpmsCoeSchoolDownloadControl('MODERATION_APPROVED', moderated) + (moderated.length ? moderated.map(qpmsPaperLink).join('') : '<p class="text-xs text-slate-500">No papers currently approved by moderation.</p>');
             document.getElementById('quick-changes-count').textContent = changesRequired.length;
