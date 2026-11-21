@@ -1001,10 +1001,19 @@
         // session, irrespective of the number of programmes/specializations using it.
         // Retain the original database schedule and upload rows unchanged.
         function qpmsPaperRequirementKey(item) {
-            const code = String(item.courseCode || item.course || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-            const semester = qpmsSemesterNorm(item.semester);
-            const exam = qpmsExamNorm(item.examType || item.exam);
-            return code && semester && exam ? [code, semester, exam].join('|') : '';
+            // The COE requires one question paper per distinct course code,
+            // irrespective of semester labels or programme specializations
+            // within the December 2026 End Term session.
+            return String(item.courseCode || item.course || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        }
+        function qpmsUniqueCourseMatches(schedules, papers) {
+            const seen = new Set();
+            return qpmsMatchSchedulesToPapers(schedules, papers).filter(({schedule}, index) => {
+                const key = qpmsPaperRequirementKey(schedule) || 'missing-code-' + (schedule.id ?? index);
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
         }
         function getDec2026EndSemesterSchedules() {
             // Preserve all official datesheet rows for the Scheduled card.
@@ -1035,7 +1044,7 @@
         function getCoePendingPapers() {
             // COE pending list is limited to December 2026 End Semester and each upload
             // can satisfy only one schedule row, preventing duplicate over-matching.
-            return qpmsMatchSchedulesToPapers(getDec2026EndSemesterSchedules(), papersDatabase)
+            return qpmsUniqueCourseMatches(getDec2026EndSemesterSchedules(), papersDatabase)
                 .filter(match => !match.paper)
                 .map(match => match.schedule);
         }
@@ -1342,7 +1351,7 @@ window.onload = function() {
                 ? getDec2026EndSemesterSchedules().filter(item => qpmsReportInScope(item, 'COE'))
                 : null;
             const coeMatches = coeSchedules
-                ? qpmsMatchSchedulesToPapers(coeSchedules, papersDatabase)
+                ? qpmsUniqueCourseMatches(coeSchedules, papersDatabase)
                 : null;
             const headerPapers = coeMatches
                 ? papersDatabase.filter(p => qpmsReportInScope(p, 'COE'))
@@ -1628,7 +1637,7 @@ window.onload = function() {
                 !currentSession?.schoolScope || (qpmsSchoolFor(item) === currentSession.schoolScope &&
                 (!currentSession.departmentScope || qpmsDepartmentFor(item).toUpperCase() === currentSession.departmentScope.toUpperCase()))
             );
-            const matchedBySchedule = qpmsMatchSchedulesToPapers(schedules, papersDatabase);
+            const matchedBySchedule = qpmsUniqueCourseMatches(schedules, papersDatabase);
             // Raw database uploads are retained for moderation/workflow statuses.
             // Scheduled/covered/pending cards use official datesheet entries only.
             const papers = (papersDatabase || []).filter(p => qpmsReportInScope(p, 'COE'));
@@ -1658,13 +1667,11 @@ window.onload = function() {
                 if (revisedSchools.some(([schoolValue]) => schoolValue === selectedSchool)) revisedSchoolSelect.value = selectedSchool;
             }
             document.getElementById('coe-report-summary').innerHTML = [
-                totalCard('Dec 2026 End Semester Scheduled', schedules.length, 'border-slate-200 bg-slate-50 text-slate-900'),
+                totalCard('Papers Required (Unique Course Codes)', matchedBySchedule.length, 'border-slate-200 bg-slate-50 text-slate-900'),
+                totalCard('Papers Received (Unique Course Codes)', matchedBySchedule.filter(x => !!x.paper).length, 'border-emerald-200 bg-emerald-50 text-emerald-900'),
+                totalCard('Papers Pending Upload', pending.length, 'border-rose-200 bg-rose-50 text-rose-900'),
                 totalCard('Uploaded Records (all)', papers.length, 'border-slate-200 bg-slate-50 text-slate-900'),
-                totalCard('Datesheet Entries Covered', matchedBySchedule.filter(x => !!x.paper).length, 'border-emerald-200 bg-emerald-50 text-emerald-900'),
-                totalCard('Datesheet Entries Not Covered', schedules.length ? pending.length : '—', 'border-rose-200 bg-rose-50 text-rose-900'),
-                totalCard('Unique Course Papers Required', requiredKeys.size, 'border-slate-200 bg-slate-50 text-slate-900'),
-                totalCard('Unique Course Papers Received', coveredKeys.size, 'border-emerald-200 bg-emerald-50 text-emerald-900'),
-                totalCard('Unique Course Papers Pending', uniquePending, 'border-rose-200 bg-rose-50 text-rose-900'),
+                totalCard('Official Datesheet Rows (reference)', schedules.length, 'border-slate-200 bg-slate-50 text-slate-900'),
                 totalCard('Awaiting Faculty Revision', changesRequired.length, 'border-amber-200 bg-amber-50 text-amber-900'),
                 totalCard('Revised Papers Resubmitted to COE', resubmitted.length, 'border-purple-200 bg-purple-50 text-purple-900'),
                 totalCard('Approved by Moderation', moderated.length, 'border-violet-200 bg-violet-50 text-violet-900'),
