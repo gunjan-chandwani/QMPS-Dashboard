@@ -474,57 +474,87 @@ app.post("/api/auth/login", async (req, res) => {
   }
 });
 
-// Password-reset tokens are hashed and persisted so restarts do not invalidate
-// legitimate requests. No account existence information is disclosed.
+// COE-mediated faculty recovery. No SMTP or public reset tokens.
 const resetAttempts = new Map();
-app.post("/api/auth/forgot-password", async (req, res) => {
-  const email = String(req.body?.email || "").trim().toLowerCase();
-  const message = "If this faculty email is registered, a reset link will be sent shortly.";
-  if (!email.includes("@") || !email.split("@")[1]?.includes(".") || email.includes(" ")) return res.status(400).json({ok:false,error:"Enter a valid registered email."});
-  const key = crypto.createHash("sha256").update(email).digest("hex");
-  const last = resetAttempts.get(key) || 0;
-  if (Date.now() - last < 60000) return res.json({ok:true,message});
-  resetAttempts.set(key, Date.now());
-  try {
-    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD || !process.env.QPMS_PUBLIC_URL)
-      return res.status(503).json({ok:false,error:"Password recovery email is not configured. Contact COE."});
-    await pool.query(`CREATE TABLE IF NOT EXISTS faculty_password_resets (
-      token_hash TEXT PRIMARY KEY, email TEXT NOT NULL,
-      expires_at TIMESTAMPTZ NOT NULL, used_at TIMESTAMPTZ,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`);
-    const {rows} = await pool.query("SELECT email FROM faculty_accounts WHERE email=$1 AND active=TRUE AND role='FACULTY' LIMIT 1",[email]);
-    if (rows.length) {
-      const token = crypto.randomBytes(32).toString("hex");
-      const hash = crypto.createHash("sha256").update(token).digest("hex");
-      await pool.query("DELETE FROM faculty_password_resets WHERE email=$1",[email]);
-      await pool.query("INSERT INTO faculty_password_resets(token_hash,email,expires_at) VALUES($1,$2,NOW()+INTERVAL '15 minutes')",[hash,email]);
-      const base = process.env.QPMS_PUBLIC_URL.replace(new RegExp("/+$"), "");
-      const link = base + "/?reset_token=" + encodeURIComponent(token);
-      const transporter = nodemailer.createTransport({service:"gmail",auth:{user:process.env.GMAIL_USER,pass:process.env.GMAIL_APP_PASSWORD}});
-      await transporter.sendMail({from:process.env.GMAIL_USER,to:email,subject:"QPMS Faculty Password Reset",text:"A password reset was requested for your QPMS faculty account. This link expires in 15 minutes and works once:\n"+link+"\n\nIf you did not request this, ignore this email."});
+const coeResetSessions = new Map();
+const recoveryLimit = (map,key,ms) => {
+  const now=Date.now(),last=map.get(key)||0;
+  if(now-last<ms)return false;
+  map.set(key,now);return true;
+};
+async function ensureRecoveryTable(){
+  await pool.query(`CREATE TABLE IF NOT EXISTS faculty_password_reset_requests(
+    id BIGSERIAL PRIMARY KEY,email TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'PENDING',
+    requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    reviewed_at TIMESTAMPTZ,
+    reviewed_by TEXT
+  )`);
+}
+app.post("/api/auth/forgot-password",async(req,res)=>{
+  const email=String(req.body?.email||"").trim().toLowerCase();
+  if(!email.includes("@")||!email.split("@")[1]?.includes(".")||email.includes(" "))
+    return res.status(400).json({ok:false,error:"Enter a valid registered email."});
+  const message="If your faculty account exists, a password reset request has been sent to COE. Contact COE to receive your temporary password securely.";
+  if(!recoveryLimit(resetAttempts,email,60000))return res.json({ok:true,message});
+  try{
+    await ensureRecoveryTable();
+    const user=await pool.query("SELECT email FROM faculty_accounts WHERE email=$1 AND active=TRUE AND role='FACULTY'",[email]);
+    if(user.rowCount){
+      await pool.query(`INSERT INTO faculty_password_reset_requests(email)
+        SELECT $1 WHERE NOT EXISTS(SELECT 1 FROM faculty_password_reset_requests WHERE email=$1 AND status='PENDING')`,[email]);
     }
     return res.json({ok:true,message});
-  } catch(e) { console.error("Faculty password reset request failed:",e.message); return res.status(503).json({ok:false,error:"Unable to send reset email. Please contact COE."}); }
+  }catch(e){console.error("Recovery request failed:",e.message);return res.status(500).json({ok:false,error:"Could not submit request. Contact COE."});}
 });
-app.post("/api/auth/reset-password", async (req,res) => {
-  const token=String(req.body?.token||"");
-  const password=String(req.body?.newPassword||"");
-  if (!/^[a-f0-9]{64}$/.test(token) || password.length<12 || password.length>256)
-    return res.status(400).json({ok:false,error:"Invalid reset link or password (minimum 12 characters)."});
-  const hash=crypto.createHash("sha256").update(token).digest("hex");
+// COE approval requires a server-side secret, never the client-side COE role.
+app.post("/api/coe/reset-admin-login", (req,res)=>{
+  const configured=String(process.env.COE_RESET_ADMIN_PASSWORD||"");
+  const password=String(req.body?.password||"");
+  if(configured.length<12)return res.status(503).json({ok:false,error:"COE reset approval is not configured on server."});
+  const a=crypto.createHash("sha256").update(password).digest(),b=crypto.createHash("sha256").update(configured).digest();
+  if(!crypto.timingSafeEqual(a,b))return res.status(401).json({ok:false,error:"Invalid COE approval password."});
+  const token=crypto.randomBytes(32).toString("hex");
+  coeResetSessions.set(token,Date.now()+30*60*1000);
+  res.json({ok:true,token});
+});
+function authorizedCoeReset(req,res){
+  const token=String(req.headers["x-coe-reset-token"]||"");
+  const expiry=coeResetSessions.get(token);
+  if(!expiry||expiry<Date.now()){res.status(401).json({ok:false,error:"COE approval session expired. Authenticate again."});return false;}
+  return true;
+}
+app.get("/api/coe/password-reset-requests",async(req,res)=>{
+  if(!authorizedCoeReset(req,res))return;
+  try{
+    await ensureRecoveryTable();
+    const {rows}=await pool.query(`SELECT r.id,r.email,r.requested_at,f.full_name,f.department,f.school
+      FROM faculty_password_reset_requests r JOIN faculty_accounts f ON f.email=r.email
+      WHERE r.status='PENDING' ORDER BY r.requested_at DESC LIMIT 200`);
+    res.json({ok:true,requests:rows});
+  }catch(e){res.status(500).json({ok:false,error:"Unable to load requests."});}
+});
+app.post("/api/coe/password-reset-requests/:id/approve",async(req,res)=>{
+  if(!authorizedCoeReset(req,res))return;
+  const id=Number(req.params.id);
+  if(!Number.isSafeInteger(id)||id<1)return res.status(400).json({ok:false,error:"Invalid request."});
   const client=await pool.connect();
-  try {
+  try{
     await client.query("BEGIN");
-    const {rows}=await client.query("SELECT email FROM faculty_password_resets WHERE token_hash=$1 AND used_at IS NULL AND expires_at>NOW() FOR UPDATE",[hash]);
-    if (!rows.length) { await client.query("ROLLBACK"); return res.status(400).json({ok:false,error:"Reset link is invalid or expired. Request a new one."}); }
-    const salt=crypto.randomBytes(16), hashed=crypto.scryptSync(password,salt,64);
-    await client.query("UPDATE faculty_accounts SET password_salt=$2,password_hash=$3,must_change_password=FALSE,updated_at=NOW() WHERE email=$1 AND active=TRUE",[rows[0].email,salt.toString("hex"),hashed.toString("hex")]);
-    await client.query("UPDATE faculty_password_resets SET used_at=NOW() WHERE token_hash=$1",[hash]);
+    const {rows}=await client.query("SELECT email FROM faculty_password_reset_requests WHERE id=$1 AND status='PENDING' FOR UPDATE",[id]);
+    if(!rows.length){await client.query("ROLLBACK");return res.status(404).json({ok:false,error:"Request already handled."});}
+    const temporaryPassword=crypto.randomBytes(18).toString("base64url");
+    const salt=crypto.randomBytes(16);
+    const hash=crypto.scryptSync(temporaryPassword,salt,64);
+    const updated=await client.query(`UPDATE faculty_accounts SET password_salt=$2,password_hash=$3,
+      must_change_password=TRUE,updated_at=NOW() WHERE email=$1 AND active=TRUE AND role='FACULTY'`,
+      [rows[0].email,salt.toString("hex"),hash.toString("hex")]);
+    if(!updated.rowCount)throw new Error("Faculty account inactive.");
+    await client.query("UPDATE faculty_password_reset_requests SET status='APPROVED',reviewed_at=NOW(),reviewed_by='COE' WHERE id=$1",[id]);
     await client.query("COMMIT");
-    return res.json({ok:true,message:"Password reset successful. Sign in with your new password."});
-  } catch(e) {await client.query("ROLLBACK");console.error("Password reset failed:",e.message);return res.status(500).json({ok:false,error:"Password reset failed."});}
-  finally {client.release();}
+    res.json({ok:true,email:rows[0].email,temporaryPassword,message:"Share this temporary password privately after verifying faculty identity. It will not be shown again."});
+  }catch(e){await client.query("ROLLBACK");console.error("COE reset approval failed:",e.message);res.status(500).json({ok:false,error:"Approval failed."});}
+  finally{client.release();}
 });
 app.post("/api/auth/change-password", async (req, res) => {
   try {
