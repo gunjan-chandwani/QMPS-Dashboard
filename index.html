@@ -997,186 +997,46 @@
             }
             return true;
         }
+        // A single paper is required per course code within a semester and exam
+        // session, irrespective of the number of programmes/specializations using it.
+        // Retain the original database schedule and upload rows unchanged.
+        function qpmsPaperRequirementKey(item) {
+            const code = String(item.courseCode || item.course || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+            const semester = qpmsSemesterNorm(item.semester);
+            const exam = qpmsExamNorm(item.examType || item.exam);
+            return code && semester && exam ? [code, semester, exam].join('|') : '';
+        }
         function getDec2026EndSemesterSchedules() {
-            return (datesheetSchedule || []).filter(qpmsIsDec2026EndSemester);
+            const unique = new Map();
+            (datesheetSchedule || []).filter(qpmsIsDec2026EndSemester).forEach((schedule, index) => {
+                // Missing course code cannot be safely merged with another requirement.
+                const key = qpmsPaperRequirementKey(schedule) || 'unidentified-schedule-' + (schedule.id ?? index);
+                if (!unique.has(key)) unique.set(key, schedule);
+            });
+            return [...unique.values()];
         }
         function qpmsMatchSchedulesToPapers(schedules, papers) {
-            // One consistent, one-to-one reconciliation for COE cards and school/programme reports.
-            // Prefer exact programme matches; only accept a shared/broad PDF heading
-            // when the school, department, semester, exam and code also agree.
-            const candidates = (papers || []).filter(p => p.hasFile !== false && qpmsExamNorm(p.examType || p.exam) === 'end semester');
-            const usedPaperIds = new Set();
-            const normCode = x => String(x || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-            const programmeCompatible = (sch, p) => {
-                const sp = qpmsNorm(sch.program || sch.programme);
-                const pp = qpmsNorm(p.program || p.programme);
-                if (!sp || !pp || sp === pp) return true;
-                const canonical = value => qpmsNorm(value)
-                    .replace(/\b(bachelor of technology|b\s*tech)\b/g, 'btech')
-                    .replace(/\b(bachelor of business administration|bba)\b/g, 'bba')
-                    .replace(/\b(bachelor of arts|b\s*a)\b/g, 'ba')
-                    .replace(/\b(bachelor of science|b\s*sc)\b/g, 'bsc')
-                    .replace(/\b(bachelor of education|b\s*ed)\b/g, 'bed')
-                    .replace(/\bwith speciali[sz]ation in\b|\bspeciali[sz]ation in\b/g, '')
-                    .replace(/\s+/g, ' ').trim();
-                if (canonical(sp) === canonical(pp)) return true;
-                // A shared datesheet heading may cover several named specializations.
-                // Require the same degree AND discipline; never merge unrelated programmes.
-                const family = value => {
-                    const v = canonical(value);
-                    if (/\b(btech|technology)\b/.test(v)) {
-                        if (/computer science|\bcse\b/.test(v)) return 'btech-cse';
-                        if (/electronics|communication|\bece\b/.test(v)) return 'btech-ece';
-                        if (/mechanical|\bme\b/.test(v)) return 'btech-me';
-                        if (/robotics/.test(v)) return 'btech-robotics';
-                    }
-                    if (/\bbba\b/.test(v)) return 'bba';
-                    if (/\bmba\b/.test(v)) return 'mba';
-                    if (/\bllb\b/.test(v)) return /\bbba\b/.test(v) ? 'bba-llb' : /\bba\b/.test(v) ? 'ba-llb' : 'llb';
-                    if (/\bbca\b/.test(v)) return 'bca';
-                    if (/\bmca\b/.test(v)) return 'mca';
-                    return '';
-                };
-                const sf = family(sp), pf = family(pp);
-                if (!sf || sf !== pf) return false;
-                // Only broaden when the official heading is generic, explicitly
-                // combines specializations, or the upload is a specialization thereof.
-                const broad = /speciali[sz]ations|\band\b|\/|\bcombined\b/.test(sp);
-                const specialization = /speciali[sz]ation|\b(hons|honours)\b/.test(pp);
-                const sameBase = canonical(sp) === canonical(pp).replace(/\b(aiml|csti|fsd|sma|gom|faa|efb|ai)\b/g, '').replace(/\s+/g, ' ').trim();
-                return broad || specialization || sameBase;
-            };
-            // Official course + semester is the primary key. Faculty programme
-            // labels are often abbreviated or use specialization wording absent
-            // from the PDF. Permit a fallback ONLY when the official schedule has
-            // one distinct programme for this course/semester/exam, preventing
-            // a paper being assigned across competing programmes.
-            const officialOptions = new Map();
-            (schedules || []).forEach(sch => {
-                const key = [normCode(sch.courseCode || sch.course),
-                    qpmsSemesterNorm(sch.semester), qpmsExamNorm(sch.examType || sch.exam)].join('|');
-                if (!officialOptions.has(key)) officialOptions.set(key, new Set());
-                officialOptions.get(key).add(qpmsNorm(sch.program || sch.programme));
+            const candidates = (papers || []).filter(p =>
+                p.hasFile !== false && qpmsExamNorm(p.examType || p.exam) === 'end semester'
+            );
+            const uploadsByRequirement = new Map();
+            candidates.forEach(paper => {
+                const key = qpmsPaperRequirementKey(paper);
+                if (!key) return;
+                if (!uploadsByRequirement.has(key)) uploadsByRequirement.set(key, []);
+                uploadsByRequirement.get(key).push(paper);
             });
-            // Normalize degree aliases and repeated PDF degree prefixes. The official
-            // schedule often says "Bachelor of Technology (B. Tech.) - ..." while
-            // faculty uploads say "B.tech ..."; these describe the same programme.
-            const programmeIdentity = value => qpmsNorm(value)
-                .replace(/\\b(bachelor of technology|b\\s*tech)\\b/g, 'btech')
-                .replace(/\\b(bachelor of business administration|b\\s*b\\s*a)\\b/g, 'bba')
-                .replace(/\\b(bachelor of science|b\\s*sc)\\b/g, 'bsc')
-                .replace(/\\b(bachelor of education|b\\s*ed)\\b/g, 'bed')
-                .replace(/\\b(bachelor of arts|b\\s*a)\\b/g, 'ba')
-                .replace(/\\b(bachelor of laws|ll\\s*b)\\b/g, 'llb')
-                .replace(/\\bwith speciali[sz]ation in\\b/g, 'specialization')
-                .replace(/\\b(btech|bba|bsc|bed|ba|llb)(?:\\s+\\1)+\\b/g, '$1')
-                .replace(/\\s+/g, ' ').trim();
-            const programmeTokens = value => {
-                // Datesheet degree labels ("Bachelor of Technology (B. Tech.)")
-                // must not overwhelm the actual branch/specialization evidence.
-                const normalized = programmeIdentity(value)
-                    .replace(/\\bcomputer science\\b/g, 'cse')
-                    .replace(/\\bartificial intelligence and machine learning\\b/g, 'aiml')
-                    .replace(/\\bglobal operations? management\\b/g, 'gom')
-                    .replace(/\\bfinance (?:and|&) accounts?\\b/g, 'faa')
-                    .replace(/\\bentrepreneurship (?:and|&) family business\\b/g, 'efb')
-                    .replace(/\\bbusiness analytics\\b/g, 'baanalytics')
-                    .replace(/\\bsmart manufacturing (?:and|&) automation\\b/g, 'sma');
-                const stop = new Set(['bachelor','bachelors','master','masters','of','technology','tech','btech','bba','bsc','ba','bed','llb','with','specialization','specialisation','in','and','engineering','degree','the','program','programme','hons','science']);
-                return new Set(normalized.replace(/[^a-z0-9]+/g, ' ').split(' ')
-                    .filter(t => t.length > 1 && !stop.has(t)));
-            };
-            const scored = (s, p) => {
-                const sc = normCode(s.courseCode || s.course);
-                if (!sc || sc !== normCode(p.courseCode || p.course)) return -1;
-                if (qpmsSemesterNorm(s.semester) !== qpmsSemesterNorm(p.semester)) return -1;
-                const exam = qpmsExamNorm(s.examType || s.exam);
-                if (exam !== qpmsExamNorm(p.examType || p.exam)) return -1;
-                const sp = qpmsNorm(s.program || s.programme);
-                const pp = qpmsNorm(p.program || p.programme);
-                const compatible = programmeCompatible(s, p);
-                const normalizedExact = programmeIdentity(sp) && programmeIdentity(sp) === programmeIdentity(pp);
-                const key = [sc, qpmsSemesterNorm(s.semester), exam].join('|');
-                const officialCount = officialOptions.get(key)?.size || 0;
-                const st = programmeTokens(sp), pt = programmeTokens(pp);
-                const overlap = [...pt].filter(t => st.has(t)).length;
-                // Reject cross-discipline matches even when a shared course code
-                // appears in multiple branches. Only unique official programme
-                // keys can use the existing programme-label fallback.
-                const discipline = value => {
-                    const v = programmeIdentity(value);
-                    if (/\\b(robotics|robotic)\\b/.test(v)) return 'robotics';
-                    if (/\\b(mechanical|smart manufacturing)\\b/.test(v)) return 'mechanical';
-                    if (/\\b(electronics|communication|ece|vlsi)\\b/.test(v)) return 'ece';
-                    if (/\\b(computer science|cse|csti|aiml|fsd|gen ai)\\b/.test(v)) return 'cse';
-                    return '';
-                };
-                const sd = discipline(sp), pd = discipline(pp);
-                if (sd && pd && sd !== pd) return -1;
-                if (!compatible && officialCount !== 1 && overlap < 2) return -1;
-                const sameSchool = qpmsSchoolFor(s) === qpmsSchoolFor(p);
-                const sameDept = qpmsDepartmentFor(s) === qpmsDepartmentFor(p);
-                // Do not let stale faculty department metadata override the PDF.
-                // Prefer the exact normalized programme over a shared specialization
-                // heading; do not let unrelated programmes win through school metadata.
-                const extraOfficialTokens = [...st].filter(t => !pt.has(t)).length;
-                return (sp && pp && sp === pp ? 1200 : normalizedExact ? 1100 : compatible ? 600 : officialCount === 1 ? 200 : 100) +
-                    Math.min(overlap, 12) * 25 - Math.min(extraOfficialTokens, 10) * 3 +
-                    (sameSchool ? 4 : 0) + (sameDept ? 2 : 0);
-            };
-            const results = (schedules || []).map(schedule => ({schedule, paper:null}));
-            // Match specific programme entries before broad or missing programme entries.
-            const priorities = [];
-            results.forEach((entry, i) => candidates.forEach((paper, j) => {
-                const score = scored(entry.schedule, paper);
-                if (score >= 0) priorities.push({i,j,score});
-            }));
-            // Resolve one-to-one assignments using the strongest compatible programme
-            // evidence. Repeated official entries with the SAME programme are valid
-            // separate expected papers (including Law); do not mark them ambiguous.
-            // A paper with equally strong matches to DIFFERENT programmes stays
-            // unassigned rather than being credited to the wrong programme.
-            const byPaper = new Map();
-            priorities.forEach(edge => {
-                if (!byPaper.has(edge.j)) byPaper.set(edge.j, []);
-                byPaper.get(edge.j).push(edge);
-            });
-            const eligible = [];
-            byPaper.forEach(edges => {
-                const best = Math.max(...edges.map(x => x.score));
-                const bestEdges = edges.filter(x => x.score === best);
-                const programmes = new Set(bestEdges.map(x => qpmsNorm(results[x.i].schedule.program || results[x.i].schedule.programme)));
-                if (programmes.size > 1) return;
-                eligible.push(...edges.filter(x => qpmsNorm(results[x.i].schedule.program || results[x.i].schedule.programme) ===
-                    qpmsNorm(results[bestEdges[0].i].schedule.program || results[bestEdges[0].i].schedule.programme)));
-            });
-            // Prefer papers with fewer eligible datesheet options, then strongest
-            // scores; an augmenting path prevents an early match from blocking a
-            // later paper with only one valid official entry.
-            const choices = new Map();
-            eligible.forEach(edge => {
-                if (!choices.has(edge.j)) choices.set(edge.j, []);
-                choices.get(edge.j).push(edge);
-            });
-            choices.forEach(edges => edges.sort((a,b) => b.score-a.score || a.i-b.i));
-            const assigned = new Map();
-            const visit = (j, seen) => {
-                for (const edge of choices.get(j) || []) {
-                    if (seen.has(edge.i)) continue;
-                    seen.add(edge.i);
-                    const prior = assigned.get(edge.i);
-                    if (prior === undefined || visit(prior, seen)) {
-                        assigned.set(edge.i, j);
-                        return true;
-                    }
-                }
-                return false;
-            };
-            [...choices.keys()].sort((a,b) =>
-                choices.get(a).length-choices.get(b).length || a-b
-            ).forEach(j => visit(j, new Set()));
-            assigned.forEach((j,i) => { results[i].paper = candidates[j]; });
-            return results;
+            const seen = new Set();
+            return (schedules || []).map((schedule, index) => {
+                const key = qpmsPaperRequirementKey(schedule) || 'unidentified-schedule-' + (schedule.id ?? index);
+                if (seen.has(key)) return null;
+                seen.add(key);
+                const matches = uploadsByRequirement.get(key) || [];
+                // Multiple uploads of the same course satisfy only one requirement.
+                // The newest upload is shown for workflow reporting, not counted again.
+                const paper = matches.length ? matches[matches.length - 1] : null;
+                return {schedule, paper};
+            }).filter(Boolean);
         }
         function getCoePendingPapers() {
             // COE pending list is limited to December 2026 End Semester and each upload
