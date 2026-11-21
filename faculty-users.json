@@ -1718,5 +1718,55 @@
     "salt": "3ea86cc10f94088cc100e06511097243",
     "passwordHash": "8d657492ea3142e9acc38fbc36a7dee0d2914bfe40781b70e7f9c932eedd6d27ea31ea93480069fbcd5840b883aa1f437599fd5db2a26153df167d4c5f2ab29f",
     "role": "FACULTY"
+  },
+  {
+    "email": "vani.chawla@mru.edu.in",
+    "name": "Dr. Vani Chawla",
+    "departmentCode": "BUSINESS",
+    "department": "Business",
+    "school": "School of Business",
+    "salt": "",
+    "passwordHash": "",
+    "role": "FACULTY"
+  },
+  {
+    "email": "drdaleep57@gmail.com",
+    "name": "Dr. Daleep Parimoo",
+    "departmentCode": "BUSINESS",
+    "department": "Business",
+    "school": "School of Business",
+    "salt": "",
+    "passwordHash": "",
+    "role": "FACULTY"
+  },
+  {
+    "email": "princekr301@gmail.com",
+    "name": "Prince Kumar",
+    "departmentCode": "BUSINESS",
+    "department": "Business",
+    "school": "School of Business",
+    "salt": "",
+    "passwordHash": "",
+    "role": "FACULTY"
+  },
+  {
+    "email": "abhinav.kumar@isdcglobal.org.uk",
+    "name": "Mr. Abhinav Kumar",
+    "departmentCode": "BUSINESS",
+    "department": "Business",
+    "school": "School of Business",
+    "salt": "",
+    "passwordHash": "",
+    "role": "FACULTY"
+  },
+  {
+    "email": "akshatasingh0799@gmail.com",
+    "name": "Akshita",
+    "departmentCode": "BUSINESS",
+    "department": "Business",
+    "school": "School of Business",
+    "salt": "",
+    "passwordHash": "",
+    "role": "FACULTY"
   }
 ]
