@@ -360,7 +360,7 @@
 <select id="coe-rpt-program" aria-label="Filter programme" class="border rounded-lg p-2 text-xs"><option value="">All Programmes</option></select>
 <select id="coe-rpt-sem" aria-label="Filter semester" class="border rounded-lg p-2 text-xs"><option value="">All Semesters</option></select>
 <select id="coe-rpt-status" aria-label="Filter paper status" class="border rounded-lg p-2 text-xs"><option value="">All Statuses</option><option value="pending">Pending Upload</option><option value="uploaded">Uploaded</option><option value="review">In Review</option><option value="changes">Changes Required</option><option value="moderated">Moderated</option><option value="approved">Final Approved</option></select>
-<button type="button" onclick="['school','dept','program','sem','status'].forEach(k=>{const e=document.getElementById('coe-rpt-'+k);if(e)e.value=''});qpmsFilterCoeSchoolReport()" class="border rounded-lg p-2 text-xs font-semibold">Clear Filters</button>
+<button type="button" onclick="['school','dept','program','sem','status'].forEach(k=>{const e=document.getElementById('coe-rpt-'+k);if(e)e.value=''});qpmsRefreshCoeSchoolReportFilters();qpmsFilterCoeSchoolReport()" class="border rounded-lg p-2 text-xs font-semibold">Clear Filters</button>
 </div><div id="coe-rpt-visible-count" class="text-xs text-slate-500" aria-live="polite"></div>
 <div class="overflow-x-auto border border-slate-100 rounded-xl"><table class="w-full text-xs text-left"><thead class="bg-slate-50 uppercase text-slate-500"><tr><th class="p-3">School</th><th class="p-3">Department / Programme</th><th class="p-3">Semester</th><th class="p-3">Scheduled</th><th class="p-3">Uploaded</th><th class="p-3">Pending Upload</th><th class="p-3">In Review</th><th class="p-3">Changes Required</th><th class="p-3">Moderated</th><th class="p-3">Final Approved</th></tr></thead><tbody id="coe-school-report" class="divide-y divide-slate-100"></tbody></table></div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
@@ -1031,21 +1031,43 @@
             return (datesheetSchedule || []).filter(qpmsIsDec2026EndSemester);
         }
         let qpmsCoeSchoolReportRows = [];
-        function qpmsRefreshCoeSchoolReportFilters() {
-            const fields = {school:'school',dept:'dept',program:'programme',sem:'semester'};
-            for (const [id,field] of Object.entries(fields)) {
-                const el=document.getElementById('coe-rpt-'+id);
-                if (!el) continue;
-                const old=el.value;
-                const first=el.options[0].textContent;
-                const vals=[...new Set(qpmsCoeSchoolReportRows.map(r=>r[field]).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-                el.replaceChildren(new Option(first,''));
-                vals.forEach(v=>el.add(new Option(v,v)));
-                if(vals.includes(old))el.value=old;
+        function qpmsRefreshCoeSchoolReportFilters(changedField) {
+            const hierarchy = [
+                {id:'school', field:'school', parents:[]},
+                {id:'dept', field:'dept', parents:['school']},
+                {id:'program', field:'programme', parents:['school','dept']},
+                {id:'sem', field:'semester', parents:['school','dept','program']}
+            ];
+            const fieldFor = {school:'school',dept:'dept',program:'programme',sem:'semester'};
+            const changedIndex=hierarchy.findIndex(item=>item.id===changedField);
+            if(changedIndex>=0) {
+                hierarchy.slice(changedIndex+1).forEach(item=>{
+                    const el=document.getElementById('coe-rpt-'+item.id);
+                    if(el)el.value='';
+                });
+            }
+            for(const item of hierarchy) {
+                const el=document.getElementById('coe-rpt-'+item.id);
+                if(!el)continue;
+                const selected=el.value;
+                const label=el.options[0]?.textContent||'All';
+                const eligible=qpmsCoeSchoolReportRows.filter(row=>item.parents.every(parent=>{
+                    const v=document.getElementById('coe-rpt-'+parent)?.value||'';
+                    return !v||row[fieldFor[parent]]===v;
+                }));
+                const values=[...new Set(eligible.map(row=>row[item.field]).filter(Boolean))].sort((x,y)=>x.localeCompare(y));
+                el.replaceChildren(new Option(label,''));
+                values.forEach(v=>el.add(new Option(v,v)));
+                if(values.includes(selected))el.value=selected;
             }
             const controls=document.getElementById('coe-school-report-filters');
-            if(controls && !controls.dataset.bound) {
-                controls.addEventListener('change',qpmsFilterCoeSchoolReport);
+            if(controls&&!controls.dataset.bound) {
+                controls.addEventListener('change',event=>{
+                    const id=event.target?.id||'';
+                    const field=id.startsWith('coe-rpt-')?id.slice(8):'';
+                    if(['school','dept','program','sem'].includes(field))qpmsRefreshCoeSchoolReportFilters(field);
+                    qpmsFilterCoeSchoolReport();
+                });
                 controls.dataset.bound='1';
             }
         }
