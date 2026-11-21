@@ -1046,20 +1046,34 @@
                 const sameBase = canonical(sp) === canonical(pp).replace(/\b(aiml|csti|fsd|sma|gom|faa|efb|ai)\b/g, '').replace(/\s+/g, ' ').trim();
                 return broad || specialization || sameBase;
             };
+            // Official course + semester is the primary key. Faculty programme
+            // labels are often abbreviated or use specialization wording absent
+            // from the PDF. Permit a fallback ONLY when the official schedule has
+            // one distinct programme for this course/semester/exam, preventing
+            // a paper being assigned across competing programmes.
+            const officialOptions = new Map();
+            (schedules || []).forEach(sch => {
+                const key = [normCode(sch.courseCode || sch.course),
+                    qpmsSemesterNorm(sch.semester), qpmsExamNorm(sch.examType || sch.exam)].join('|');
+                if (!officialOptions.has(key)) officialOptions.set(key, new Set());
+                officialOptions.get(key).add(qpmsNorm(sch.program || sch.programme));
+            });
             const scored = (s, p) => {
-                if (!normCode(s.courseCode || s.course) ||
-                    normCode(s.courseCode || s.course) !== normCode(p.courseCode || p.course)) return -1;
+                const sc = normCode(s.courseCode || s.course);
+                if (!sc || sc !== normCode(p.courseCode || p.course)) return -1;
                 if (qpmsSemesterNorm(s.semester) !== qpmsSemesterNorm(p.semester)) return -1;
-                if (qpmsExamNorm(s.examType || s.exam) !== qpmsExamNorm(p.examType || p.exam)) return -1;
-                // Uploaded faculty metadata can be stale; official datesheet owns
-                // the school/department classification. Require compatible programmes
-                // and prefer exact school/department, never silently change paper data.
-                if (!programmeCompatible(s, p)) return -1;
+                const exam = qpmsExamNorm(s.examType || s.exam);
+                if (exam !== qpmsExamNorm(p.examType || p.exam)) return -1;
                 const sp = qpmsNorm(s.program || s.programme);
                 const pp = qpmsNorm(p.program || p.programme);
+                const compatible = programmeCompatible(s, p);
+                const key = [sc, qpmsSemesterNorm(s.semester), exam].join('|');
+                if (!compatible && (officialOptions.get(key)?.size || 0) !== 1) return -1;
                 const sameSchool = qpmsSchoolFor(s) === qpmsSchoolFor(p);
                 const sameDept = qpmsDepartmentFor(s) === qpmsDepartmentFor(p);
-                return (sp && pp && sp === pp ? 30 : sp && pp ? 10 : 20) +
+                // A mismatch in school/department metadata is not automatically
+                // authoritative: datesheet metadata owns the report classification.
+                return (sp && pp && sp === pp ? 100 : compatible ? 60 : 10) +
                     (sameSchool ? 4 : 0) + (sameDept ? 2 : 0);
             };
             const results = (schedules || []).map(schedule => ({schedule, paper:null}));
