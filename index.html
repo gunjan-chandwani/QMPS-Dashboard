@@ -1007,13 +1007,9 @@
             return code && semester && exam ? [code, semester, exam].join('|') : '';
         }
         function getDec2026EndSemesterSchedules() {
-            const unique = new Map();
-            (datesheetSchedule || []).filter(qpmsIsDec2026EndSemester).forEach((schedule, index) => {
-                // Missing course code cannot be safely merged with another requirement.
-                const key = qpmsPaperRequirementKey(schedule) || 'unidentified-schedule-' + (schedule.id ?? index);
-                if (!unique.has(key)) unique.set(key, schedule);
-            });
-            return [...unique.values()];
+            // Preserve all official datesheet rows for the Scheduled card.
+            // The matching function separately consolidates course requirements.
+            return (datesheetSchedule || []).filter(qpmsIsDec2026EndSemester);
         }
         function qpmsMatchSchedulesToPapers(schedules, papers) {
             const candidates = (papers || []).filter(p =>
