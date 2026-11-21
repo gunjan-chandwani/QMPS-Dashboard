@@ -230,7 +230,7 @@
                         <span id="stat-total" class="font-bold text-slate-800 text-base">0</span>
                     </div>
                     <div class="bg-blue-50 p-2.5 rounded-lg border border-blue-100">
-                        <span class="text-blue-600 block mb-0.5">In Review</span>
+                        <span id="stat-pending-label" class="text-blue-600 block mb-0.5">In Review</span>
                         <span id="stat-pending" class="font-bold text-blue-800 text-base">0</span>
                     </div>
                     <div class="bg-amber-50 p-2.5 rounded-lg border border-amber-100">
@@ -359,10 +359,10 @@
 <select id="coe-rpt-dept" onchange="qpmsOnCoeSchoolFilterChange('dept')" aria-label="Filter department" class="border rounded-lg p-2 text-xs"><option value="">All Departments</option></select>
 <select id="coe-rpt-program" onchange="qpmsOnCoeSchoolFilterChange('program')" aria-label="Filter programme" class="border rounded-lg p-2 text-xs"><option value="">All Programmes</option></select>
 <select id="coe-rpt-sem" onchange="qpmsOnCoeSchoolFilterChange('sem')" aria-label="Filter semester" class="border rounded-lg p-2 text-xs"><option value="">All Semesters</option></select>
-<select id="coe-rpt-status" onchange="qpmsOnCoeSchoolFilterChange('status')" aria-label="Filter paper status" class="border rounded-lg p-2 text-xs"><option value="">All Statuses</option><option value="pending">Pending Upload</option><option value="uploaded">Uploaded</option><option value="review">In Review</option><option value="changes">Changes Required</option><option value="moderated">Moderated</option><option value="approved">Final Approved</option></select>
+<select id="coe-rpt-status" onchange="qpmsOnCoeSchoolFilterChange('status')" aria-label="Filter paper status" class="border rounded-lg p-2 text-xs"><option value="">All Statuses</option><option value="pending">Pending Upload</option><option value="uploaded">Uploaded</option><option value="review">Forwarded to Moderation</option><option value="changes">Changes Required</option><option value="moderated">Moderated</option><option value="approved">Final Approved</option></select>
 <button type="button" onclick="['school','dept','program','sem','status'].forEach(k=>{const e=document.getElementById('coe-rpt-'+k);if(e)e.value=''});qpmsRefreshCoeSchoolReportFilters();qpmsFilterCoeSchoolReport()" class="border rounded-lg p-2 text-xs font-semibold">Clear Filters</button>
 </div><div id="coe-rpt-visible-count" class="text-xs text-slate-500" aria-live="polite"></div>
-<div class="overflow-x-auto border border-slate-100 rounded-xl"><table class="w-full text-xs text-left"><thead class="bg-slate-50 uppercase text-slate-500"><tr><th class="p-3">School</th><th class="p-3">Department / Programme</th><th class="p-3">Semester</th><th class="p-3">Scheduled</th><th class="p-3">Uploaded</th><th class="p-3">Pending Upload</th><th class="p-3">In Review</th><th class="p-3">Changes Required</th><th class="p-3">Moderated</th><th class="p-3">Final Approved</th></tr></thead><tbody id="coe-school-report" class="divide-y divide-slate-100"></tbody></table></div>
+<div class="overflow-x-auto border border-slate-100 rounded-xl"><table class="w-full text-xs text-left"><thead class="bg-slate-50 uppercase text-slate-500"><tr><th class="p-3">School</th><th class="p-3">Department / Programme</th><th class="p-3">Semester</th><th class="p-3">Scheduled</th><th class="p-3">Uploaded</th><th class="p-3">Pending Upload</th><th class="p-3">Forwarded to Moderation</th><th class="p-3">Changes Required</th><th class="p-3">Moderated</th><th class="p-3">Final Approved</th></tr></thead><tbody id="coe-school-report" class="divide-y divide-slate-100"></tbody></table></div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
                             <div class="rounded-xl border border-violet-200 bg-violet-50/60 p-3"><div class="flex justify-between items-center gap-2"><div><h4 class="font-bold text-violet-900 text-sm">Approved by Moderation</h4><p class="text-[11px] text-violet-700">Papers approved by the moderation committee and awaiting COE final approval.</p></div><span id="quick-moderated-count" class="text-xl font-black text-violet-800">0</span></div><div id="quick-moderated-list" class="mt-3 space-y-2 max-h-56 overflow-auto"></div></div>
                             <div class="rounded-xl border border-amber-200 bg-amber-50/60 p-3"><div class="flex justify-between items-center gap-2"><div><h4 class="font-bold text-amber-900 text-sm">Changes Required</h4><p class="text-[11px] text-amber-700">Papers returned to faculty for correction; count excludes missing uploads.</p></div><span id="quick-changes-count" class="text-xl font-black text-amber-800">0</span></div><div id="quick-changes-list" class="mt-3 space-y-2 max-h-56 overflow-auto"></div></div>
@@ -1413,9 +1413,11 @@ window.onload = function() {
             document.getElementById('stat-total').textContent = coeMatches ? coeMatches.filter(x => !!x.paper).length : headerPapers.length;
             const totalLabel = document.getElementById('stat-total-label');
             if (totalLabel) totalLabel.textContent = isFaculty ? 'Total Uploaded' : (coeMatches ? 'Papers Received (Unique Codes)' : 'Uploaded Records (all)');
-            const reviewStatuses = ['SUBMITTED_TO_COE', 'COE_RECEIVED', 'FORWARDED_FOR_MODERATION', 'SENT_FOR_MODERATION', 'RESUBMITTED_TO_COE'];
-            // Keep the top card consistent with the lower report: submitted papers
-            // are awaiting review even before the COE forwards them to a moderator.
+            const reviewStatuses = isFaculty
+                ? ['SUBMITTED_TO_COE', 'COE_RECEIVED', 'FORWARDED_FOR_MODERATION', 'SENT_FOR_MODERATION', 'RESUBMITTED_TO_COE']
+                : ['FORWARDED_FOR_MODERATION', 'SENT_FOR_MODERATION'];
+            const reviewLabel=document.getElementById('stat-pending-label');
+            if(reviewLabel)reviewLabel.textContent=isFaculty?'In Review':'Forwarded to Moderation';
             document.getElementById('stat-pending').textContent = headerPapers.filter(p => reviewStatuses.includes(qpmsNormalizeStatus(p.status))).length;
             document.getElementById('stat-action').textContent = headerPapers.filter(p => ['CHANGES_REQUIRED', 'CHANGES_REQUIRED_BY_MODERATOR'].includes(qpmsNormalizeStatus(p.status))).length;
             document.getElementById('stat-approved').textContent = headerPapers.filter(p => ['FINAL_APPROVED', 'FINAL_APPROVED_AND_ARCHIVED'].includes(qpmsNormalizeStatus(p.status))).length;
@@ -1759,7 +1761,7 @@ window.onload = function() {
                 if (paper) {
                     r.uploaded++;
                     if (['CHANGES_REQUIRED','CHANGES_REQUIRED_BY_MODERATOR'].includes(normalizedStatus(paper))) r.changes++;
-                    else if (['SUBMITTED_TO_COE','COE_RECEIVED','FORWARDED_FOR_MODERATION','SENT_FOR_MODERATION','RESUBMITTED_TO_COE'].includes(normalizedStatus(paper))) r.review++;
+                    else if (['FORWARDED_FOR_MODERATION','SENT_FOR_MODERATION'].includes(normalizedStatus(paper))) r.review++;
                     if (moderatedStatuses.includes(normalizedStatus(paper))) r.moderated++;
                     if (finalStatuses.includes(normalizedStatus(paper))) r.approved++;
                 } else {
