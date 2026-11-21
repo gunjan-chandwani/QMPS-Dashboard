@@ -1011,19 +1011,13 @@
         // session, irrespective of the number of programmes/specializations using it.
         // Retain the original database schedule and upload rows unchanged.
         function qpmsPaperRequirementKey(item) {
-            // The COE requires one question paper per distinct course code,
-            // irrespective of semester labels or programme specializations
-            // within the December 2026 End Term session.
-            return String(item.courseCode || item.course || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+            const code=String(item.courseCode||item.course||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+            const sem=(String(item.semester||'').match(/\d+/)||[])[0]||'';
+            return code&&sem?code+'|'+sem:'';
         }
-        function qpmsUniqueCourseMatches(schedules, papers) {
-            const seen = new Set();
-            return qpmsMatchSchedulesToPapers(schedules, papers).filter(({schedule}, index) => {
-                const key = qpmsPaperRequirementKey(schedule) || 'missing-code-' + (schedule.id ?? index);
-                if (seen.has(key)) return false;
-                seen.add(key);
-                return true;
-            });
+        function qpmsUniqueCourseMatches(schedules,papers) {
+            // Legacy caller name; all separate datesheet requirements are retained.
+            return qpmsMatchSchedulesToPapers(schedules,papers);
         }
         function getDec2026EndSemesterSchedules() {
             // Preserve all official datesheet rows for the Scheduled card.
@@ -1069,26 +1063,36 @@
             const count=document.getElementById('coe-rpt-visible-count');
             if(count)count.textContent=rows.length+' programme rows shown · '+rows.reduce((n,r)=>n+r.scheduled,0)+' scheduled · '+rows.reduce((n,r)=>n+r.uploaded,0)+' matched uploads';
         }
-        function qpmsMatchSchedulesToPapers(schedules, papers) {
-            // Preserve every official schedule row. A single uploaded course paper
-            // satisfies all programme/specialization rows sharing its course,
-            // semester and End Term exam. Do not count raw upload versions as
-            // separate fulfilled schedule rows.
-            const candidates = (papers || []).filter(p =>
-                p.hasFile !== false && qpmsExamNorm(p.examType || p.exam) === 'end semester'
-            );
-            const uploadsByRequirement = new Map();
-            candidates.forEach(paper => {
-                const key = qpmsPaperRequirementKey(paper);
-                if (!key) return;
-                if (!uploadsByRequirement.has(key)) uploadsByRequirement.set(key, []);
-                uploadsByRequirement.get(key).push(paper);
-            });
-            return (schedules || []).map(schedule => {
-                const key = qpmsPaperRequirementKey(schedule);
-                const matches = key ? (uploadsByRequirement.get(key) || []) : [];
-                return {schedule, paper: matches.length ? matches[matches.length - 1] : null};
-            });
+        function qpmsMatchSchedulesToPapers(schedules,papers) {
+            // Match one upload to at most one official row. Never let a course
+            // code alone fulfill multiple programmes/semesters or Law papers.
+            const norm=x=>String(x||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+            const programme=x=>norm(x.program||x.programme||'');
+            const candidates=(papers||[]).filter(p=>p.hasFile!==false&&qpmsExamNorm(p.examType||p.exam)==='end semester');
+            const used=new Set();
+            const result=(schedules||[]).map(schedule=>({schedule,paper:null}));
+            // Exact programme matches first, then unambiguous single-candidate
+            // matches only when programme data is absent on either side.
+            for(const strict of [true,false]) {
+                for(const entry of result) {
+                    if(entry.paper)continue;
+                    const key=qpmsPaperRequirementKey(entry.schedule);
+                    if(!key)continue;
+                    const target=programme(entry.schedule);
+                    const options=candidates.filter(p=>{
+                        if(used.has(p))return false;
+                        if(qpmsPaperRequirementKey(p)!==key)return false;
+                        const pprog=programme(p);
+                        return strict?(!!target&&!!pprog&&target===pprog):(!target||!pprog);
+                    });
+                    if(strict&&options.length) {
+                        const selected=options[0];entry.paper=selected;used.add(selected);
+                    }else if(!strict&&options.length===1) {
+                        entry.paper=options[0];used.add(options[0]);
+                    }
+                }
+            }
+            return result;
         }
         function getCoePendingPapers() {
             // COE pending list is limited to December 2026 End Semester and each upload
@@ -1412,7 +1416,7 @@ window.onload = function() {
             document.getElementById('coe-badge-unuploaded').textContent = notUploadedCount;
             document.getElementById('stat-total').textContent = coeMatches ? coeMatches.filter(x => !!x.paper).length : headerPapers.length;
             const totalLabel = document.getElementById('stat-total-label');
-            if (totalLabel) totalLabel.textContent = isFaculty ? 'Total Uploaded' : (coeMatches ? 'Papers Received (Unique Codes)' : 'Uploaded Records (all)');
+            if (totalLabel) totalLabel.textContent = isFaculty ? 'Total Uploaded' : (coeMatches ? 'Papers Matched to Datesheet' : 'Uploaded Records (all)');
             const reviewStatuses = isFaculty
                 ? ['SUBMITTED_TO_COE', 'COE_RECEIVED', 'FORWARDED_FOR_MODERATION', 'SENT_FOR_MODERATION', 'RESUBMITTED_TO_COE']
                 : ['FORWARDED_FOR_MODERATION', 'SENT_FOR_MODERATION'];
@@ -1695,9 +1699,7 @@ window.onload = function() {
             const pending = matchedBySchedule.filter(x => !x.paper);
             // Separate distinct paper requirements from raw official schedule rows.
             // A course taught to several specializations requires only one paper.
-            const requiredKeys = new Set(schedules.map(qpmsPaperRequirementKey).filter(Boolean));
-            const coveredKeys = new Set(matchedBySchedule.filter(x => !!x.paper).map(x => qpmsPaperRequirementKey(x.schedule)).filter(Boolean));
-            const uniquePending = [...requiredKeys].filter(key => !coveredKeys.has(key)).length;
+            const uniquePending = pending.length;
                         const normalizedStatus = p => String(p.status || '').toUpperCase().replace(/[ -]+/g, '_').replace(/^AUDIT:_?/, '');
             const moderatedStatuses = ['APPROVED','APPROVED_BY_MODERATOR','MODERATION_APPROVED'];
             const finalStatuses = ['FINAL_APPROVED','FINAL_APPROVED_&_ARCHIVED'];
