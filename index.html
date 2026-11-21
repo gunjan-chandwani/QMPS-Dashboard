@@ -352,6 +352,7 @@
                                 <a href="/api/papers/download-all.zip" class="px-3 py-2 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-xs font-semibold"><i class="fa-solid fa-file-zipper mr-1"></i> Download All Papers (ZIP)</a>
                             </div>
                         </div>
+                        <section class="border border-amber-200 rounded-xl p-4 mb-4 bg-amber-50"><h3 class="font-semibold text-amber-900 mb-2">Faculty Password Reset Requests</h3><p class="text-xs text-amber-900 mb-3">Verify faculty identity before approving. Deliver the temporary password privately; it is displayed only once.</p><button type="button" onclick="qpmsLoadResetRequests()" class="bg-amber-800 text-white px-3 py-2 rounded-lg text-sm">View Pending Reset Requests</button><div id="qpms-reset-list" class="mt-3 space-y-2 text-sm"></div></section>
                         <div id="coe-report-summary" class="grid grid-cols-2 lg:grid-cols-5 gap-3"></div>
                         <div class="overflow-x-auto border border-slate-100 rounded-xl"><table class="w-full text-xs text-left"><thead class="bg-slate-50 uppercase text-slate-500"><tr><th class="p-3">School</th><th class="p-3">Department / Programme</th><th class="p-3">Semester</th><th class="p-3">Scheduled</th><th class="p-3">Uploaded</th><th class="p-3">Pending Upload</th><th class="p-3">Moderated</th><th class="p-3">Final Approved</th></tr></thead><tbody id="coe-school-report" class="divide-y divide-slate-100"></tbody></table></div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
@@ -2616,27 +2617,48 @@ window.QPMS = {
 </script>
 
 <script>
-async function qpmsForgotPassword() {
+async function qpmsForgotPassword(){
   const email=prompt("Enter your registered faculty email:",document.getElementById("login-email")?.value||"");
   if(!email)return;
   try{
     const r=await fetch("/api/auth/forgot-password",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email})});
-    const d=await r.json();alert(d.message||d.error||"Unable to send reset link.");
-  }catch(e){alert("Could not connect to QPMS server.");}
+    const d=await r.json();alert(d.message||d.error||"Unable to submit request.");
+  }catch(e){alert("QPMS server unavailable.");}
 }
-(async function qpmsResetFromLink(){
-  const token=new URLSearchParams(location.search).get("reset_token");
-  if(!token)return;
-  const a=prompt("Enter your new QPMS password (at least 12 characters):");
-  if(a===null)return;
-  const b=prompt("Confirm your new password:");
-  if(a!==b){alert("Passwords do not match.");return;}
-  try{
-    const r=await fetch("/api/auth/reset-password",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token,newPassword:a})});
-    const d=await r.json();alert(d.message||d.error||"Password reset failed.");
-    if(r.ok)history.replaceState(null,"",location.pathname);
-  }catch(e){alert("Could not connect to QPMS server.");}
-})();
+let qpmsCoeResetToken="";
+async function qpmsCoeResetLogin(){
+  const password=prompt("Enter COE password-reset approval password:");
+  if(password===null)return false;
+  const r=await fetch("/api/coe/reset-admin-login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password})});
+  const d=await r.json();
+  if(!r.ok){alert(d.error||"Authentication failed.");return false;}
+  qpmsCoeResetToken=d.token;return true;
+}
+async function qpmsLoadResetRequests(){
+  if(!qpmsCoeResetToken && !(await qpmsCoeResetLogin()))return;
+  const r=await fetch("/api/coe/password-reset-requests",{headers:{"x-coe-reset-token":qpmsCoeResetToken}});
+  if(r.status===401){qpmsCoeResetToken="";alert("Session expired. Open requests again.");return;}
+  const d=await r.json();
+  const list=document.getElementById("qpms-reset-list");
+  if(!r.ok){list.textContent=d.error||"Unable to load requests.";return;}
+  list.replaceChildren();
+  if(!d.requests.length){list.textContent="No pending faculty reset requests.";return;}
+  for(const item of d.requests){
+    const row=document.createElement("div");row.className="p-3 border rounded-lg flex flex-wrap items-center justify-between gap-2";
+    const info=document.createElement("span");
+    info.textContent=(item.full_name||"Faculty")+" — "+item.email+" — "+(item.department||"");
+    const btn=document.createElement("button");btn.type="button";btn.className="bg-amber-700 text-white px-3 py-2 rounded-lg";btn.textContent="Approve Reset";
+    btn.onclick=async()=>{
+      if(!confirm("Verify faculty identity separately before approving. Approve password reset for "+item.email+"?"))return;
+      const r=await fetch("/api/coe/password-reset-requests/"+item.id+"/approve",{method:"POST",headers:{"x-coe-reset-token":qpmsCoeResetToken}});
+      const d=await r.json();
+      if(!r.ok){alert(d.error||"Approval failed.");return;}
+      const msg="Faculty: "+d.email+"\\nTemporary password: "+d.temporaryPassword+"\\nShare privately with verified faculty. First login requires password change.";
+      alert(msg);await qpmsLoadResetRequests();
+    };
+    row.append(info,btn);list.append(row);
+  }
+}
 </script>
 </body>
 </html>
