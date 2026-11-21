@@ -891,35 +891,38 @@ app.post("/api/papers", upload.single("file"), async (req, res) => {
     // Validate every selected programme against the official datesheet before writing anything.
     for (const program of programs) await validatePaperDateAgainstSchedule({...b, program});
 
-    // Serialize uploads for the same faculty/course/session, including simultaneous clicks.
-    // Do not block different programmes, semesters or exam types sharing a course code.
+    // One upload per course code per exam session across ALL faculty and
+    // specializations. Keep existing records intact; block only NEW duplicates.
+    // Multiple selected programmes share the same single paper record.
     const ownerEmail = String(b.ownerEmail || '').trim().toLowerCase() || 'gunjan@mru.edu.in';
-    const norm = v => String(v || '').trim().toLowerCase().replace(/\\s+/g, ' ');
-    const semesterKey = v => String(v || '').toLowerCase().replace(/\\bsemester\\b|\\bsem\\b|st\\b|nd\\b|rd\\b|th\\b/g, '').replace(/[^0-9]/g, '') || norm(v);
-    const examKey = v => /end\\s*(?:semester|term)/i.test(v || '') ? 'end semester' : /mid\\s*(?:semester|term)/i.test(v || '') ? 'mid semester' : norm(v);
-    const keys = programs.map(program => [ownerEmail, norm(b.course), norm(program), semesterKey(b.semester), examKey(b.exam)].join('|')).sort();
+    const normalizedCourse = String(b.course || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const examKey = v => /end\\s*(?:semester|term)/i.test(v || '') ? 'end semester' : /mid\\s*(?:semester|term)/i.test(v || '') ? 'mid semester' : String(v || '').trim().toLowerCase();
+    const normalizedExam = examKey(b.exam);
+    if (!normalizedCourse || !normalizedExam) {
+      if (f?.path) { try { fs.unlinkSync(f.path); } catch {} }
+      return res.status(400).json({ok:false,error:'Course code and exam session are required.'});
+    }
     uploadClient = await pool.connect();
     await uploadClient.query('BEGIN');
-    for (const key of keys) await uploadClient.query('SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))', ['qpms-upload', key]);
-    const created = [];
-    for (const program of programs) {
+    const lockKey = [normalizedCourse, normalizedExam].join('|');
+    await uploadClient.query('SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))', ['qpms-one-paper-per-course', lockKey]);
     const existing = await uploadClient.query(`
-      SELECT id, status FROM papers
-      WHERE LOWER(TRIM(COALESCE(owner_email,''))) = $1
-        AND LOWER(TRIM(COALESCE(course,''))) = $2
-        AND LOWER(REGEXP_REPLACE(TRIM(COALESCE(program,'')), '\\s+', ' ', 'g')) = $3
-        AND REGEXP_REPLACE(LOWER(COALESCE(semester,'')), '[^0-9]', '', 'g') = $4
+      SELECT id, owner_email, status FROM papers
+      WHERE UPPER(REGEXP_REPLACE(COALESCE(course,''), '[^A-Za-z0-9]', '', 'g')) = $1
         AND (CASE WHEN LOWER(COALESCE(exam,'')) ~ 'end[[:space:]]*(semester|term)' THEN 'end semester'
                   WHEN LOWER(COALESCE(exam,'')) ~ 'mid[[:space:]]*(semester|term)' THEN 'mid semester'
-                  ELSE LOWER(TRIM(COALESCE(exam,''))) END) = $5
+                  ELSE LOWER(TRIM(COALESCE(exam,''))) END) = $2
       ORDER BY id DESC LIMIT 1
-    `, [ownerEmail, norm(b.course), norm(program), semesterKey(b.semester), examKey(b.exam)]);
+    `, [normalizedCourse, normalizedExam]);
     if (existing.rows.length) {
       await uploadClient.query('ROLLBACK');
       uploadClient.release(); uploadClient = null;
       if (f?.path) { try { fs.unlinkSync(f.path); } catch {} }
-      return res.status(409).json({ok:false, error:`This course paper has already been uploaded for this programme, semester and exam (paper #${existing.rows[0].id}). Please use the existing paper instead of uploading again.`});
+      return res.status(409).json({ok:false,
+        error:`Course code ${b.course} already has a question paper uploaded for this exam session (paper #${existing.rows[0].id}). Only one paper is allowed across all specializations. Contact COE if it needs revision.`});
     }
+    const created = [];
+    const program = programs[0];
     const { rows } = await uploadClient.query(`
       INSERT INTO papers (
         paper_no, title, school, program, department, semester, course,
@@ -954,7 +957,6 @@ app.post("/api/papers", upload.single("file"), async (req, res) => {
     ]);
 
     created.push(rows[0]);
-    }
     await uploadClient.query('COMMIT');
     uploadClient.release(); uploadClient = null;
     res.status(201).json({ ok: true, paper: created[0], papers: created });
