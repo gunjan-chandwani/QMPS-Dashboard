@@ -1771,6 +1771,18 @@ window.onload = function() {
                 .sort((a,b) => a.school.localeCompare(b.school) || a.dept.localeCompare(b.dept) || a.semester.localeCompare(b.semester) || a.programme.localeCompare(b.programme));
             qpmsRefreshCoeSchoolReportFilters();
             qpmsFilterCoeSchoolReport();
+            // Synchronize the header cards with the exact same reconciled rows
+            // displayed in the COE school/department report. updateStats() runs
+            // earlier and may use a different paper scope.
+            if (currentSession?.role === 'COE') {
+                const sum = field => qpmsCoeSchoolReportRows.reduce((n,r)=>n+(r[field]||0),0);
+                const headerReview=document.getElementById('stat-pending');
+                const headerChanges=document.getElementById('stat-action');
+                const headerApproved=document.getElementById('stat-approved');
+                if(headerReview)headerReview.textContent=sum('review');
+                if(headerChanges)headerChanges.textContent=sum('changes');
+                if(headerApproved)headerApproved.textContent=sum('approved');
+            }
             document.getElementById('quick-moderated-count').textContent = moderated.length;
             document.getElementById('quick-moderated-list').innerHTML = qpmsCoeSchoolDownloadControl('MODERATION_APPROVED', moderated) + (moderated.length ? moderated.map(qpmsPaperLink).join('') : '<p class="text-xs text-slate-500">No papers currently approved by moderation.</p>');
             document.getElementById('quick-changes-count').textContent = changesRequired.length;
