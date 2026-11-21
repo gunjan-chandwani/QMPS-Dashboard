@@ -99,6 +99,7 @@
                     </div>
                 </div>
 
+                <button type="button" onclick="qpmsForgotPassword()" class="text-xs font-semibold text-brand-700 underline">Forgot Password?</button>
                 <p class="text-[11px] text-slate-500">Faculty login uses your university email and the temporary password issued by the QPMS administrator.</p>
 
                 <button type="submit" class="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-lg shadow-md transition-all flex items-center justify-center space-x-2">
@@ -2614,5 +2615,28 @@ window.QPMS = {
 })();
 </script>
 
+<script>
+async function qpmsForgotPassword() {
+  const email=prompt("Enter your registered faculty email:",document.getElementById("login-email")?.value||"");
+  if(!email)return;
+  try{
+    const r=await fetch("/api/auth/forgot-password",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email})});
+    const d=await r.json();alert(d.message||d.error||"Unable to send reset link.");
+  }catch(e){alert("Could not connect to QPMS server.");}
+}
+(async function qpmsResetFromLink(){
+  const token=new URLSearchParams(location.search).get("reset_token");
+  if(!token)return;
+  const a=prompt("Enter your new QPMS password (at least 12 characters):");
+  if(a===null)return;
+  const b=prompt("Confirm your new password:");
+  if(a!==b){alert("Passwords do not match.");return;}
+  try{
+    const r=await fetch("/api/auth/reset-password",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token,newPassword:a})});
+    const d=await r.json();alert(d.message||d.error||"Password reset failed.");
+    if(r.ok)history.replaceState(null,"",location.pathname);
+  }catch(e){alert("Could not connect to QPMS server.");}
+})();
+</script>
 </body>
 </html>
