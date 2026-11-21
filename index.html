@@ -1372,17 +1372,29 @@ window.onload = function() {
                     (ownerName && (ownerName === myName || ownerName === myEmail));
             }) : papersDatabase;
 
-            document.getElementById('stat-unuploaded').textContent = unuploaded.length;
-            document.getElementById('coe-badge-unuploaded').textContent = unuploaded.length;
-            document.getElementById('stat-total').textContent = metricPapers.length;
-            // COE "In Review" means currently forwarded to moderation, not merely submitted to COE.
-            // Faculty's own "In Review" continues to include papers submitted to COE.
+            // COE header and lower report share the exact same December 2026 scope,
+            // one-to-one datesheet reconciliation and workflow status definitions.
+            const coeSchedules = !isFaculty && currentSession?.role === 'COE'
+                ? getDec2026EndSemesterSchedules().filter(item => qpmsReportInScope(item, 'COE'))
+                : null;
+            const coeMatches = coeSchedules
+                ? qpmsMatchSchedulesToPapers(coeSchedules, papersDatabase)
+                : null;
+            const headerPapers = coeMatches
+                ? papersDatabase.filter(p => qpmsReportInScope(p, 'COE'))
+                : metricPapers;
+            const notUploadedCount = coeMatches
+                ? coeMatches.filter(x => !x.paper).length
+                : unuploaded.length;
+            document.getElementById('stat-unuploaded').textContent = notUploadedCount;
+            document.getElementById('coe-badge-unuploaded').textContent = notUploadedCount;
+            document.getElementById('stat-total').textContent = headerPapers.length;
             const reviewStatuses = isFaculty
                 ? ['SUBMITTED_TO_COE', 'FORWARDED_FOR_MODERATION', 'SENT_FOR_MODERATION', 'RESUBMITTED_TO_COE']
                 : ['FORWARDED_FOR_MODERATION', 'SENT_FOR_MODERATION'];
-            document.getElementById('stat-pending').textContent = metricPapers.filter(p => reviewStatuses.includes(qpmsNormalizeStatus(p.status))).length;
-            document.getElementById('stat-action').textContent = metricPapers.filter(p => ['CHANGES_REQUIRED', 'CHANGES_REQUIRED_BY_MODERATOR'].includes(String(p.status || '').toUpperCase())).length;
-            document.getElementById('stat-approved').textContent = metricPapers.filter(p => p.status === 'FINAL_APPROVED').length;
+            document.getElementById('stat-pending').textContent = headerPapers.filter(p => reviewStatuses.includes(qpmsNormalizeStatus(p.status))).length;
+            document.getElementById('stat-action').textContent = headerPapers.filter(p => ['CHANGES_REQUIRED', 'CHANGES_REQUIRED_BY_MODERATOR'].includes(qpmsNormalizeStatus(p.status))).length;
+            document.getElementById('stat-approved').textContent = headerPapers.filter(p => ['FINAL_APPROVED', 'FINAL_APPROVED_AND_ARCHIVED'].includes(qpmsNormalizeStatus(p.status))).length;
         }
 
         // 1. FACULTY VIEW
@@ -1678,7 +1690,6 @@ window.onload = function() {
             document.getElementById('coe-report-summary').innerHTML = [
                 totalCard('Dec 2026 End Semester Scheduled', schedules.length, 'border-slate-200 bg-slate-50 text-slate-900'),
                 totalCard('Papers Uploaded', papers.length, 'border-slate-200 bg-slate-50 text-slate-900'),
-                totalCard('Matched to Datesheet', matchedUploadCount, 'border-sky-200 bg-sky-50 text-sky-900'),
                 totalCard('Datesheet Rows Not Matched', schedules.length ? pending.length : '—', 'border-rose-200 bg-rose-50 text-rose-900'),
                 totalCard('Awaiting Faculty Revision', changesRequired.length, 'border-amber-200 bg-amber-50 text-amber-900'),
                 totalCard('Revised Papers Resubmitted to COE', resubmitted.length, 'border-purple-200 bg-purple-50 text-purple-900'),
