@@ -221,7 +221,7 @@
                 <!-- Quick Metrics (Updated with Unuploaded Datesheet Papers Metric) -->
                 <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center text-xs">
                     <div id="stat-unuploaded-card" class="bg-rose-50 p-2.5 rounded-lg border border-rose-100">
-                        <span class="text-rose-600 font-medium block mb-0.5"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Not Uploaded</span>
+                        <span class="text-rose-600 font-medium block mb-0.5"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Pending Upload</span>
                         <span id="stat-unuploaded" class="font-bold text-rose-800 text-base">0</span>
                     </div>
                     <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
@@ -1667,8 +1667,7 @@ window.onload = function() {
             // as the main COE dashboard, not just records successfully linked to a datesheet row.
             const papers = (papersDatabase || []).filter(p => qpmsReportInScope(p, 'COE'));
             const pending = matchedBySchedule.filter(x => !x.paper);
-            const matchedUploadCount = matchedBySchedule.filter(x => x.paper).length;
-            const normalizedStatus = p => String(p.status || '').toUpperCase().replace(/[ -]+/g, '_').replace(/^AUDIT:_?/, '');
+                        const normalizedStatus = p => String(p.status || '').toUpperCase().replace(/[ -]+/g, '_').replace(/^AUDIT:_?/, '');
             const moderatedStatuses = ['APPROVED','APPROVED_BY_MODERATOR','MODERATION_APPROVED'];
             const finalStatuses = ['FINAL_APPROVED','FINAL_APPROVED_&_ARCHIVED'];
             const moderated = papers.filter(p => moderatedStatuses.includes(normalizedStatus(p)));
@@ -1690,7 +1689,7 @@ window.onload = function() {
             document.getElementById('coe-report-summary').innerHTML = [
                 totalCard('Dec 2026 End Semester Scheduled', schedules.length, 'border-slate-200 bg-slate-50 text-slate-900'),
                 totalCard('Papers Uploaded', papers.length, 'border-slate-200 bg-slate-50 text-slate-900'),
-                totalCard('Datesheet Rows Not Matched', schedules.length ? pending.length : '—', 'border-rose-200 bg-rose-50 text-rose-900'),
+                totalCard('Question Papers Pending Upload', schedules.length ? pending.length : '—', 'border-rose-200 bg-rose-50 text-rose-900'),
                 totalCard('Awaiting Faculty Revision', changesRequired.length, 'border-amber-200 bg-amber-50 text-amber-900'),
                 totalCard('Revised Papers Resubmitted to COE', resubmitted.length, 'border-purple-200 bg-purple-50 text-purple-900'),
                 totalCard('Approved by Moderation', moderated.length, 'border-violet-200 bg-violet-50 text-violet-900'),
