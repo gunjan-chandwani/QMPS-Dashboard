@@ -1709,7 +1709,7 @@ window.onload = function() {
             }
             document.getElementById('coe-report-summary').innerHTML = [
                 totalCard('Dec 2026 End Semester Scheduled', schedules.length, 'border-slate-200 bg-slate-50 text-slate-900'),
-                totalCard('Papers Uploaded', papers.length, 'border-slate-200 bg-slate-50 text-slate-900'),
+                totalCard('Uploaded Records (all)', papers.length, 'border-slate-200 bg-slate-50 text-slate-900'),
                 totalCard('Question Papers Pending Upload', schedules.length ? pending.length : '—', 'border-rose-200 bg-rose-50 text-rose-900'),
                 totalCard('Awaiting Faculty Revision', changesRequired.length, 'border-amber-200 bg-amber-50 text-amber-900'),
                 totalCard('Revised Papers Resubmitted to COE', resubmitted.length, 'border-purple-200 bg-purple-50 text-purple-900'),
@@ -1742,48 +1742,21 @@ window.onload = function() {
                 if (!keys.has(key)) keys.set(key, {school, dept, semester:displaySemester, programme:displayProgramme, scheduled:0, uploaded:0, pending:0, moderated:0, approved:0});
                 return keys.get(key);
             }
-            // Use exactly the same reconciliation for the top cards and programme rows.
-            // Do not silently relax programme matching for school-wise reports.
-            const reportMatches = matchedBySchedule;
-            reportMatches.forEach(({schedule, paper}) => {
+            // All row counts are sourced from the same one-to-one schedule reconciliation.
+            // Unmatched uploads remain in the overall upload-record total, but cannot
+            // inflate a programme's fulfilled scheduled-paper count or erase pending.
+            matchedBySchedule.forEach(({schedule, paper}) => {
                 const r = row(qpmsSchoolFor(schedule), qpmsDepartmentFor(schedule), schedule.semester || 'Not specified', schedule.program || schedule.programme);
                 r.scheduled++;
-                // Programme-level pending is reconciled after uploaded totals are
-                // aggregated, rather than counted before uploads are attributed.
-                // This avoids showing all scheduled entries as pending when uploads
-                // are grouped under a combined official programme heading.
-            });
-            const matchedScheduleForPaper = new Map(reportMatches
-                .filter(x => x.paper).map(x => [String(x.paper.id), x.schedule]));
-            const normCode = x => String(x || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-            papers.forEach(paper => {
-                let schedule = matchedScheduleForPaper.get(String(paper.id));
-                // Datesheet headings can combine specializations (e.g. BBA EFB/FAA/GOM/BA/AI)
-                // while faculty upload records name one specialization. Attribute each
-                // uploaded paper to its official heading using school, semester and course.
-                if (!schedule) {
-                    const candidates = schedules.filter(sch =>
-                        qpmsSchoolFor(sch) === qpmsSchoolFor(paper) &&
-                        qpmsSemesterNorm(sch.semester) === qpmsSemesterNorm(paper.semester) &&
-                        qpmsExamNorm(sch.examType) === qpmsExamNorm(paper.examType || paper.exam) &&
-                        normCode(sch.courseCode || sch.course) === normCode(paper.courseCode || paper.course));
-                    if (candidates.length === 1) schedule = candidates[0];
-                    else if (candidates.length > 1) {
-                        const matching = candidates.filter(sch => qpmsNorm(sch.program || sch.programme) === qpmsNorm(paper.program || paper.programme));
-                        if (matching.length === 1) schedule = matching[0];
-                        else if (new Set(candidates.map(sch => qpmsNorm(sch.program || sch.programme))).size === 1) schedule = candidates[0];
-                    }
+                if (paper) {
+                    r.uploaded++;
+                    if (moderatedStatuses.includes(normalizedStatus(paper))) r.moderated++;
+                    if (finalStatuses.includes(normalizedStatus(paper))) r.approved++;
+                } else {
+                    r.pending++;
                 }
-                const source = schedule || paper;
-                const r = row(qpmsSchoolFor(source), qpmsDepartmentFor(source), source.semester || 'Not specified', source.program || source.programme);
-                r.uploaded++;
-                if (moderatedStatuses.includes(normalizedStatus(paper))) r.moderated++;
-                if (finalStatuses.includes(normalizedStatus(paper))) r.approved++;
             });
-            // This report is an aggregate programme-level count. Keep unmatched
-            // uploads visible (including groups with zero scheduled entries).
-            // Exact course-by-course reconciliation remains in the pending list.
-            keys.forEach(r => { r.pending = Math.max(0, r.scheduled - r.uploaded); });
+            // Invariant: across all programme rows, scheduled = matched + pending.
             document.getElementById('coe-school-report').innerHTML = [...keys.values()]
                 .sort((a,b) => a.school.localeCompare(b.school) || a.dept.localeCompare(b.dept) || a.semester.localeCompare(b.semester) || a.programme.localeCompare(b.programme))
                 .map(r => `<tr><td class="p-3 font-semibold text-slate-800">${escapeHtml(r.school)}</td><td class="p-3">${escapeHtml(r.dept)}<div class="text-xs text-slate-500 mt-1">${escapeHtml(r.programme)}</div></td><td class="p-3">${escapeHtml(r.semester)}</td><td class="p-3">${r.scheduled}</td><td class="p-3 font-bold">${r.uploaded}</td><td class="p-3 ${r.pending?'text-rose-700 font-bold':''}">${r.pending}</td><td class="p-3 text-violet-700 font-bold">${r.moderated}</td><td class="p-3 text-emerald-700 font-bold">${r.approved}</td></tr>`).join('');
