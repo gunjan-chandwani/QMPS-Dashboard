@@ -1768,5 +1768,15 @@
     "salt": "",
     "passwordHash": "",
     "role": "FACULTY"
+  },
+  {
+    "email": "priyankachauhan@mru.edu.in",
+    "name": "Priyanka Chauhan",
+    "departmentCode": "MGT",
+    "department": "Management",
+    "school": "School of Business",
+    "salt": "",
+    "passwordHash": "",
+    "role": "FACULTY"
   }
 ]
