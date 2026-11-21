@@ -355,11 +355,11 @@
                         <section class="border border-amber-200 rounded-xl p-4 mb-4 bg-amber-50"><h3 class="font-semibold text-amber-900 mb-2">Faculty Password Reset Requests</h3><p class="text-xs text-amber-900 mb-3">Verify faculty identity before approving. Deliver the temporary password privately; it is displayed only once.</p><button type="button" onclick="qpmsLoadResetRequests()" class="bg-amber-800 text-white px-3 py-2 rounded-lg text-sm">View Pending Reset Requests</button><div id="qpms-reset-list" class="mt-3 space-y-2 text-sm"></div></section>
                         <div id="coe-report-summary" class="grid grid-cols-2 lg:grid-cols-5 gap-3"></div>
                         <div id="coe-school-report-filters" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2">
-<select id="coe-rpt-school" aria-label="Filter school" class="border rounded-lg p-2 text-xs"><option value="">All Schools</option></select>
-<select id="coe-rpt-dept" aria-label="Filter department" class="border rounded-lg p-2 text-xs"><option value="">All Departments</option></select>
-<select id="coe-rpt-program" aria-label="Filter programme" class="border rounded-lg p-2 text-xs"><option value="">All Programmes</option></select>
-<select id="coe-rpt-sem" aria-label="Filter semester" class="border rounded-lg p-2 text-xs"><option value="">All Semesters</option></select>
-<select id="coe-rpt-status" aria-label="Filter paper status" class="border rounded-lg p-2 text-xs"><option value="">All Statuses</option><option value="pending">Pending Upload</option><option value="uploaded">Uploaded</option><option value="review">In Review</option><option value="changes">Changes Required</option><option value="moderated">Moderated</option><option value="approved">Final Approved</option></select>
+<select id="coe-rpt-school" onchange="qpmsOnCoeSchoolFilterChange('school')" aria-label="Filter school" class="border rounded-lg p-2 text-xs"><option value="">All Schools</option></select>
+<select id="coe-rpt-dept" onchange="qpmsOnCoeSchoolFilterChange('dept')" aria-label="Filter department" class="border rounded-lg p-2 text-xs"><option value="">All Departments</option></select>
+<select id="coe-rpt-program" onchange="qpmsOnCoeSchoolFilterChange('program')" aria-label="Filter programme" class="border rounded-lg p-2 text-xs"><option value="">All Programmes</option></select>
+<select id="coe-rpt-sem" onchange="qpmsOnCoeSchoolFilterChange('sem')" aria-label="Filter semester" class="border rounded-lg p-2 text-xs"><option value="">All Semesters</option></select>
+<select id="coe-rpt-status" onchange="qpmsOnCoeSchoolFilterChange('status')" aria-label="Filter paper status" class="border rounded-lg p-2 text-xs"><option value="">All Statuses</option><option value="pending">Pending Upload</option><option value="uploaded">Uploaded</option><option value="review">In Review</option><option value="changes">Changes Required</option><option value="moderated">Moderated</option><option value="approved">Final Approved</option></select>
 <button type="button" onclick="['school','dept','program','sem','status'].forEach(k=>{const e=document.getElementById('coe-rpt-'+k);if(e)e.value=''});qpmsRefreshCoeSchoolReportFilters();qpmsFilterCoeSchoolReport()" class="border rounded-lg p-2 text-xs font-semibold">Clear Filters</button>
 </div><div id="coe-rpt-visible-count" class="text-xs text-slate-500" aria-live="polite"></div>
 <div class="overflow-x-auto border border-slate-100 rounded-xl"><table class="w-full text-xs text-left"><thead class="bg-slate-50 uppercase text-slate-500"><tr><th class="p-3">School</th><th class="p-3">Department / Programme</th><th class="p-3">Semester</th><th class="p-3">Scheduled</th><th class="p-3">Uploaded</th><th class="p-3">Pending Upload</th><th class="p-3">In Review</th><th class="p-3">Changes Required</th><th class="p-3">Moderated</th><th class="p-3">Final Approved</th></tr></thead><tbody id="coe-school-report" class="divide-y divide-slate-100"></tbody></table></div>
@@ -1032,44 +1032,26 @@
         }
         let qpmsCoeSchoolReportRows = [];
         function qpmsRefreshCoeSchoolReportFilters(changedField) {
-            const hierarchy = [
-                {id:'school', field:'school', parents:[]},
-                {id:'dept', field:'dept', parents:['school']},
-                {id:'program', field:'programme', parents:['school','dept']},
-                {id:'sem', field:'semester', parents:['school','dept','program']}
-            ];
-            const fieldFor = {school:'school',dept:'dept',program:'programme',sem:'semester'};
-            const changedIndex=hierarchy.findIndex(item=>item.id===changedField);
-            if(changedIndex>=0) {
-                hierarchy.slice(changedIndex+1).forEach(item=>{
-                    const el=document.getElementById('coe-rpt-'+item.id);
-                    if(el)el.value='';
-                });
-            }
-            for(const item of hierarchy) {
-                const el=document.getElementById('coe-rpt-'+item.id);
-                if(!el)continue;
-                const selected=el.value;
-                const label=el.options[0]?.textContent||'All';
-                const eligible=qpmsCoeSchoolReportRows.filter(row=>item.parents.every(parent=>{
-                    const v=document.getElementById('coe-rpt-'+parent)?.value||'';
-                    return !v||row[fieldFor[parent]]===v;
-                }));
-                const values=[...new Set(eligible.map(row=>row[item.field]).filter(Boolean))].sort((x,y)=>x.localeCompare(y));
-                el.replaceChildren(new Option(label,''));
+            const fields=['school','dept','program','sem'];
+            const property={school:'school',dept:'dept',program:'programme',sem:'semester'};
+            const captions={school:'All Schools',dept:'All Departments',program:'All Programmes',sem:'All Semesters'};
+            const current=Object.fromEntries(fields.map(k=>[k,document.getElementById('coe-rpt-'+k)?.value||'']));
+            const changed=fields.indexOf(changedField);
+            if(changed>=0)fields.slice(changed+1).forEach(k=>current[k]='');
+            fields.forEach((field,index)=>{
+                const el=document.getElementById('coe-rpt-'+field);
+                if(!el)return;
+                const eligible=qpmsCoeSchoolReportRows.filter(r=>fields.slice(0,index).every(parent=>!current[parent]||r[property[parent]]===current[parent]));
+                const values=[...new Set(eligible.map(r=>r[property[field]]).filter(Boolean))].sort((x,y)=>x.localeCompare(y));
+                el.replaceChildren(new Option(captions[field],''));
                 values.forEach(v=>el.add(new Option(v,v)));
-                if(values.includes(selected))el.value=selected;
-            }
-            const controls=document.getElementById('coe-school-report-filters');
-            if(controls&&!controls.dataset.bound) {
-                controls.addEventListener('change',event=>{
-                    const id=event.target?.id||'';
-                    const field=id.startsWith('coe-rpt-')?id.slice(8):'';
-                    if(['school','dept','program','sem'].includes(field))qpmsRefreshCoeSchoolReportFilters(field);
-                    qpmsFilterCoeSchoolReport();
-                });
-                controls.dataset.bound='1';
-            }
+                current[field]=values.includes(current[field])?current[field]:'';
+                el.value=current[field];
+            });
+        }
+        function qpmsOnCoeSchoolFilterChange(field) {
+            if(field!=='status')qpmsRefreshCoeSchoolReportFilters(field);
+            qpmsFilterCoeSchoolReport();
         }
         function qpmsFilterCoeSchoolReport() {
             const val=id=>document.getElementById('coe-rpt-'+id)?.value||'';
