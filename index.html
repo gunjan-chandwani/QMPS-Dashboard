@@ -1069,24 +1069,51 @@
                 const score = scored(entry.schedule, paper);
                 if (score >= 0) priorities.push({i,j,score});
             }));
-            // If a course/semester has multiple different programme candidates,
-            // never assign an upload to a different programme on weak evidence.
-            const ambiguous = new Set();
-            priorities.forEach(({i,j,score}) => {
-                const samePaper = priorities.filter(x => x.j === j && x.score === score);
-                if (samePaper.length > 1) {
-                    const programmes = new Set(samePaper.map(x => qpmsNorm(results[x.i].schedule.program || results[x.i].schedule.programme)));
-                    if (programmes.size > 1) ambiguous.add(j);
-                }
+            // Resolve one-to-one assignments using the strongest compatible programme
+            // evidence. Repeated official entries with the SAME programme are valid
+            // separate expected papers (including Law); do not mark them ambiguous.
+            // A paper with equally strong matches to DIFFERENT programmes stays
+            // unassigned rather than being credited to the wrong programme.
+            const byPaper = new Map();
+            priorities.forEach(edge => {
+                if (!byPaper.has(edge.j)) byPaper.set(edge.j, []);
+                byPaper.get(edge.j).push(edge);
             });
-            priorities.sort((a,b) => b.score-a.score || a.i-b.i || a.j-b.j);
-            for (const {i,j} of priorities) {
-                const id = String(candidates[j].id);
-                if (!ambiguous.has(j) && !results[i].paper && !usedPaperIds.has(id)) {
-                    results[i].paper = candidates[j];
-                    usedPaperIds.add(id);
+            const eligible = [];
+            byPaper.forEach(edges => {
+                const best = Math.max(...edges.map(x => x.score));
+                const bestEdges = edges.filter(x => x.score === best);
+                const programmes = new Set(bestEdges.map(x => qpmsNorm(results[x.i].schedule.program || results[x.i].schedule.programme)));
+                if (programmes.size > 1) return;
+                eligible.push(...edges.filter(x => qpmsNorm(results[x.i].schedule.program || results[x.i].schedule.programme) ===
+                    qpmsNorm(results[bestEdges[0].i].schedule.program || results[bestEdges[0].i].schedule.programme)));
+            });
+            // Prefer papers with fewer eligible datesheet options, then strongest
+            // scores; an augmenting path prevents an early match from blocking a
+            // later paper with only one valid official entry.
+            const choices = new Map();
+            eligible.forEach(edge => {
+                if (!choices.has(edge.j)) choices.set(edge.j, []);
+                choices.get(edge.j).push(edge);
+            });
+            choices.forEach(edges => edges.sort((a,b) => b.score-a.score || a.i-b.i));
+            const assigned = new Map();
+            const visit = (j, seen) => {
+                for (const edge of choices.get(j) || []) {
+                    if (seen.has(edge.i)) continue;
+                    seen.add(edge.i);
+                    const prior = assigned.get(edge.i);
+                    if (prior === undefined || visit(prior, seen)) {
+                        assigned.set(edge.i, j);
+                        return true;
+                    }
                 }
-            }
+                return false;
+            };
+            [...choices.keys()].sort((a,b) =>
+                choices.get(a).length-choices.get(b).length || a-b
+            ).forEach(j => visit(j, new Set()));
+            assigned.forEach((j,i) => { results[i].paper = candidates[j]; });
             return results;
         }
         function getCoePendingPapers() {
