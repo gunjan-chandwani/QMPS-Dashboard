@@ -1413,9 +1413,9 @@ window.onload = function() {
             document.getElementById('stat-total').textContent = coeMatches ? coeMatches.filter(x => !!x.paper).length : headerPapers.length;
             const totalLabel = document.getElementById('stat-total-label');
             if (totalLabel) totalLabel.textContent = isFaculty ? 'Total Uploaded' : (coeMatches ? 'Papers Received (Unique Codes)' : 'Uploaded Records (all)');
-            const reviewStatuses = isFaculty
-                ? ['SUBMITTED_TO_COE', 'FORWARDED_FOR_MODERATION', 'SENT_FOR_MODERATION', 'RESUBMITTED_TO_COE']
-                : ['FORWARDED_FOR_MODERATION', 'SENT_FOR_MODERATION'];
+            const reviewStatuses = ['SUBMITTED_TO_COE', 'COE_RECEIVED', 'FORWARDED_FOR_MODERATION', 'SENT_FOR_MODERATION', 'RESUBMITTED_TO_COE'];
+            // Keep the top card consistent with the lower report: submitted papers
+            // are awaiting review even before the COE forwards them to a moderator.
             document.getElementById('stat-pending').textContent = headerPapers.filter(p => reviewStatuses.includes(qpmsNormalizeStatus(p.status))).length;
             document.getElementById('stat-action').textContent = headerPapers.filter(p => ['CHANGES_REQUIRED', 'CHANGES_REQUIRED_BY_MODERATOR'].includes(qpmsNormalizeStatus(p.status))).length;
             document.getElementById('stat-approved').textContent = headerPapers.filter(p => ['FINAL_APPROVED', 'FINAL_APPROVED_AND_ARCHIVED'].includes(qpmsNormalizeStatus(p.status))).length;
@@ -1758,8 +1758,8 @@ window.onload = function() {
                 r.scheduled++;
                 if (paper) {
                     r.uploaded++;
-                    if (normalizedStatus(paper) === "CHANGES_REQUIRED") r.changes++;
-                    else if (!moderatedStatuses.includes(normalizedStatus(paper)) && !finalStatuses.includes(normalizedStatus(paper))) r.review++;
+                    if (['CHANGES_REQUIRED','CHANGES_REQUIRED_BY_MODERATOR'].includes(normalizedStatus(paper))) r.changes++;
+                    else if (['SUBMITTED_TO_COE','COE_RECEIVED','FORWARDED_FOR_MODERATION','SENT_FOR_MODERATION','RESUBMITTED_TO_COE'].includes(normalizedStatus(paper))) r.review++;
                     if (moderatedStatuses.includes(normalizedStatus(paper))) r.moderated++;
                     if (finalStatuses.includes(normalizedStatus(paper))) r.approved++;
                 } else {
