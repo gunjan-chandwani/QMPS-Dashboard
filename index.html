@@ -1750,7 +1750,9 @@ window.onload = function() {
             }
             document.getElementById('coe-report-summary').innerHTML = [
                 totalCard('Dec 2026 End Semester Scheduled', schedules.length, 'border-slate-200 bg-slate-50 text-slate-900'),
+                totalCard('Matched Scheduled Papers', matchedBySchedule.filter(x => x.paper).length, 'border-emerald-200 bg-emerald-50 text-emerald-900'),
                 totalCard('Uploaded Records (all)', papers.length, 'border-slate-200 bg-slate-50 text-slate-900'),
+                totalCard('Unmatched Upload Records', Math.max(0, papers.length - new Set(matchedBySchedule.filter(x => x.paper).map(x => String(x.paper.id))).size), 'border-amber-200 bg-amber-50 text-amber-900'),
                 totalCard('Question Papers Pending Upload', schedules.length ? pending.length : '—', 'border-rose-200 bg-rose-50 text-rose-900'),
                 totalCard('Awaiting Faculty Revision', changesRequired.length, 'border-amber-200 bg-amber-50 text-amber-900'),
                 totalCard('Revised Papers Resubmitted to COE', resubmitted.length, 'border-purple-200 bg-purple-50 text-purple-900'),
