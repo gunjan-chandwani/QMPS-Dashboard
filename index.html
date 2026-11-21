@@ -1633,6 +1633,11 @@ window.onload = function() {
             // Scheduled/covered/pending cards use official datesheet entries only.
             const papers = (papersDatabase || []).filter(p => qpmsReportInScope(p, 'COE'));
             const pending = matchedBySchedule.filter(x => !x.paper);
+            // Separate distinct paper requirements from raw official schedule rows.
+            // A course taught to several specializations requires only one paper.
+            const requiredKeys = new Set(schedules.map(qpmsPaperRequirementKey).filter(Boolean));
+            const coveredKeys = new Set(matchedBySchedule.filter(x => !!x.paper).map(x => qpmsPaperRequirementKey(x.schedule)).filter(Boolean));
+            const uniquePending = [...requiredKeys].filter(key => !coveredKeys.has(key)).length;
                         const normalizedStatus = p => String(p.status || '').toUpperCase().replace(/[ -]+/g, '_').replace(/^AUDIT:_?/, '');
             const moderatedStatuses = ['APPROVED','APPROVED_BY_MODERATOR','MODERATION_APPROVED'];
             const finalStatuses = ['FINAL_APPROVED','FINAL_APPROVED_&_ARCHIVED'];
@@ -1654,8 +1659,12 @@ window.onload = function() {
             }
             document.getElementById('coe-report-summary').innerHTML = [
                 totalCard('Dec 2026 End Semester Scheduled', schedules.length, 'border-slate-200 bg-slate-50 text-slate-900'),
-                totalCard('Scheduled Entries Covered by Uploads', matchedBySchedule.filter(x => !!x.paper).length, 'border-slate-200 bg-slate-50 text-slate-900'),
-                totalCard('Question Papers Pending Upload', schedules.length ? pending.length : '—', 'border-rose-200 bg-rose-50 text-rose-900'),
+                totalCard('Uploaded Records (all)', papers.length, 'border-slate-200 bg-slate-50 text-slate-900'),
+                totalCard('Datesheet Entries Covered', matchedBySchedule.filter(x => !!x.paper).length, 'border-emerald-200 bg-emerald-50 text-emerald-900'),
+                totalCard('Datesheet Entries Not Covered', schedules.length ? pending.length : '—', 'border-rose-200 bg-rose-50 text-rose-900'),
+                totalCard('Unique Course Papers Required', requiredKeys.size, 'border-slate-200 bg-slate-50 text-slate-900'),
+                totalCard('Unique Course Papers Received', coveredKeys.size, 'border-emerald-200 bg-emerald-50 text-emerald-900'),
+                totalCard('Unique Course Papers Pending', uniquePending, 'border-rose-200 bg-rose-50 text-rose-900'),
                 totalCard('Awaiting Faculty Revision', changesRequired.length, 'border-amber-200 bg-amber-50 text-amber-900'),
                 totalCard('Revised Papers Resubmitted to COE', resubmitted.length, 'border-purple-200 bg-purple-50 text-purple-900'),
                 totalCard('Approved by Moderation', moderated.length, 'border-violet-200 bg-violet-50 text-violet-900'),
