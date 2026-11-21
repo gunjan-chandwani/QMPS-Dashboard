@@ -7,6 +7,7 @@ const { Pool } = require("pg");
 const pdfParse = require("pdf-parse");
 const zlib = require("zlib");
 const crypto = require("crypto");
+const nodemailer = require("nodemailer");
 require("dotenv").config();
 
 const app = express();
@@ -473,6 +474,58 @@ app.post("/api/auth/login", async (req, res) => {
   }
 });
 
+// Password-reset tokens are hashed and persisted so restarts do not invalidate
+// legitimate requests. No account existence information is disclosed.
+const resetAttempts = new Map();
+app.post("/api/auth/forgot-password", async (req, res) => {
+  const email = String(req.body?.email || "").trim().toLowerCase();
+  const message = "If this faculty email is registered, a reset link will be sent shortly.";
+  if (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email)) return res.status(400).json({ok:false,error:"Enter a valid registered email."});
+  const key = crypto.createHash("sha256").update(email).digest("hex");
+  const last = resetAttempts.get(key) || 0;
+  if (Date.now() - last < 60000) return res.json({ok:true,message});
+  resetAttempts.set(key, Date.now());
+  try {
+    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD || !process.env.QPMS_PUBLIC_URL)
+      return res.status(503).json({ok:false,error:"Password recovery email is not configured. Contact COE."});
+    await pool.query(`CREATE TABLE IF NOT EXISTS faculty_password_resets (
+      token_hash TEXT PRIMARY KEY, email TEXT NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL, used_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`);
+    const {rows} = await pool.query("SELECT email FROM faculty_accounts WHERE email=$1 AND active=TRUE AND role='FACULTY' LIMIT 1",[email]);
+    if (rows.length) {
+      const token = crypto.randomBytes(32).toString("hex");
+      const hash = crypto.createHash("sha256").update(token).digest("hex");
+      await pool.query("DELETE FROM faculty_password_resets WHERE email=$1",[email]);
+      await pool.query("INSERT INTO faculty_password_resets(token_hash,email,expires_at) VALUES($1,$2,NOW()+INTERVAL '15 minutes')",[hash,email]);
+      const base = process.env.QPMS_PUBLIC_URL.replace(/\\/$/,"");
+      const link = base + "/?reset_token=" + encodeURIComponent(token);
+      const transporter = nodemailer.createTransport({service:"gmail",auth:{user:process.env.GMAIL_USER,pass:process.env.GMAIL_APP_PASSWORD}});
+      await transporter.sendMail({from:process.env.GMAIL_USER,to:email,subject:"QPMS Faculty Password Reset",text:"A password reset was requested for your QPMS faculty account. This link expires in 15 minutes and works once:\\n"+link+"\\n\\nIf you did not request this, ignore this email."});
+    }
+    return res.json({ok:true,message});
+  } catch(e) { console.error("Faculty password reset request failed:",e.message); return res.status(503).json({ok:false,error:"Unable to send reset email. Please contact COE."}); }
+});
+app.post("/api/auth/reset-password", async (req,res) => {
+  const token=String(req.body?.token||"");
+  const password=String(req.body?.newPassword||"");
+  if (!/^[a-f0-9]{64}$/.test(token) || password.length<12 || password.length>256)
+    return res.status(400).json({ok:false,error:"Invalid reset link or password (minimum 12 characters)."});
+  const hash=crypto.createHash("sha256").update(token).digest("hex");
+  const client=await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const {rows}=await client.query("SELECT email FROM faculty_password_resets WHERE token_hash=$1 AND used_at IS NULL AND expires_at>NOW() FOR UPDATE",[hash]);
+    if (!rows.length) { await client.query("ROLLBACK"); return res.status(400).json({ok:false,error:"Reset link is invalid or expired. Request a new one."}); }
+    const salt=crypto.randomBytes(16), hashed=crypto.scryptSync(password,salt,64);
+    await client.query("UPDATE faculty_accounts SET password_salt=$2,password_hash=$3,must_change_password=FALSE,updated_at=NOW() WHERE email=$1 AND active=TRUE",[rows[0].email,salt.toString("hex"),hashed.toString("hex")]);
+    await client.query("UPDATE faculty_password_resets SET used_at=NOW() WHERE token_hash=$1",[hash]);
+    await client.query("COMMIT");
+    return res.json({ok:true,message:"Password reset successful. Sign in with your new password."});
+  } catch(e) {await client.query("ROLLBACK");console.error("Password reset failed:",e.message);return res.status(500).json({ok:false,error:"Password reset failed."});}
+  finally {client.release();}
+});
 app.post("/api/auth/change-password", async (req, res) => {
   try {
     const email = String(req.body?.email || "").trim().toLowerCase();
