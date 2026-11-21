@@ -1011,19 +1011,40 @@
                 const sp = qpmsNorm(sch.program || sch.programme);
                 const pp = qpmsNorm(p.program || p.programme);
                 if (!sp || !pp || sp === pp) return true;
-                // Normalize equivalent academic programme labels without ignoring specialization.
                 const canonical = value => qpmsNorm(value)
                     .replace(/\b(bachelor of technology|b\s*tech)\b/g, 'btech')
                     .replace(/\b(bachelor of business administration|bba)\b/g, 'bba')
                     .replace(/\b(bachelor of arts|b\s*a)\b/g, 'ba')
                     .replace(/\b(bachelor of science|b\s*sc)\b/g, 'bsc')
                     .replace(/\b(bachelor of education|b\s*ed)\b/g, 'bed')
-                    .replace(/\bwith specialization in\b|\bspecialization in\b|\bspecialisation in\b/g, '')
+                    .replace(/\bwith speciali[sz]ation in\b|\bspeciali[sz]ation in\b/g, '')
                     .replace(/\s+/g, ' ').trim();
                 if (canonical(sp) === canonical(pp)) return true;
-                const combinedBba = /efb.*faa.*gom.*ba.*ai/.test(sp) &&
-                    (pp.includes('business administration') || pp.startsWith('bba'));
-                return combinedBba;
+                // A shared datesheet heading may cover several named specializations.
+                // Require the same degree AND discipline; never merge unrelated programmes.
+                const family = value => {
+                    const v = canonical(value);
+                    if (/\b(btech|technology)\b/.test(v)) {
+                        if (/computer science|\bcse\b/.test(v)) return 'btech-cse';
+                        if (/electronics|communication|\bece\b/.test(v)) return 'btech-ece';
+                        if (/mechanical|\bme\b/.test(v)) return 'btech-me';
+                        if (/robotics/.test(v)) return 'btech-robotics';
+                    }
+                    if (/\bbba\b/.test(v)) return 'bba';
+                    if (/\bmba\b/.test(v)) return 'mba';
+                    if (/\bllb\b/.test(v)) return /\bbba\b/.test(v) ? 'bba-llb' : /\bba\b/.test(v) ? 'ba-llb' : 'llb';
+                    if (/\bbca\b/.test(v)) return 'bca';
+                    if (/\bmca\b/.test(v)) return 'mca';
+                    return '';
+                };
+                const sf = family(sp), pf = family(pp);
+                if (!sf || sf !== pf) return false;
+                // Only broaden when the official heading is generic, explicitly
+                // combines specializations, or the upload is a specialization thereof.
+                const broad = /speciali[sz]ations|\band\b|\/|\bcombined\b/.test(sp);
+                const specialization = /speciali[sz]ation|\b(hons|honours)\b/.test(pp);
+                const sameBase = canonical(sp) === canonical(pp).replace(/\b(aiml|csti|fsd|sma|gom|faa|efb|ai)\b/g, '').replace(/\s+/g, ' ').trim();
+                return broad || specialization || sameBase;
             };
             const scored = (s, p) => {
                 if (!normCode(s.courseCode || s.course) ||
