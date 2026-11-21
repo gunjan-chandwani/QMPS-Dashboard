@@ -1058,6 +1058,11 @@
                 if (!officialOptions.has(key)) officialOptions.set(key, new Set());
                 officialOptions.get(key).add(qpmsNorm(sch.program || sch.programme));
             });
+            const programmeTokens = value => {
+                const stop = new Set(['bachelor','of','technology','tech','with','specialization','specialisation','in','and','engineering','degree','the','program','programme','hons']);
+                return new Set(qpmsNorm(value).replace(/[^a-z0-9]+/g, ' ').split(' ')
+                    .filter(t => t.length > 1 && !stop.has(t)));
+            };
             const scored = (s, p) => {
                 const sc = normCode(s.courseCode || s.course);
                 if (!sc || sc !== normCode(p.courseCode || p.course)) return -1;
@@ -1068,13 +1073,17 @@
                 const pp = qpmsNorm(p.program || p.programme);
                 const compatible = programmeCompatible(s, p);
                 const key = [sc, qpmsSemesterNorm(s.semester), exam].join('|');
-                if (!compatible && (officialOptions.get(key)?.size || 0) !== 1) return -1;
+                const officialCount = officialOptions.get(key)?.size || 0;
+                const st = programmeTokens(sp), pt = programmeTokens(pp);
+                const overlap = [...pt].filter(t => st.has(t)).length;
+                // When a code occurs in several programmes, accept only
+                // programme-compatible or evidence-backed same-discipline pairs.
+                if (!compatible && officialCount !== 1 && overlap < 2) return -1;
                 const sameSchool = qpmsSchoolFor(s) === qpmsSchoolFor(p);
                 const sameDept = qpmsDepartmentFor(s) === qpmsDepartmentFor(p);
-                // A mismatch in school/department metadata is not automatically
-                // authoritative: datesheet metadata owns the report classification.
-                return (sp && pp && sp === pp ? 100 : compatible ? 60 : 10) +
-                    (sameSchool ? 4 : 0) + (sameDept ? 2 : 0);
+                // Do not let stale faculty department metadata override the PDF.
+                return (sp && pp && sp === pp ? 1000 : compatible ? 600 : officialCount === 1 ? 200 : 100) +
+                    Math.min(overlap, 12) * 12 + (sameSchool ? 4 : 0) + (sameDept ? 2 : 0);
             };
             const results = (schedules || []).map(schedule => ({schedule, paper:null}));
             // Match specific programme entries before broad or missing programme entries.
