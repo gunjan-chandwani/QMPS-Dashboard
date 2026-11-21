@@ -1012,6 +1012,10 @@
             return (datesheetSchedule || []).filter(qpmsIsDec2026EndSemester);
         }
         function qpmsMatchSchedulesToPapers(schedules, papers) {
+            // Preserve every official schedule row. A single uploaded course paper
+            // satisfies all programme/specialization rows sharing its course,
+            // semester and End Term exam. Do not count raw upload versions as
+            // separate fulfilled schedule rows.
             const candidates = (papers || []).filter(p =>
                 p.hasFile !== false && qpmsExamNorm(p.examType || p.exam) === 'end semester'
             );
@@ -1022,17 +1026,11 @@
                 if (!uploadsByRequirement.has(key)) uploadsByRequirement.set(key, []);
                 uploadsByRequirement.get(key).push(paper);
             });
-            const seen = new Set();
-            return (schedules || []).map((schedule, index) => {
-                const key = qpmsPaperRequirementKey(schedule) || 'unidentified-schedule-' + (schedule.id ?? index);
-                if (seen.has(key)) return null;
-                seen.add(key);
-                const matches = uploadsByRequirement.get(key) || [];
-                // Multiple uploads of the same course satisfy only one requirement.
-                // The newest upload is shown for workflow reporting, not counted again.
-                const paper = matches.length ? matches[matches.length - 1] : null;
-                return {schedule, paper};
-            }).filter(Boolean);
+            return (schedules || []).map(schedule => {
+                const key = qpmsPaperRequirementKey(schedule);
+                const matches = key ? (uploadsByRequirement.get(key) || []) : [];
+                return {schedule, paper: matches.length ? matches[matches.length - 1] : null};
+            });
         }
         function getCoePendingPapers() {
             // COE pending list is limited to December 2026 End Semester and each upload
@@ -1631,8 +1629,8 @@ window.onload = function() {
                 (!currentSession.departmentScope || qpmsDepartmentFor(item).toUpperCase() === currentSession.departmentScope.toUpperCase()))
             );
             const matchedBySchedule = qpmsMatchSchedulesToPapers(schedules, papersDatabase);
-            // Uploaded papers and workflow status cards must use the same live DB scope
-            // as the main COE dashboard, not just records successfully linked to a datesheet row.
+            // Raw database uploads are retained for moderation/workflow statuses.
+            // Scheduled/covered/pending cards use official datesheet entries only.
             const papers = (papersDatabase || []).filter(p => qpmsReportInScope(p, 'COE'));
             const pending = matchedBySchedule.filter(x => !x.paper);
                         const normalizedStatus = p => String(p.status || '').toUpperCase().replace(/[ -]+/g, '_').replace(/^AUDIT:_?/, '');
@@ -1656,7 +1654,7 @@ window.onload = function() {
             }
             document.getElementById('coe-report-summary').innerHTML = [
                 totalCard('Dec 2026 End Semester Scheduled', schedules.length, 'border-slate-200 bg-slate-50 text-slate-900'),
-                totalCard('Uploaded Records (all)', papers.length, 'border-slate-200 bg-slate-50 text-slate-900'),
+                totalCard('Scheduled Entries Covered by Uploads', matchedBySchedule.filter(x => !!x.paper).length, 'border-slate-200 bg-slate-50 text-slate-900'),
                 totalCard('Question Papers Pending Upload', schedules.length ? pending.length : '—', 'border-rose-200 bg-rose-50 text-rose-900'),
                 totalCard('Awaiting Faculty Revision', changesRequired.length, 'border-amber-200 bg-amber-50 text-amber-900'),
                 totalCard('Revised Papers Resubmitted to COE', resubmitted.length, 'border-purple-200 bg-purple-50 text-purple-900'),
