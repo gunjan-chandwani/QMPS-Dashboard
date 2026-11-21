@@ -1058,6 +1058,19 @@
                 if (!officialOptions.has(key)) officialOptions.set(key, new Set());
                 officialOptions.get(key).add(qpmsNorm(sch.program || sch.programme));
             });
+            // Normalize degree aliases and repeated PDF degree prefixes. The official
+            // schedule often says "Bachelor of Technology (B. Tech.) - ..." while
+            // faculty uploads say "B.tech ..."; these describe the same programme.
+            const programmeIdentity = value => qpmsNorm(value)
+                .replace(/\\b(bachelor of technology|b\\s*tech)\\b/g, 'btech')
+                .replace(/\\b(bachelor of business administration|b\\s*b\\s*a)\\b/g, 'bba')
+                .replace(/\\b(bachelor of science|b\\s*sc)\\b/g, 'bsc')
+                .replace(/\\b(bachelor of education|b\\s*ed)\\b/g, 'bed')
+                .replace(/\\b(bachelor of arts|b\\s*a)\\b/g, 'ba')
+                .replace(/\\b(bachelor of laws|ll\\s*b)\\b/g, 'llb')
+                .replace(/\\bwith speciali[sz]ation in\\b/g, 'specialization')
+                .replace(/\\b(btech|bba|bsc|bed|ba|llb)(?:\\s+\\1)+\\b/g, '$1')
+                .replace(/\\s+/g, ' ').trim();
             const programmeTokens = value => {
                 const stop = new Set(['bachelor','of','technology','tech','with','specialization','specialisation','in','and','engineering','degree','the','program','programme','hons']);
                 return new Set(qpmsNorm(value).replace(/[^a-z0-9]+/g, ' ').split(' ')
@@ -1072,6 +1085,7 @@
                 const sp = qpmsNorm(s.program || s.programme);
                 const pp = qpmsNorm(p.program || p.programme);
                 const compatible = programmeCompatible(s, p);
+                const normalizedExact = programmeIdentity(sp) && programmeIdentity(sp) === programmeIdentity(pp);
                 const key = [sc, qpmsSemesterNorm(s.semester), exam].join('|');
                 const officialCount = officialOptions.get(key)?.size || 0;
                 const st = programmeTokens(sp), pt = programmeTokens(pp);
@@ -1082,8 +1096,12 @@
                 const sameSchool = qpmsSchoolFor(s) === qpmsSchoolFor(p);
                 const sameDept = qpmsDepartmentFor(s) === qpmsDepartmentFor(p);
                 // Do not let stale faculty department metadata override the PDF.
-                return (sp && pp && sp === pp ? 1000 : compatible ? 600 : officialCount === 1 ? 200 : 100) +
-                    Math.min(overlap, 12) * 12 + (sameSchool ? 4 : 0) + (sameDept ? 2 : 0);
+                // Prefer the exact normalized programme over a shared specialization
+                // heading; do not let unrelated programmes win through school metadata.
+                const extraOfficialTokens = [...st].filter(t => !pt.has(t)).length;
+                return (sp && pp && sp === pp ? 1200 : normalizedExact ? 1100 : compatible ? 600 : officialCount === 1 ? 200 : 100) +
+                    Math.min(overlap, 12) * 12 - Math.min(extraOfficialTokens, 10) +
+                    (sameSchool ? 4 : 0) + (sameDept ? 2 : 0);
             };
             const results = (schedules || []).map(schedule => ({schedule, paper:null}));
             // Match specific programme entries before broad or missing programme entries.
