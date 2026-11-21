@@ -225,7 +225,7 @@
                         <span id="stat-unuploaded" class="font-bold text-rose-800 text-base">0</span>
                     </div>
                     <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-                        <span class="text-slate-500 block mb-0.5">Total Uploaded</span>
+                        <span id="stat-total-label" class="text-slate-500 block mb-0.5">Uploaded Records (all)</span>
                         <span id="stat-total" class="font-bold text-slate-800 text-base">0</span>
                     </div>
                     <div class="bg-blue-50 p-2.5 rounded-lg border border-blue-100">
@@ -1451,6 +1451,8 @@ window.onload = function() {
             document.getElementById('stat-unuploaded').textContent = notUploadedCount;
             document.getElementById('coe-badge-unuploaded').textContent = notUploadedCount;
             document.getElementById('stat-total').textContent = headerPapers.length;
+            const totalLabel = document.getElementById('stat-total-label');
+            if (totalLabel) totalLabel.textContent = isFaculty ? 'Total Uploaded' : 'Uploaded Records (all)';
             const reviewStatuses = isFaculty
                 ? ['SUBMITTED_TO_COE', 'FORWARDED_FOR_MODERATION', 'SENT_FOR_MODERATION', 'RESUBMITTED_TO_COE']
                 : ['FORWARDED_FOR_MODERATION', 'SENT_FOR_MODERATION'];
