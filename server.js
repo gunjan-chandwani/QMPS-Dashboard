@@ -480,7 +480,7 @@ const resetAttempts = new Map();
 app.post("/api/auth/forgot-password", async (req, res) => {
   const email = String(req.body?.email || "").trim().toLowerCase();
   const message = "If this faculty email is registered, a reset link will be sent shortly.";
-  if (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email)) return res.status(400).json({ok:false,error:"Enter a valid registered email."});
+  if (!email.includes("@") || !email.split("@")[1]?.includes(".") || email.includes(" ")) return res.status(400).json({ok:false,error:"Enter a valid registered email."});
   const key = crypto.createHash("sha256").update(email).digest("hex");
   const last = resetAttempts.get(key) || 0;
   if (Date.now() - last < 60000) return res.json({ok:true,message});
@@ -499,10 +499,10 @@ app.post("/api/auth/forgot-password", async (req, res) => {
       const hash = crypto.createHash("sha256").update(token).digest("hex");
       await pool.query("DELETE FROM faculty_password_resets WHERE email=$1",[email]);
       await pool.query("INSERT INTO faculty_password_resets(token_hash,email,expires_at) VALUES($1,$2,NOW()+INTERVAL '15 minutes')",[hash,email]);
-      const base = process.env.QPMS_PUBLIC_URL.replace(/\\/$/,"");
+      const base = process.env.QPMS_PUBLIC_URL.replace(new RegExp("/+$"), "");
       const link = base + "/?reset_token=" + encodeURIComponent(token);
       const transporter = nodemailer.createTransport({service:"gmail",auth:{user:process.env.GMAIL_USER,pass:process.env.GMAIL_APP_PASSWORD}});
-      await transporter.sendMail({from:process.env.GMAIL_USER,to:email,subject:"QPMS Faculty Password Reset",text:"A password reset was requested for your QPMS faculty account. This link expires in 15 minutes and works once:\\n"+link+"\\n\\nIf you did not request this, ignore this email."});
+      await transporter.sendMail({from:process.env.GMAIL_USER,to:email,subject:"QPMS Faculty Password Reset",text:"A password reset was requested for your QPMS faculty account. This link expires in 15 minutes and works once:\n"+link+"\n\nIf you did not request this, ignore this email."});
     }
     return res.json({ok:true,message});
   } catch(e) { console.error("Faculty password reset request failed:",e.message); return res.status(503).json({ok:false,error:"Unable to send reset email. Please contact COE."}); }
