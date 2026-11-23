@@ -1419,7 +1419,7 @@ window.onload = function() {
             if (totalLabel) totalLabel.textContent = isFaculty ? 'Total Uploaded' : (coeMatches ? 'Papers Matched to Datesheet' : 'Uploaded Records (all)');
             const reviewStatuses = isFaculty
                 ? ['SUBMITTED_TO_COE', 'COE_RECEIVED', 'FORWARDED_FOR_MODERATION', 'SENT_FOR_MODERATION', 'RESUBMITTED_TO_COE']
-                : ['FORWARDED_FOR_MODERATION', 'SENT_FOR_MODERATION'];
+                : ['FORWARDED_FOR_MODERATION', 'SENT_FOR_MODERATION', 'RESUBMITTED_TO_COE', 'APPROVED', 'APPROVED_BY_MODERATOR', 'MODERATION_APPROVED', 'CHANGES_REQUIRED', 'CHANGES_REQUIRED_BY_MODERATOR', 'FINAL_APPROVED', 'FINAL_APPROVED_AND_ARCHIVED'];
             const reviewLabel=document.getElementById('stat-pending-label');
             if(reviewLabel)reviewLabel.textContent=isFaculty?'In Review':'Forwarded to Moderation';
             document.getElementById('stat-pending').textContent = headerPapers.filter(p => reviewStatuses.includes(qpmsNormalizeStatus(p.status))).length;
