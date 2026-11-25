@@ -366,6 +366,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
                             <div class="rounded-xl border border-violet-200 bg-violet-50/60 p-3"><div class="flex justify-between items-center gap-2"><div><h4 class="font-bold text-violet-900 text-sm">Approved by Moderation</h4><p class="text-[11px] text-violet-700">Papers approved by the moderation committee and awaiting COE final approval.</p></div><span id="quick-moderated-count" class="text-xl font-black text-violet-800">0</span></div><div id="quick-moderated-list" class="mt-3 space-y-2 max-h-56 overflow-auto"></div></div>
                             <div class="rounded-xl border border-amber-200 bg-amber-50/60 p-3"><div class="flex justify-between items-center gap-2"><div><h4 class="font-bold text-amber-900 text-sm">Changes Required</h4><p class="text-[11px] text-amber-700">Papers returned to faculty for correction; count excludes missing uploads.</p></div><span id="quick-changes-count" class="text-xl font-black text-amber-800">0</span></div><div id="quick-changes-list" class="mt-3 space-y-2 max-h-56 overflow-auto"></div></div>
+                            <div class="rounded-xl border border-purple-200 bg-purple-50/60 p-3"><div class="flex justify-between items-center gap-2"><div><h4 class="font-bold text-purple-900 text-sm">Revised Papers</h4><p class="text-[11px] text-purple-700">Corrected papers awaiting COE final approval.</p></div><span id="quick-revised-count" class="text-xl font-black text-purple-800">0</span></div><div id="quick-revised-list" class="mt-3 space-y-2 max-h-56 overflow-auto"></div></div>
                             <div class="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3"><div class="flex justify-between items-center gap-2"><div><h4 class="font-bold text-emerald-900 text-sm">Final Approved Papers</h4><p class="text-[11px] text-emerald-700">COE-approved papers, ready for direct access.</p></div><span id="quick-approved-count" class="text-xl font-black text-emerald-800">0</span></div><div id="quick-approved-list" class="mt-3 space-y-2 max-h-56 overflow-auto"></div></div>
                             <div class="rounded-xl border border-rose-200 bg-rose-50/60 p-3"><div class="flex justify-between items-center gap-2"><div><h4 class="font-bold text-rose-900 text-sm">Datesheet Papers Not Uploaded</h4><p class="text-[11px] text-rose-700">Scheduled courses with no matching uploaded course code.</p></div><span id="quick-pending-count" class="text-xl font-black text-rose-800">0</span></div><div id="quick-pending-list" class="mt-3 space-y-2 max-h-56 overflow-auto"></div></div>
                         </div>
@@ -1659,7 +1660,13 @@ window.onload = function() {
         }
         function qpmsPaperLink(p) {
             const id = encodeURIComponent(p.id);
-            return `<div data-quick-school="${escapeHtml(qpmsSchoolFor(p))}" class="bg-white/80 border border-white rounded-lg p-2"><div class="font-semibold text-slate-800 truncate" title="${escapeHtml(p.courseName || '')}">${escapeHtml(p.courseName || 'Question Paper')}</div><div class="text-[10px] text-slate-500">${escapeHtml(p.courseCode || '')} · ${escapeHtml(p.department || '')}</div><div class="flex gap-2 mt-1"><a class="text-[11px] font-bold text-brand-700 hover:underline" target="_blank" href="/api/papers/${id}/view">View</a><a class="text-[11px] font-bold text-emerald-700 hover:underline" href="/api/papers/${id}/file">Download</a></div></div>`;
+            const status = qpmsNormalizeStatus(p.status);
+            const audit = p.moderationDetails || p.auditForm || {};
+            const comments = audit.comments || p.comments || '';
+            const canApprove = ['APPROVED','APPROVED_BY_MODERATOR','MODERATION_APPROVED','RESUBMITTED_TO_COE'].includes(status);
+            const revised = status === 'RESUBMITTED_TO_COE';
+            const actions = '<button type="button" data-paper-id="' + escapeHtml(p.id) + '" onclick="openAuditModal(this.dataset.paperId)" class="text-xs font-bold text-slate-700">Audit</button>' + (canApprove ? '<button type="button" data-paper-id="' + escapeHtml(p.id) + '" onclick="coeFinalApprove(this.dataset.paperId)" class="text-xs font-bold text-teal-700">Final Approve</button>' : '');
+            return `<div data-quick-school="${escapeHtml(qpmsSchoolFor(p))}" class="bg-white/80 border border-white rounded-lg p-2"><div class="font-semibold text-slate-800 truncate" title="${escapeHtml(p.courseName || '')}">${escapeHtml(p.courseName || 'Question Paper')}</div><div class="text-[10px] text-slate-500">${escapeHtml(p.courseCode || '')} · ${escapeHtml(p.department || '')}</div>${revised ? `<div class="text-xs font-semibold text-purple-800">${audit.moderatorRevision ? "Revised by Moderator" : "Resubmitted to COE"}</div>` : ""}${comments ? `<div class="text-xs text-amber-900 whitespace-pre-wrap break-words mt-1"><strong>Moderator comments:</strong> ${escapeHtml(comments)}</div>` : ""}<div class="flex flex-wrap gap-2 mt-1">${actions}<a class="text-[11px] font-bold text-brand-700 hover:underline" target="_blank" href="/api/papers/${id}/view">View</a><a class="text-[11px] font-bold text-emerald-700 hover:underline" href="/api/papers/${id}/file">Download</a></div></div>`;
         }
         function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
         function qpmsCoeSchoolDownloadControl(category, items) {
@@ -1684,6 +1691,7 @@ window.onload = function() {
             const id = 'coe-download-school-' + String(category).toLowerCase();
             const school = document.getElementById(id)?.value || '';
             if (!school) { showToast('Please select a school first.', 'warning'); return; }
+            if (category === 'REVISED') { window.location.href = '/api/papers/revised-by-school.zip?school=' + encodeURIComponent(school); return; }
             if (category === 'NOT_UPLOADED') {
                 const papers = (papersDatabase || []).filter(p => qpmsReportInScope(p, 'COE'));
                 const schedules = getDec2026EndSemesterSchedules().filter(s => qpmsReportInScope(s, 'COE') && qpmsSchoolFor(s) === school);
@@ -1710,7 +1718,7 @@ window.onload = function() {
             // Separate distinct paper requirements from raw official schedule rows.
             // A course taught to several specializations requires only one paper.
             const uniquePending = pending.length;
-                        const normalizedStatus = p => String(p.status || '').toUpperCase().replace(/[ -]+/g, '_').replace(/^AUDIT:_?/, '');
+                        const normalizedStatus = p => String(p.status || '').trim().toUpperCase().replace(/[ -]+/g, '_').replace(/^AUDIT:_?/, '');
             const moderatedStatuses = ['APPROVED','APPROVED_BY_MODERATOR','MODERATION_APPROVED'];
             const finalStatuses = ['FINAL_APPROVED','FINAL_APPROVED_&_ARCHIVED','FINAL_APPROVED_AND_ARCHIVED'];
             const moderated = papers.filter(p => moderatedStatuses.includes(normalizedStatus(p)));
@@ -1803,6 +1811,8 @@ window.onload = function() {
             const moderationBadge = document.getElementById('coe-badge-moderation-approved'); if (moderationBadge) moderationBadge.textContent = moderated.length;
             const changesBadge = document.getElementById('coe-badge-changes-required'); if (changesBadge) changesBadge.textContent = changesRequired.length;
             const resubmittedBadge = document.getElementById('coe-badge-resubmitted'); if (resubmittedBadge) resubmittedBadge.textContent = resubmitted.length;
+            document.getElementById('quick-revised-count').textContent = resubmitted.length;
+            document.getElementById('quick-revised-list').innerHTML = qpmsCoeSchoolDownloadControl('REVISED', resubmitted) + (resubmitted.length ? resubmitted.map(qpmsPaperLink).join('') : '<p class="text-xs text-slate-500">No revised papers awaiting COE approval.</p>');
             document.getElementById('quick-approved-count').textContent = finalApproved.length;
             document.getElementById('quick-approved-list').innerHTML = qpmsCoeSchoolDownloadControl('FINAL_APPROVED', finalApproved) + (finalApproved.length ? finalApproved.map(qpmsPaperLink).join('') : '<p class="text-xs text-slate-500">No papers currently approved by COE.</p>');
             const pendingSchedules = pending.map(item => item.schedule);
@@ -2004,11 +2014,11 @@ window.onload = function() {
             if (coeTabFilter === 'PENDING') {
                 filtered = papersDatabase.filter(p => ['SUBMITTED_TO_COE', 'FORWARDED_FOR_MODERATION','SENT_FOR_MODERATION'].includes(p.status));
             } else if (coeTabFilter === 'MODERATION_APPROVED') {
-                filtered = papersDatabase.filter(p => p.status === 'APPROVED');
+                filtered = papersDatabase.filter(p => ['APPROVED','APPROVED_BY_MODERATOR','MODERATION_APPROVED'].includes(qpmsNormalizeStatus(p.status)));
             } else if (coeTabFilter === 'RESUBMITTED') {
                 filtered = papersDatabase.filter(p => ['CHANGES_REQUIRED', 'CHANGES_REQUIRED_BY_MODERATOR', 'RESUBMITTED_TO_COE'].includes(String(p.status || '').toUpperCase()));
             } else {
-                filtered = papersDatabase.filter(p => p.status === 'FINAL_APPROVED');
+                filtered = papersDatabase.filter(p => ['FINAL_APPROVED','FINAL_APPROVED_AND_ARCHIVED','FINAL_APPROVED__AND__ARCHIVED'].includes(qpmsNormalizeStatus(p.status)));
             }
 
             if (filtered.length === 0) {
