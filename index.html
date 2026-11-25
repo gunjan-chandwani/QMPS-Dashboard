@@ -237,6 +237,7 @@
                         <span class="text-amber-600 block mb-0.5">Under Revision / Changes Required</span>
                         <span id="stat-action" class="font-bold text-amber-800 text-base">0</span>
                     </div>
+                    <div id="stat-moderator-approved-card" class="hidden bg-green-50 p-2.5 rounded-lg border border-green-200"><span class="text-green-700 block mb-0.5">Approved by Moderator</span><span id="stat-moderator-approved" class="font-bold text-green-800 text-base">0</span></div>
                     <div class="bg-emerald-50 p-2.5 rounded-lg border border-emerald-100">
                         <span class="text-emerald-600 block mb-0.5">Final Approved</span>
                         <span id="stat-approved" class="font-bold text-emerald-800 text-base">0</span>
@@ -1383,6 +1384,8 @@ window.onload = function() {
         }
 
         function updateStats() {
+            const moderatorCard = document.getElementById('stat-moderator-approved-card');
+            if (moderatorCard) moderatorCard.classList.toggle('hidden', currentSession?.role !== 'COE');
             const unuploaded = getUnuploadedPapers();
             const isFaculty = currentSession?.role === 'FACULTY';
             const unuploadedCard = document.getElementById('stat-unuploaded-card');
@@ -1390,7 +1393,8 @@ window.onload = function() {
             if (unuploadedCard) unuploadedCard.classList.toggle('hidden', isFaculty);
             if (metricsGrid) {
                 metricsGrid.classList.toggle('sm:grid-cols-4', isFaculty);
-                metricsGrid.classList.toggle('sm:grid-cols-5', !isFaculty);
+                metricsGrid.classList.toggle('sm:grid-cols-5', !isFaculty && currentSession?.role !== 'COE');
+                metricsGrid.classList.toggle('sm:grid-cols-6', currentSession?.role === 'COE');
             }
 
             // Faculty metrics are calculated only from the signed-in faculty member's papers.
@@ -1809,6 +1813,7 @@ window.onload = function() {
                 document.getElementById('stat-total-label').textContent='Total Uploaded';
                 if(headerChanges)headerChanges.textContent=changesRequired.length;
                 if(headerApproved)headerApproved.textContent=finalApproved.length;
+                document.getElementById('stat-moderator-approved').textContent=moderated.length;
             }
             document.getElementById('quick-moderated-count').textContent = moderated.length;
             document.getElementById('quick-moderated-list').innerHTML = qpmsCoeSchoolDownloadControl('MODERATION_APPROVED', moderated) + (moderated.length ? moderated.map(qpmsPaperLink).join('') : '<p class="text-xs text-slate-500">No papers currently approved by moderation.</p>');
