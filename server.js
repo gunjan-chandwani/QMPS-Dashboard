@@ -1153,6 +1153,98 @@ app.delete("/api/papers/:id", async (req, res) => {
 });
 
 // Keep frontend files served by the same Render service.
+        function qpmsOfficialProgrammeGroup(item) {
+            const p = String(item.program || item.programme || '').toLowerCase()
+                .replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+            if (!p) return null;
+            const has = x => p.includes(x);
+            if (/\b(b sc b ed|b a b ed|b ed|itep)\b/.test(p)) return ['School of Education & Humanities','Education'];
+            if (/\b(b a ll b|bb a ll b|bba ll b|ll b|llm|l l m)\b/.test(p)) return ['School of Law','Law'];
+            if (/\b(m sc chemistry|masters of science.*chemistry)\b/.test(p)) return ['School of Sciences','Chemistry'];
+            if (/\b(bba|mba)\b/.test(p) || has('business administration') || has('business analytics') && has('master')) return ['School of Business','Business'];
+            if (has('computer applications') || /\bbca\b/.test(p)) return ['School of Engineering','CST'];
+            if (has('robotics') && has('artif') || has('robotics ai')) return ['School of Engineering','Robotics & AI'];
+            if (has('computer science') || has('computer engineering') || /\bcse\b/.test(p)) return ['School of Engineering','CST'];
+            if (has('mechanical') || has('smart manufacturing') || has('ev technology') || /\bm tech me\b/.test(p)) return ['School of Engineering','ME'];
+            if (has('electronics') || has('communication engineering') || has('vlsi') || has('chip design') || /\bece\b/.test(p)) return ['School of Engineering','ECE'];
+            if (has('technology') && /\bme\b/.test(p)) return ['School of Engineering','ME'];
+            return null;
+        }
+        function qpmsSchoolFor(item) {
+            const mapped = qpmsOfficialProgrammeGroup(item);
+            if (mapped) return mapped[0];
+            // For unmatched programme labels, do not fabricate a school from course subjects.
+            const school = String(item.school || '').trim().toLowerCase();
+            const official = ['School of Engineering','School of Business','School of Law',
+                'School of Education & Humanities','School of Sciences'];
+            if (school === 'school of education') return 'School of Education & Humanities'; return official.find(x => x.toLowerCase() === school) || 'School mapping required';
+        }
+        function qpmsDepartmentFor(item) {
+            const mapped = qpmsOfficialProgrammeGroup(item);
+            if (mapped) return mapped[1];
+            const school = qpmsSchoolFor(item);
+            const raw = String(item.department || '').trim();
+            const allowed = {
+                'School of Engineering': {'cst':'CST','computer science & technology':'CST',
+                    'me':'ME','mechanical engineering':'ME','ece':'ECE',
+                    'electronics and communication':'ECE','robotics & ai':'Robotics & AI'},
+                'School of Business': {'business':'Business'},
+                'School of Law': {'law':'Law'},
+                'School of Education & Humanities': {'education':'Education'},
+                'School of Sciences': {'chemistry':'Chemistry'}
+            };
+            return (allowed[school] || {})[raw.toLowerCase()] || 'Department mapping required';
+        }
+
+
+// Moderator revision: authenticated, scoped, transactional, with original bytes retained.
+const moderatorRevisionSessions = new Map();
+app.post('/api/moderator/revision-login', async (req,res) => {
+  try {
+    const email=String(req.body.email||'').trim().toLowerCase(), password=String(req.body.password||'');
+    if (!password || password.length>256) return res.status(401).json({error:'Invalid credentials'});
+    const {rows:[u]}=await pool.query("SELECT * FROM role_accounts WHERE email=$1 AND role='MODERATOR' AND active=TRUE",[email]);
+    if (!u) return res.status(401).json({error:'Invalid credentials'});
+    const expected=Buffer.from(u.password_hash,'hex'), actual=crypto.scryptSync(password,Buffer.from(u.password_salt,'hex'),64);
+    if(expected.length!==actual.length || !crypto.timingSafeEqual(expected,actual)) return res.status(401).json({error:'Invalid credentials'});
+    if(u.must_change_password){
+      const next=String(req.body.newPassword||'');
+      if(next.length<12 || next.length>256 || next===password) return res.status(409).json({changeRequired:true,error:'Choose a new password of at least 12 characters'});
+      const salt=crypto.randomBytes(16), hash=crypto.scryptSync(next,salt,64);
+      const changed=await pool.query('UPDATE role_accounts SET password_salt=$1,password_hash=$2,must_change_password=FALSE,updated_at=NOW() WHERE id=$3 AND password_hash=$4',[salt.toString('hex'),hash.toString('hex'),u.id,u.password_hash]);
+      if(!changed.rowCount) return res.status(409).json({error:'Password changed; retry login'});
+    }
+    const token=crypto.randomBytes(32).toString('hex'); moderatorRevisionSessions.set(token,{email,expires:Date.now()+3600000});
+    res.json({ok:true,token});
+  } catch(e){console.error(e.message);res.status(500).json({error:'Moderator authentication unavailable'});}
+});
+async function requireRevisionModerator(req,res,next){
+  try{const session=moderatorRevisionSessions.get(String(req.headers.authorization||'').replace(/^Bearer /,''));
+    if(!session || session.expires<Date.now()) return res.status(401).json({error:'Authenticate again'});
+    const {rows:[u]}=await pool.query("SELECT email,school,department FROM role_accounts WHERE email=$1 AND active=TRUE AND role='MODERATOR' AND must_change_password=FALSE",[session.email]);
+    if(!u || !u.school) return res.status(403).json({error:'Moderator scope unavailable'}); req.revisionModerator=u;next();
+  }catch(e){res.status(500).json({error:'Authorization unavailable'});}
+}
+const revisionUpload=multer({storage:multer.memoryStorage(),limits:{fileSize:20*1024*1024,files:1}});
+app.post('/api/papers/:id/moderator-revision',requireRevisionModerator,revisionUpload.single('file'),async(req,res)=>{
+  let c;
+  try{
+    if(!req.file || !/\.(doc|docx)$/i.test(req.file.originalname) || !isAllowedQuestionPaperFile(req.file)) return res.status(400).json({error:'Upload a Word document only'});
+    c=await pool.connect();await c.query('BEGIN');
+    const {rows:[p]}=await c.query('SELECT * FROM papers WHERE id::text=$1 FOR UPDATE',[req.params.id]);
+    const u=req.revisionModerator;
+    if(!p || qpmsSchoolFor(p)!==u.school || (u.department && qpmsDepartmentFor(p)!==u.department)) {await c.query('ROLLBACK');return res.status(403).json({error:'Paper outside assigned scope'});}
+    if(!['FORWARDED_FOR_MODERATION','SENT_FOR_MODERATION'].includes(p.status)){await c.query('ROLLBACK');return res.status(409).json({error:'Paper is no longer awaiting moderation'});}
+    const original=p.file_data || (p.file_path && fs.readFileSync(p.file_path));
+    if(!original || !original.length) throw Error('Original file unavailable; revision cancelled');
+    await c.query(`CREATE TABLE IF NOT EXISTS moderator_paper_revisions (id BIGSERIAL PRIMARY KEY,paper_id BIGINT NOT NULL,previous_filename TEXT,previous_mimetype TEXT,previous_file BYTEA NOT NULL,revised_filename TEXT NOT NULL,revised_by TEXT NOT NULL,created_at TIMESTAMPTZ DEFAULT NOW())`);
+    await c.query('INSERT INTO moderator_paper_revisions(paper_id,previous_filename,previous_mimetype,previous_file,revised_filename,revised_by) VALUES($1,$2,$3,$4,$5,$6)',[p.id,p.original_filename,p.file_mimetype,original,req.file.originalname,u.email]);
+    await c.query('UPDATE papers SET original_filename=$2,stored_filename=NULL,file_path=NULL,file_mimetype=$3,file_size=$4,file_data=$5,updated_at=NOW() WHERE id=$1',[p.id,req.file.originalname,req.file.mimetype,req.file.size,req.file.buffer]);
+    await c.query('COMMIT');res.json({ok:true});
+  }catch(e){if(c)await c.query('ROLLBACK').catch(()=>{});console.error(e.message);res.status(500).json({error:'Revision not saved; original retained'});}finally{if(c)c.release();}
+});
+
+
 app.use(express.static(__dirname));
 app.get("*", (_req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
