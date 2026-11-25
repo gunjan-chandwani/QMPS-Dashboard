@@ -606,7 +606,7 @@ app.get("/api/papers", async (req, res) => {
     const canSeeAll = viewerRole === 'COE' || viewerRole === 'MODERATOR';
     const { rows } = await pool.query(`
       SELECT id::text AS id, paper_no, title, school, program, department, semester,
-             course, subject, faculty, exam, submission_date, TO_CHAR(exam_date,'YYYY-MM-DD') AS exam_date, status, expected,
+             course, subject, faculty, exam, submission_date, TO_CHAR(exam_date,'YYYY-MM-DD') AS exam_date, CASE WHEN status IN ('FORWARDED_FOR_MODERATION','SENT_FOR_MODERATION') AND moderation_details->>'moderatorRevision' = 'true' THEN 'RESUBMITTED_TO_COE' ELSE status END AS status, expected,
              original_filename, file_mimetype, file_size, comments, moderation_details,
              owner_email, created_at, updated_at, (file_data IS NOT NULL OR file_path IS NOT NULL) AS has_file
       FROM papers
@@ -839,7 +839,7 @@ app.get('/api/papers/download-by-school.zip', async (req, res) => {
       SELECT id::text AS id, original_filename, file_path, file_data, course, subject, title
       FROM papers
       WHERE UPPER(REPLACE(COALESCE(status,''), ' ', '_')) = ANY($1::text[])
-        AND LOWER(TRIM(COALESCE(school,''))) = LOWER(TRIM($2))
+        AND LOWER(TRIM(CASE WHEN LOWER(TRIM(school))='school of education' THEN 'School of Education & Humanities' ELSE COALESCE(school,'') END)) = LOWER(TRIM($2))
         AND (file_data IS NOT NULL OR file_path IS NOT NULL)
       ORDER BY created_at ASC
     `, [statuses, school]);
@@ -873,8 +873,8 @@ app.get('/api/papers/revised-by-school.zip', async (req, res) => {
     const { rows } = await pool.query(`
       SELECT id::text AS id, original_filename, file_path, file_data, course, subject, title
       FROM papers
-      WHERE UPPER(REPLACE(COALESCE(status,''), ' ', '_')) = 'RESUBMITTED_TO_COE'
-        AND LOWER(TRIM(COALESCE(school,''))) = LOWER(TRIM($1))
+      WHERE (UPPER(REPLACE(COALESCE(status,''), ' ', '_')) = 'RESUBMITTED_TO_COE' OR (status IN ('FORWARDED_FOR_MODERATION','SENT_FOR_MODERATION') AND moderation_details->>'moderatorRevision' = 'true'))
+        AND LOWER(TRIM(CASE WHEN LOWER(TRIM(school))='school of education' THEN 'School of Education & Humanities' ELSE COALESCE(school,'') END)) = LOWER(TRIM($1))
         AND (file_data IS NOT NULL OR file_path IS NOT NULL)
       ORDER BY created_at ASC
     `, [school]);
@@ -1242,7 +1242,7 @@ app.post('/api/papers/:id/moderator-revision',requireRevisionModerator,revisionU
     if(!original || !original.length) throw Error('Original file unavailable; revision cancelled');
     await c.query(`CREATE TABLE IF NOT EXISTS moderator_paper_revisions (id BIGSERIAL PRIMARY KEY,paper_id BIGINT NOT NULL,previous_filename TEXT,previous_mimetype TEXT,previous_file BYTEA NOT NULL,revised_filename TEXT NOT NULL,revised_by TEXT NOT NULL,created_at TIMESTAMPTZ DEFAULT NOW())`);
     await c.query('INSERT INTO moderator_paper_revisions(paper_id,previous_filename,previous_mimetype,previous_file,revised_filename,revised_by) VALUES($1,$2,$3,$4,$5,$6)',[p.id,p.original_filename,p.file_mimetype,original,req.file.originalname,u.email]);
-    await c.query('UPDATE papers SET original_filename=$2,stored_filename=NULL,file_path=NULL,file_mimetype=$3,file_size=$4,file_data=$5,moderation_details=$6::jsonb,status='FORWARDED_FOR_MODERATION',updated_at=NOW() WHERE id=$1',[p.id,req.file.originalname,req.file.mimetype,req.file.size,req.file.buffer,JSON.stringify({...audit,decision:'CHANGES_REQUIRED',moderatorRevision:true,revisedBy:u.email,revisedAt:new Date().toISOString()})]);
+    await c.query('UPDATE papers SET original_filename=$2,stored_filename=NULL,file_path=NULL,file_mimetype=$3,file_size=$4,file_data=$5,moderation_details=$6::jsonb,status=\'RESUBMITTED_TO_COE\',updated_at=NOW() WHERE id=$1',[p.id,req.file.originalname,req.file.mimetype,req.file.size,req.file.buffer,JSON.stringify({...audit,decision:'CHANGES_REQUIRED',moderatorRevision:true,revisedBy:u.email,revisedAt:new Date().toISOString()})]);
     await c.query('COMMIT');res.json({ok:true});
   }catch(e){if(c)await c.query('ROLLBACK').catch(()=>{});console.error(e.message);res.status(500).json({error:'Revision not saved; original retained'});}finally{if(c)c.release();}
 });
