@@ -374,7 +374,10 @@
 
                     <!-- COE Filter Tabs (Including NEW "Unuploaded / Missing Papers" Tab) -->
                     <div class="flex border-b border-slate-200 space-x-4 text-xs font-medium overflow-x-auto custom-scrollbar">
-                        <button onclick="filterCoeTab('PENDING')" id="coe-tab-pending" class="pb-2.5 border-b-2 border-brand-600 text-brand-600 font-bold whitespace-nowrap">
+                        <button onclick="filterCoeTab('ALL')" id="coe-tab-all" class="pb-2.5 border-b-2 border-brand-600 text-brand-600 font-bold whitespace-nowrap">All Uploaded Papers</button>
+                        <button onclick="filterCoeTab('UNDER_MODERATION')" id="coe-tab-under_moderation" class="pb-2.5 border-b-2 border-transparent text-slate-500 whitespace-nowrap">Under Moderation</button>
+                        <button onclick="filterCoeTab('CHANGES_REQUIRED')" id="coe-tab-changes_required" class="pb-2.5 border-b-2 border-transparent text-slate-500 whitespace-nowrap">Changes Required</button>
+                        <button onclick="filterCoeTab('PENDING')" id="coe-tab-pending" class="pb-2.5 border-b-2 border-transparent text-slate-500 whitespace-nowrap">
                             Pending Initial Verification
                         </button>
                         <button onclick="filterCoeTab('NOT_UPLOADED')" id="coe-tab-not-uploaded" class="pb-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-700 whitespace-nowrap flex items-center space-x-1.5">
@@ -386,7 +389,7 @@
                             Approved by Moderation <span id="coe-badge-moderation-approved" class="ml-1 px-1.5 py-0.5 bg-violet-100 text-violet-800 rounded-full text-[10px] font-bold">0</span>
                         </button>
                         <button onclick="filterCoeTab('RESUBMITTED')" id="coe-tab-resubmitted" class="pb-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-700 whitespace-nowrap">
-                            Revision Tracking
+                            Revised Papers
                             <span title="Awaiting faculty revision" class="text-[10px] font-semibold text-amber-800">Pending <span id="coe-badge-changes-required" class="px-1.5 py-0.5 bg-amber-100 rounded-full font-bold">0</span></span>
                             <span title="Revised papers submitted back to COE" class="text-[10px] font-semibold text-purple-800">Resubmitted <span id="coe-badge-resubmitted" class="px-1.5 py-0.5 bg-purple-100 rounded-full font-bold">0</span></span>
                         </button>
@@ -399,7 +402,7 @@
                     <div class="flex justify-between items-center bg-slate-100 p-2.5 rounded-lg text-xs">
                         <div class="flex items-center space-x-2 text-slate-600 font-medium" id="coe-table-section-title">
                             <i class="fa-solid fa-list-check text-brand-600"></i>
-                            <span>Submitted Question Papers Pending Verification</span>
+                            <span>All Uploaded Papers — Current Status</span>
                         </div>
                         <div id="coe-unuploaded-action-bar" class="hidden flex items-center space-x-2">
                             <button onclick="sendBulkReminders()" class="px-2.5 py-1 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded font-semibold text-xs transition">
@@ -905,7 +908,7 @@
     <script>
         // Global System State
         let currentSession = null; // Active user object
-        let coeTabFilter = 'PENDING'; // Default active COE tab
+        let coeTabFilter = 'ALL'; // Default active COE tab
 
         // Pre-configured User Accounts
         const USERS = {
@@ -1576,7 +1579,7 @@ window.onload = function() {
         // 2. COE VIEW & FILTER LOGIC
         function filterCoeTab(tab) {
             coeTabFilter = tab;
-            const tabs = ['pending', 'not-uploaded', 'moderation_approved', 'resubmitted', 'archived'];
+            const tabs = ['all','pending','under_moderation','not-uploaded','moderation_approved','changes_required','resubmitted','archived'];
             tabs.forEach(t => {
                 const key = t.replace('-', '_').toUpperCase();
                 const element = document.getElementById(`coe-tab-${t}`);
@@ -1594,6 +1597,9 @@ window.onload = function() {
             if (tab === 'NOT_UPLOADED') {
                 titleElement.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-rose-600"></i><span class="text-rose-900 font-bold">Unuploaded Question Papers Scheduled in Examination Datesheet</span>`;
                 actionBar.classList.remove('hidden');
+            } else if (['ALL','UNDER_MODERATION','CHANGES_REQUIRED'].includes(tab)) {
+                titleElement.textContent = ({ALL:'All Uploaded Papers — Current Status',UNDER_MODERATION:'Papers Currently Under Moderation',CHANGES_REQUIRED:'Papers Awaiting Faculty Correction'})[tab];
+                actionBar.classList.add('hidden');
             } else if (tab === 'PENDING') {
                 titleElement.innerHTML = `<i class="fa-solid fa-list-check text-brand-600"></i><span>Submitted Question Papers Pending Verification</span>`;
                 actionBar.classList.add('hidden');
@@ -1660,7 +1666,7 @@ window.onload = function() {
         }
         function qpmsPaperLink(p) {
             const id = encodeURIComponent(p.id);
-            const status = qpmsNormalizeStatus(p.status);
+            const status = qpmsCoeCurrentStatus(p);
             const audit = p.moderationDetails || p.auditForm || {};
             const comments = audit.comments || p.comments || '';
             const canApprove = ['APPROVED','APPROVED_BY_MODERATOR','MODERATION_APPROVED','RESUBMITTED_TO_COE'].includes(status);
@@ -1718,7 +1724,7 @@ window.onload = function() {
             // Separate distinct paper requirements from raw official schedule rows.
             // A course taught to several specializations requires only one paper.
             const uniquePending = pending.length;
-                        const normalizedStatus = p => String(p.status || '').trim().toUpperCase().replace(/[ -]+/g, '_').replace(/^AUDIT:_?/, '');
+                        const normalizedStatus = qpmsCoeCurrentStatus;
             const moderatedStatuses = ['APPROVED','APPROVED_BY_MODERATOR','MODERATION_APPROVED'];
             const finalStatuses = ['FINAL_APPROVED','FINAL_APPROVED_&_ARCHIVED','FINAL_APPROVED_AND_ARCHIVED'];
             const moderated = papers.filter(p => moderatedStatuses.includes(normalizedStatus(p)));
@@ -1827,8 +1833,17 @@ window.onload = function() {
             return !currentSession?.schoolScope || (qpmsSchoolFor(item) === currentSession.schoolScope && (!currentSession.departmentScope || qpmsDepartmentFor(item).toUpperCase() === currentSession.departmentScope.toUpperCase()));
         }
 
+        function qpmsCoeCurrentStatus(p) {
+            const status = qpmsNormalizeStatus(p.status);
+            if (['FINAL_APPROVED','FINAL_APPROVED_AND_ARCHIVED'].includes(status)) return 'FINAL_APPROVED';
+            if (['APPROVED','APPROVED_BY_MODERATOR','MODERATION_APPROVED','APPROVED_BY_MODERATION'].includes(status)) return 'APPROVED';
+            if (['RESUBMITTED_TO_COE','REVISED_BY_MODERATOR'].includes(status) || (['FORWARDED_FOR_MODERATION','SENT_FOR_MODERATION'].includes(status) && String(p.moderationDetails?.moderatorRevision) === 'true')) return 'RESUBMITTED_TO_COE';
+            if (['CHANGES_REQUIRED','CHANGES_REQUIRED_BY_MODERATOR'].includes(status)) return 'CHANGES_REQUIRED';
+            if (['FORWARDED_FOR_MODERATION','SENT_FOR_MODERATION','UNDER_MODERATION'].includes(status)) return 'FORWARDED_FOR_MODERATION';
+            return status;
+        }
         function qpmsNormalizeStatus(value) {
-            return String(value || '').trim().toUpperCase().replace(/[ -]+/g, '_').replace(/^AUDIT:_?/, '').replace(/&/g, '_AND_');
+            return String(value || '').trim().toUpperCase().replace(/[ -]+/g, '_').replace(/^AUDIT:_?/, '').replace(/&/g, '_AND_').replace(/_+/g, '_');
         }
         function qpmsWorkflowCounts(papers) {
             const statuses = papers.map(p => qpmsNormalizeStatus(p.status));
@@ -2010,16 +2025,10 @@ window.onload = function() {
                 </tr>
             `;
 
-            let filtered = [];
-            if (coeTabFilter === 'PENDING') {
-                filtered = papersDatabase.filter(p => ['SUBMITTED_TO_COE', 'FORWARDED_FOR_MODERATION','SENT_FOR_MODERATION'].includes(p.status));
-            } else if (coeTabFilter === 'MODERATION_APPROVED') {
-                filtered = papersDatabase.filter(p => ['APPROVED','APPROVED_BY_MODERATOR','MODERATION_APPROVED'].includes(qpmsNormalizeStatus(p.status)));
-            } else if (coeTabFilter === 'RESUBMITTED') {
-                filtered = papersDatabase.filter(p => ['CHANGES_REQUIRED', 'CHANGES_REQUIRED_BY_MODERATOR', 'RESUBMITTED_TO_COE'].includes(String(p.status || '').toUpperCase()));
-            } else {
-                filtered = papersDatabase.filter(p => ['FINAL_APPROVED','FINAL_APPROVED_AND_ARCHIVED','FINAL_APPROVED__AND__ARCHIVED'].includes(qpmsNormalizeStatus(p.status)));
-            }
+            const scoped = papersDatabase.filter(p => qpmsReportInScope(p, 'COE'));
+            const category = p => qpmsCoeCurrentStatus(p);
+            const categories = {PENDING:'SUBMITTED_TO_COE',UNDER_MODERATION:'FORWARDED_FOR_MODERATION',MODERATION_APPROVED:'APPROVED',CHANGES_REQUIRED:'CHANGES_REQUIRED',RESUBMITTED:'RESUBMITTED_TO_COE',ARCHIVED:'FINAL_APPROVED'};
+            const filtered = coeTabFilter === 'ALL' ? scoped : scoped.filter(p => category(p) === categories[coeTabFilter]);
 
             if (filtered.length === 0) {
                 container.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400">No papers found in this category.</td></tr>`;
@@ -2035,15 +2044,15 @@ window.onload = function() {
                     <td class="px-4 py-3.5 text-slate-600">${paper.facultyName}</td>
                     <td class="px-4 py-3.5 text-slate-600">${paper.department}<br/><span class="text-xs font-semibold text-slate-500"><i class="fa-regular fa-calendar mr-1"></i>${paper.paperDate}</span></td>
                     <td class="px-4 py-3.5"><span class="px-2 py-0.5 bg-slate-100 rounded text-xs font-bold text-slate-700">v${paper.currentVersion}</span></td>
-                    <td class="px-4 py-3.5">${getStatusBadge(paper.status === 'RESUBMITTED_TO_COE' && paper.moderationDetails?.moderatorRevision ? 'REVISED_BY_MODERATOR' : paper.status)}</td>
+                    <td class="px-4 py-3.5">${getStatusBadge(category(paper) === 'RESUBMITTED_TO_COE' && paper.moderationDetails?.moderatorRevision ? 'REVISED_BY_MODERATOR' : category(paper))}</td>
                     <td class="px-4 py-3.5 text-right space-x-2">
-                        ${paper.status === 'SUBMITTED_TO_COE' ? `
+                        ${category(paper) === 'SUBMITTED_TO_COE' ? `
                             <button onclick="coeForwardToModeration('${paper.id}')" class="px-3 py-1 bg-brand-600 hover:bg-brand-700 text-white rounded text-xs font-semibold shadow-xs">
                                 Forward to Moderation <i class="fa-solid fa-arrow-right ml-1"></i>
                             </button>
                         ` : ''}
 
-                        ${['APPROVED', 'RESUBMITTED_TO_COE'].includes(paper.status) ? `
+                        ${['APPROVED', 'RESUBMITTED_TO_COE'].includes(category(paper)) ? `
                             <button onclick="coeFinalApprove('${paper.id}')" class="px-3 py-1 bg-teal-700 hover:bg-teal-800 text-white rounded text-xs font-semibold shadow-xs">
                                 <i class="fa-solid fa-check-double mr-1"></i> Final Approve & Archive
                             </button>
