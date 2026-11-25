@@ -1230,18 +1230,19 @@ app.post('/api/papers/:id/moderator-revision',requireRevisionModerator,revisionU
   let c;
   try{
     if(!req.file || !/\.(doc|docx)$/i.test(req.file.originalname) || !isAllowedQuestionPaperFile(req.file)) return res.status(400).json({error:'Upload a Word document only'});
-    let audit;try{audit=JSON.parse(req.body.audit||'{}');}catch{return res.status(400).json({error:'Invalid audit'});}
-    if(audit.decision!=='CHANGES_REQUIRED'||!String(audit.comments||'').trim()||!Array.from({length:12},(_,i)=>audit['q'+(i+1)]).every(v=>typeof v==='string'&&v.trim()))return res.status(400).json({error:'Complete the audit and select Changes Required first'});
+
     c=await pool.connect();await c.query('BEGIN');
     const {rows:[p]}=await c.query('SELECT * FROM papers WHERE id::text=$1 FOR UPDATE',[req.params.id]);
     const u=req.revisionModerator;
     if(!p || qpmsSchoolFor(p)!==u.school || (u.department && qpmsDepartmentFor(p)!==u.department)) {await c.query('ROLLBACK');return res.status(403).json({error:'Paper outside assigned scope'});}
-    if(!['FORWARDED_FOR_MODERATION','SENT_FOR_MODERATION'].includes(p.status)){await c.query('ROLLBACK');return res.status(409).json({error:'Paper is no longer awaiting moderation'});}
+    if(!['CHANGES_REQUIRED','CHANGES_REQUIRED_BY_MODERATOR'].includes(p.status)){await c.query('ROLLBACK');return res.status(409).json({error:'Submit the Changes Required audit before uploading a revision'});}
+    const audit=p.moderation_details||{};
+    if(!String(audit.comments||'').trim()||!Array.from({length:12},(_,i)=>audit['q'+(i+1)]).every(v=>typeof v==='string'&&v.trim())){await c.query('ROLLBACK');return res.status(409).json({error:'Saved audit checklist and comments required'});}
     const original=p.file_data || (p.file_path && fs.readFileSync(p.file_path));
     if(!original || !original.length) throw Error('Original file unavailable; revision cancelled');
     await c.query(`CREATE TABLE IF NOT EXISTS moderator_paper_revisions (id BIGSERIAL PRIMARY KEY,paper_id BIGINT NOT NULL,previous_filename TEXT,previous_mimetype TEXT,previous_file BYTEA NOT NULL,revised_filename TEXT NOT NULL,revised_by TEXT NOT NULL,created_at TIMESTAMPTZ DEFAULT NOW())`);
     await c.query('INSERT INTO moderator_paper_revisions(paper_id,previous_filename,previous_mimetype,previous_file,revised_filename,revised_by) VALUES($1,$2,$3,$4,$5,$6)',[p.id,p.original_filename,p.file_mimetype,original,req.file.originalname,u.email]);
-    await c.query('UPDATE papers SET original_filename=$2,stored_filename=NULL,file_path=NULL,file_mimetype=$3,file_size=$4,file_data=$5,moderation_details=$6::jsonb,updated_at=NOW() WHERE id=$1',[p.id,req.file.originalname,req.file.mimetype,req.file.size,req.file.buffer,JSON.stringify({...audit,moderatorRevision:true,revisedBy:u.email,date:new Date().toISOString()})]);
+    await c.query('UPDATE papers SET original_filename=$2,stored_filename=NULL,file_path=NULL,file_mimetype=$3,file_size=$4,file_data=$5,moderation_details=$6::jsonb,status='FORWARDED_FOR_MODERATION',updated_at=NOW() WHERE id=$1',[p.id,req.file.originalname,req.file.mimetype,req.file.size,req.file.buffer,JSON.stringify({...audit,decision:'CHANGES_REQUIRED',moderatorRevision:true,revisedBy:u.email,revisedAt:new Date().toISOString()})]);
     await c.query('COMMIT');res.json({ok:true});
   }catch(e){if(c)await c.query('ROLLBACK').catch(()=>{});console.error(e.message);res.status(500).json({error:'Revision not saved; original retained'});}finally{if(c)c.release();}
 });
