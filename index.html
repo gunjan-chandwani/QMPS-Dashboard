@@ -221,6 +221,7 @@
 
                 <!-- Quick Metrics (Updated with Unuploaded Datesheet Papers Metric) -->
                 <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center text-xs">
+                    <div id="stat-required-card" class="hidden bg-slate-50 p-2.5 rounded-lg border border-slate-200"><span class="text-slate-600 block mb-0.5">Papers Required</span><span id="stat-required" class="font-bold text-slate-800 text-base">0</span></div>
                     <div id="stat-unuploaded-card" class="bg-rose-50 p-2.5 rounded-lg border border-rose-100">
                         <span class="text-rose-600 font-medium block mb-0.5"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Pending Upload</span>
                         <span id="stat-unuploaded" class="font-bold text-rose-800 text-base">0</span>
@@ -229,6 +230,7 @@
                         <span id="stat-total-label" class="text-slate-500 block mb-0.5">Uploaded Records (all)</span>
                         <span id="stat-total" class="font-bold text-slate-800 text-base">0</span>
                     </div>
+                    <div id="stat-raw-uploaded-card" class="hidden bg-slate-50 p-2.5 rounded-lg border border-slate-200"><span class="text-slate-600 block mb-0.5">Total Uploaded Records</span><span id="stat-raw-uploaded" class="font-bold text-slate-800 text-base">0</span></div>
                     <div class="bg-blue-50 p-2.5 rounded-lg border border-blue-100">
                         <span id="stat-pending-label" class="text-blue-600 block mb-0.5">In Review</span>
                         <span id="stat-pending" class="font-bold text-blue-800 text-base">0</span>
@@ -1385,7 +1387,7 @@ window.onload = function() {
             if (metricsGrid) {
                 metricsGrid.classList.toggle('sm:grid-cols-4', isFaculty);
                 metricsGrid.classList.toggle('sm:grid-cols-5', !isFaculty && currentSession?.role !== 'COE');
-                metricsGrid.classList.toggle('sm:grid-cols-6', currentSession?.role === 'COE');
+                metricsGrid.classList.toggle('sm:grid-cols-4', isFaculty || currentSession?.role === 'COE');
             }
 
             // Faculty metrics are calculated only from the signed-in faculty member's papers.
@@ -1410,6 +1412,9 @@ window.onload = function() {
             const headerPapers = coeMatches
                 ? papersDatabase.filter(p => qpmsReportInScope(p, 'COE'))
                 : metricPapers;
+            for (const id of ['stat-required-card','stat-raw-uploaded-card']) document.getElementById(id).classList.toggle('hidden', !coeMatches);
+            document.getElementById('stat-required').textContent = coeMatches?.length || 0;
+            document.getElementById('stat-raw-uploaded').textContent = headerPapers.length;
             const notUploadedCount = coeMatches
                 ? coeMatches.filter(x => !x.paper).length
                 : unuploaded.length;
@@ -1800,8 +1805,11 @@ window.onload = function() {
                 const headerChanges=document.getElementById('stat-action');
                 const headerApproved=document.getElementById('stat-approved');
                 if(headerReview)headerReview.textContent=papers.filter(p => ['FORWARDED_FOR_MODERATION','SENT_FOR_MODERATION'].includes(normalizedStatus(p))).length;
-                document.getElementById('stat-total').textContent=papers.length;
-                document.getElementById('stat-total-label').textContent='Total Uploaded';
+                document.getElementById('stat-required').textContent=matchedBySchedule.length;
+                document.getElementById('stat-total').textContent=matchedBySchedule.filter(x=>!!x.paper).length;
+                document.getElementById('stat-total-label').textContent='Papers Received';
+                document.getElementById('stat-unuploaded').textContent=matchedBySchedule.filter(x=>!x.paper).length;
+                document.getElementById('stat-raw-uploaded').textContent=papers.length;
                 if(headerChanges)headerChanges.textContent=changesRequired.length;
                 if(headerApproved)headerApproved.textContent=finalApproved.length;
                 document.getElementById('stat-moderator-approved').textContent=moderated.length;
