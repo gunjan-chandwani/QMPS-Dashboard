@@ -1070,35 +1070,26 @@
             if(count)count.textContent=rows.length+' programme rows shown · '+rows.reduce((n,r)=>n+r.scheduled,0)+' scheduled · '+rows.reduce((n,r)=>n+r.uploaded,0)+' matched uploads';
         }
         function qpmsMatchSchedulesToPapers(schedules,papers) {
-            // Match one upload to at most one official row. Never let a course
-            // code alone fulfill multiple programmes/semesters or Law papers.
-            const norm=x=>String(x||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
-            const programme=x=>norm(x.program||x.programme||'');
-            const candidates=(papers||[]).filter(p=>p.hasFile!==false&&qpmsExamNorm(p.examType||p.exam)==='end semester');
-            const used=new Set();
-            const result=(schedules||[]).map(schedule=>({schedule,paper:null}));
-            // Exact programme matches first, then unambiguous single-candidate
-            // matches only when programme data is absent on either side.
-            for(const strict of [true,false]) {
-                for(const entry of result) {
-                    if(entry.paper)continue;
-                    const key=qpmsPaperRequirementKey(entry.schedule);
-                    if(!key)continue;
-                    const target=programme(entry.schedule);
-                    const options=candidates.filter(p=>{
-                        if(used.has(p))return false;
-                        if(qpmsPaperRequirementKey(p)!==key)return false;
-                        const pprog=programme(p);
-                        return strict?(!!target&&!!pprog&&target===pprog):(!target||!pprog);
-                    });
-                    if(strict&&options.length) {
-                        const selected=options[0];entry.paper=selected;used.add(selected);
-                    }else if(!strict&&options.length===1) {
-                        entry.paper=options[0];used.add(options[0]);
-                    }
-                }
+            // One requirement per course code and semester in the December end-term schedule.
+            // Shared programme rows do not create additional paper requirements.
+            const candidates = new Map();
+            const priority = p => ({FINAL_APPROVED:5,APPROVED:4,RESUBMITTED_TO_COE:3,CHANGES_REQUIRED:2,FORWARDED_FOR_MODERATION:1}[qpmsCoeCurrentStatus(p)] || 0);
+            for (const p of papers || []) {
+                if (p.hasFile === false || qpmsExamNorm(p.examType || p.exam) !== 'end semester') continue;
+                const date = String(p.paperDate || '').slice(0,10);
+                if (date && (date < '2026-12-01' || date >= '2027-01-01')) continue;
+                const key = qpmsPaperRequirementKey(p);
+                if (!key) continue;
+                const old = candidates.get(key);
+                if (!old || priority(p) > priority(old)) candidates.set(key,p);
             }
-            return result;
+            const unique = new Map();
+            for (const schedule of schedules || []) {
+                const key = qpmsPaperRequirementKey(schedule);
+                if (!key || unique.has(key)) continue;
+                unique.set(key,{schedule,paper:candidates.get(key)||null});
+            }
+            return [...unique.values()];
         }
         function getCoePendingPapers() {
             // COE pending list is limited to December 2026 End Semester and each upload
@@ -1745,8 +1736,8 @@ window.onload = function() {
                 if (revisedSchools.some(([schoolValue]) => schoolValue === selectedSchool)) revisedSchoolSelect.value = selectedSchool;
             }
             document.getElementById('coe-report-summary').innerHTML = [
-                totalCard('Papers Required (Unique Course Codes)', matchedBySchedule.length, 'border-slate-200 bg-slate-50 text-slate-900'),
-                totalCard('Papers Received (Unique Course Codes)', matchedBySchedule.filter(x => !!x.paper).length, 'border-emerald-200 bg-emerald-50 text-emerald-900'),
+                totalCard('Papers Required (Unique Course + Semester)', matchedBySchedule.length, 'border-slate-200 bg-slate-50 text-slate-900'),
+                totalCard('Papers Received (Unique Course + Semester)', matchedBySchedule.filter(x => !!x.paper).length, 'border-emerald-200 bg-emerald-50 text-emerald-900'),
                 totalCard('Papers Pending Upload', pending.length, 'border-rose-200 bg-rose-50 text-rose-900'),
                 totalCard('Awaiting Faculty Revision', changesRequired.length, 'border-amber-200 bg-amber-50 text-amber-900'),
                 totalCard('Revised Papers Resubmitted to COE', resubmitted.length, 'border-purple-200 bg-purple-50 text-purple-900'),
