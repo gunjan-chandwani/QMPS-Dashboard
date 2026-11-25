@@ -1659,7 +1659,7 @@ window.onload = function() {
         }
         function qpmsPaperLink(p) {
             const id = encodeURIComponent(p.id);
-            return `<div class="bg-white/80 border border-white rounded-lg p-2"><div class="font-semibold text-slate-800 truncate" title="${escapeHtml(p.courseName || '')}">${escapeHtml(p.courseName || 'Question Paper')}</div><div class="text-[10px] text-slate-500">${escapeHtml(p.courseCode || '')} · ${escapeHtml(p.department || '')}</div><div class="flex gap-2 mt-1"><a class="text-[11px] font-bold text-brand-700 hover:underline" target="_blank" href="/api/papers/${id}/view">View</a><a class="text-[11px] font-bold text-emerald-700 hover:underline" href="/api/papers/${id}/file">Download</a></div></div>`;
+            return `<div data-quick-school="${escapeHtml(qpmsSchoolFor(p))}" class="bg-white/80 border border-white rounded-lg p-2"><div class="font-semibold text-slate-800 truncate" title="${escapeHtml(p.courseName || '')}">${escapeHtml(p.courseName || 'Question Paper')}</div><div class="text-[10px] text-slate-500">${escapeHtml(p.courseCode || '')} · ${escapeHtml(p.department || '')}</div><div class="flex gap-2 mt-1"><a class="text-[11px] font-bold text-brand-700 hover:underline" target="_blank" href="/api/papers/${id}/view">View</a><a class="text-[11px] font-bold text-emerald-700 hover:underline" href="/api/papers/${id}/file">Download</a></div></div>`;
         }
         function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
         function qpmsCoeSchoolDownloadControl(category, items) {
@@ -1667,9 +1667,18 @@ window.onload = function() {
             const id = 'coe-download-school-' + category.toLowerCase();
             return `<div class="flex flex-wrap items-center gap-2 mb-2 rounded-lg border border-slate-200 bg-white p-2">
                 <label for="${id}" class="text-[11px] font-semibold text-slate-700">School-wise download</label>
-                <select id="${id}" class="max-w-48 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs"><option value="">Select School</option>${schools.map(([v,l]) => `<option value="${escapeHtml(v)}">${escapeHtml(l)}</option>`).join('')}</select>
+                <select id="${id}" onchange="qpmsFilterQuickCard(this)" class="max-w-48 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs"><option value="">Select School</option>${schools.map(([v,l]) => `<option value="${escapeHtml(v)}">${escapeHtml(l)}</option>`).join('')}</select>
                 <button type="button" onclick="downloadCoeCategoryBySchool('${category}')" class="rounded-md bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-900">Download All</button>
             </div>`;
+        }
+        function qpmsFilterQuickCard(select) {
+            const list = select.closest('[id^="quick-"]');
+            if (!list) return;
+            const school = select.value;
+            const entries = Array.from(list.querySelectorAll('[data-quick-school]'));
+            entries.forEach(el => { el.hidden = !!school && el.dataset.quickSchool !== school; });
+            const count = document.getElementById(list.id.replace('-list','-count'));
+            if (count) count.textContent = entries.filter(el => !el.hidden).length;
         }
         function downloadCoeCategoryBySchool(category) {
             const id = 'coe-download-school-' + String(category).toLowerCase();
@@ -1696,7 +1705,7 @@ window.onload = function() {
             const matchedBySchedule = qpmsUniqueCourseMatches(schedules, papersDatabase);
             // Raw database uploads are retained for moderation/workflow statuses.
             // Scheduled/covered/pending cards use official datesheet entries only.
-            const papers = (papersDatabase || []).filter(p => qpmsReportInScope(p, 'COE') && /^2026-12-/.test(p.paperDate || '') && /end/i.test(p.examType || ''));
+            const papers = (papersDatabase || []).filter(p => qpmsReportInScope(p, 'COE'));
             const pending = matchedBySchedule.filter(x => !x.paper);
             // Separate distinct paper requirements from raw official schedule rows.
             // A course taught to several specializations requires only one paper.
@@ -1781,7 +1790,9 @@ window.onload = function() {
                 const headerReview=document.getElementById('stat-pending');
                 const headerChanges=document.getElementById('stat-action');
                 const headerApproved=document.getElementById('stat-approved');
-                if(headerReview)headerReview.textContent=papers.filter(p => ['FORWARDED_FOR_MODERATION','SENT_FOR_MODERATION','RESUBMITTED_TO_COE','CHANGES_REQUIRED','CHANGES_REQUIRED_BY_MODERATOR',...moderatedStatuses,...finalStatuses].includes(normalizedStatus(p))).length;
+                if(headerReview)headerReview.textContent=papers.filter(p => ['FORWARDED_FOR_MODERATION','SENT_FOR_MODERATION'].includes(normalizedStatus(p))).length;
+                document.getElementById('stat-total').textContent=papers.length;
+                document.getElementById('stat-total-label').textContent='Total Uploaded';
                 if(headerChanges)headerChanges.textContent=changesRequired.length;
                 if(headerApproved)headerApproved.textContent=finalApproved.length;
             }
@@ -1797,7 +1808,7 @@ window.onload = function() {
             const pendingSchedules = pending.map(item => item.schedule);
             document.getElementById('quick-pending-count').textContent = schedules.length ? pendingSchedules.length : '—';
             document.getElementById('quick-pending-list').innerHTML = qpmsCoeSchoolDownloadControl('NOT_UPLOADED', pendingSchedules) + (pendingSchedules.length
-                ? pendingSchedules.map(s => `<div class="bg-white/80 border border-white rounded-lg p-2"><div class="font-semibold text-slate-800">${escapeHtml(s.courseName)}</div><div class="text-[10px] text-slate-500">${escapeHtml(s.courseCode)} · ${escapeHtml(qpmsSchoolFor(s))} · ${escapeHtml(qpmsDepartmentFor(s))} · ${escapeHtml(s.semester || 'Semester not set')}</div><div class="text-[10px] text-rose-700 mt-1">Exam: ${escapeHtml(s.paperDate || 'Date not set')} · ${escapeHtml(s.facultyName || 'Faculty not assigned')}${qpmsSchoolFor(s) === 'School mapping required' ? ' · COE school mapping required' : ''}</div></div>`).join('')
+                ? pendingSchedules.map(s => `<div data-quick-school="${escapeHtml(qpmsSchoolFor(s))}" class="bg-white/80 border border-white rounded-lg p-2"><div class="font-semibold text-slate-800">${escapeHtml(s.courseName)}</div><div class="text-[10px] text-slate-500">${escapeHtml(s.courseCode)} · ${escapeHtml(qpmsSchoolFor(s))} · ${escapeHtml(qpmsDepartmentFor(s))} · ${escapeHtml(s.semester || 'Semester not set')}</div><div class="text-[10px] text-rose-700 mt-1">Exam: ${escapeHtml(s.paperDate || 'Date not set')} · ${escapeHtml(s.facultyName || 'Faculty not assigned')}${qpmsSchoolFor(s) === 'School mapping required' ? ' · COE school mapping required' : ''}</div></div>`).join('')
                 : (schedules.length ? '<p class="text-xs text-emerald-700">All December 2026 End Semester schedule entries have matching uploaded papers.</p>' : '<p class="text-xs text-amber-800">No December 2026 End Semester schedule rows are loaded.</p>'));
         }
         function qpmsReportInScope(item, role) {
