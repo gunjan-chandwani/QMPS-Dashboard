@@ -1234,7 +1234,7 @@ app.post('/api/papers/:id/moderator-revision',requireRevisionModerator,revisionU
     c=await pool.connect();await c.query('BEGIN');
     const {rows:[p]}=await c.query('SELECT * FROM papers WHERE id::text=$1 FOR UPDATE',[req.params.id]);
     const u=req.revisionModerator;
-    if(!p || qpmsSchoolFor(p)!==u.school || (u.department && qpmsDepartmentFor(p)!==u.department)) {await c.query('ROLLBACK');return res.status(403).json({error:'Paper outside assigned scope'});}
+    if(!p || qpmsSchoolFor(p)!==u.school || (u.department && qpmsDepartmentFor(p)!==({'Computer Science & Technology':'CST','Electronics and Communication':'ECE','Mechanical Engineering':'ME'}[u.department] || u.department))) {await c.query('ROLLBACK');return res.status(403).json({error:'Paper outside assigned scope'});}
     if(!['CHANGES_REQUIRED','CHANGES_REQUIRED_BY_MODERATOR'].includes(p.status)){await c.query('ROLLBACK');return res.status(409).json({error:'Submit the Changes Required audit before uploading a revision'});}
     const audit=p.moderation_details||{};
     if(!String(audit.comments||'').trim()||!Array.from({length:12},(_,i)=>audit['q'+(i+1)]).every(v=>typeof v==='string'&&v.trim())){await c.query('ROLLBACK');return res.status(409).json({error:'Saved audit checklist and comments required'});}
