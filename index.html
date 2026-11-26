@@ -1378,12 +1378,13 @@ window.onload = function() {
 
         function updateStats() {
             const moderatorCard = document.getElementById('stat-moderator-approved-card');
-            if (moderatorCard) moderatorCard.classList.toggle('hidden', currentSession?.role !== 'COE');
+            if (moderatorCard) moderatorCard.classList.toggle('hidden', !['COE','MODERATOR'].includes(currentSession?.role));
             const unuploaded = getUnuploadedPapers();
             const isFaculty = currentSession?.role === 'FACULTY';
+            const isModerator = currentSession?.role === 'MODERATOR';
             const unuploadedCard = document.getElementById('stat-unuploaded-card');
             const metricsGrid = unuploadedCard?.parentElement;
-            if (unuploadedCard) unuploadedCard.classList.toggle('hidden', isFaculty);
+            if (unuploadedCard) unuploadedCard.classList.toggle('hidden', isFaculty || isModerator);
             if (metricsGrid) {
                 metricsGrid.classList.toggle('sm:grid-cols-4', isFaculty);
                 metricsGrid.classList.toggle('sm:grid-cols-5', !isFaculty && currentSession?.role !== 'COE');
@@ -1399,7 +1400,7 @@ window.onload = function() {
                 const ownerName = String(p.facultyName || p.faculty || '').trim().toLowerCase();
                 return (ownerEmail && ownerEmail === myEmail) ||
                     (ownerName && (ownerName === myName || ownerName === myEmail));
-            }) : papersDatabase;
+            }) : isModerator ? papersDatabase.filter(p => qpmsReportInScope(p,'MODERATOR')) : papersDatabase;
 
             // COE header and lower report share the exact same December 2026 scope,
             // one-to-one datesheet reconciliation and workflow status definitions.
@@ -1431,6 +1432,16 @@ window.onload = function() {
             document.getElementById('stat-pending').textContent = headerPapers.filter(p => reviewStatuses.includes(qpmsNormalizeStatus(p.status))).length;
             document.getElementById('stat-action').textContent = headerPapers.filter(p => ['CHANGES_REQUIRED', 'CHANGES_REQUIRED_BY_MODERATOR'].includes(qpmsNormalizeStatus(p.status))).length;
             document.getElementById('stat-approved').textContent = headerPapers.filter(p => ['FINAL_APPROVED', 'FINAL_APPROVED_AND_ARCHIVED'].includes(qpmsNormalizeStatus(p.status))).length;
+            if (isModerator) {
+                const counts = qpmsWorkflowCounts(headerPapers);
+                document.getElementById('stat-total-label').textContent = 'Papers Uploaded';
+                document.getElementById('stat-total').textContent = counts.uploaded;
+                document.getElementById('stat-pending-label').textContent = 'Sent for Moderation';
+                document.getElementById('stat-pending').textContent = counts.sentForModeration;
+                document.getElementById('stat-action').textContent = counts.changesRequired;
+                document.getElementById('stat-moderator-approved').textContent = counts.moderationApproved;
+                document.getElementById('stat-approved').textContent = counts.finalApproved;
+            }
         }
 
         // 1. FACULTY VIEW
