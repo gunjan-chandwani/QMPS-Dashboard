@@ -2224,6 +2224,10 @@ window.onload = function() {
                         </div>` : ''}
                     </td>
                     <td class="px-4 py-3.5 text-right space-x-2">
+                        <div class="flex flex-wrap justify-end gap-1 mb-2">
+                            <a href="/api/papers/${encodeURIComponent(paper.id)}/view" target="_blank" rel="noopener" class="inline-flex items-center px-2.5 py-1 bg-brand-600 hover:bg-brand-700 text-white rounded text-xs font-semibold"><i class="fa-solid fa-eye mr-1"></i> View</a>
+                            <a href="/api/papers/${encodeURIComponent(paper.id)}/file" class="inline-flex items-center px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold"><i class="fa-solid fa-download mr-1"></i> Download</a>
+                        </div>
                         ${['FORWARDED_FOR_MODERATION','SENT_FOR_MODERATION'].includes(qpmsNormalizeStatus(paper.status)) ? `
                             <button onclick="openModerationModal('${paper.id}')" class="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs font-semibold shadow-xs">
                                 <i class="fa-solid fa-clipboard-check mr-1"></i> Fill Audit Checklist
